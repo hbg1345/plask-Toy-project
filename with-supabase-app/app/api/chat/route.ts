@@ -17,7 +17,7 @@ const tools = {
   getRecentContests: tool({
     description: `Get list of recent AtCoder contests
     example: getRecentContests({})`,
-    parameters: z.object({}).strict(),
+    parameters: z.object({}),
     execute: async () => {
       return await getRecentContests();
     },
@@ -25,7 +25,7 @@ const tools = {
   getUpcomingcontests: tool({
     description: `Get list of upcoming AtCoder contests
     example: getUpcomningcontests({})`,
-    parameters: z.object({}).strict(),
+    parameters: z.object({}),
     execute: async () => {
       return await getUpcomingcontests();
     },
