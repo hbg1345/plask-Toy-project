@@ -17,49 +17,49 @@ const tools:ToolSet = {
   fetchRecentContests: tool({
     description: `Get list of recent AtCoder contests
     example: fetchRecentContests({})`,
-    parameters: z.object({}),
+    inputSchema: z.object({}),
     execute: async () => {
       return await getRecentContests();
-    } as any,
+    },
   }),
   fetchUpcomingcontests: tool({
     description: `Get list of upcoming AtCoder contests
     example: fetchUpcomingcontests({})`,
-    parameters: z.object({}),
+    inputSchema: z.object({}),
     execute: async () => {
       return await getUpcomingcontests();
-    } as any,
+    },
   }),
 
   fetchTaskLinkList: tool({
     description: `Get list of task links from an AtCoder contest URL.
     example: fetchTaskLinkList({contestUrl: "https://atcoder.jp/contests/abc314"})`,
-    parameters: z.object({
+    inputSchema: z.object({
       contestUrl: z.string().describe("The URL of the AtCoder contest"),
     }),
     execute: async ({ contestUrl }) => {
       return await getTaskLinkList(contestUrl);
-    }as any,
+    },
   }),
   fetchTaskMetadata: tool({
     description: `Get metadata for a specific AtCoder task
     example: fetchTaskMetadata({taskUrl: "https://atcoder.jp/contests/abc314/tasks/abc314_a"})`,
-    parameters: z.object({
+    inputSchema: z.object({
       taskUrl: z.string().describe("The URL of the AtCoder task"),
     }),
     execute: async ({ taskUrl }) => {
       return await getTaskMetadata(taskUrl);
-    }as any,
+    },
   }),
   fetchEditorial: tool({
     description: `Get the editorial for a specific AtCoder task
     example: fetchEditorial({taskUrl: "https://atcoder.jp/contests/abc314/tasks/abc314_a"})`,
-    parameters: z.object({
+    inputSchema: z.object({
       taskUrl: z.string().describe("The URL of the AtCoder task"),
     }),
     execute: async ({ taskUrl }) => {
       return await getEditorial(taskUrl);
-    } as any,
+    },
   }),
   // google_search: google.tools.googleSearch({}),
 };
