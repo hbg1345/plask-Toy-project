@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { FetchDataSteps } from "@/components/tutorial/fetch-data-steps";
 import { Suspense } from "react";
-
+import { ProfileForm } from "@/components/profile-form";
+import { UserInfoRow } from "@/types/supabase";
 async function UserDetails() {
   const supabase = await createClient();
 
@@ -12,32 +13,25 @@ async function UserDetails() {
   if (auth_error || !auth_data?.user) {
     redirect("/auth/login");
   }
+  
   const user = auth_data.user;
+  console.log(user.id);
   const { data, error } = await supabase
     .from("user_info")
     .select("rating, atcoder_handle")
     .eq("id", user.id)
     .single();
-  if (error) {
+
+  if (!data || error) {
     console.log(error.message);
     return;
   }
-  if (data.rating === null) {
-    return (
-      <div>
-        <p>Atcoder 계정을 연동해주세요.</p>
-      </div>
-    );
-  }
-  return (
-    <div>
-      <p> Atcoder handle: {data.atcoder_handle} </p>
-      <p> rating: {data.rating} </p>
-    </div>
-  );
+
+  const userData = data as UserInfoRow;
+  return <ProfileForm rating={userData.rating} atcoder_handle={userData.atcoder_handle} />;
 }
 
-export default function ProtectedPage() {
+export default function ProfilePage() {
   return (
     <div className="flex-1 w-full flex flex-col gap-12">
       <div className="flex flex-col gap-2 items-start">
