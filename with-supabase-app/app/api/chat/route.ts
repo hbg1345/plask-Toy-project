@@ -3,8 +3,8 @@ import { convertToModelMessages, streamText, UIMessage, tool, stepCountIs } from
 import { google } from "@ai-sdk/google";
 import { z } from "zod";
 import {
-  // getRecentContests, 
-  // getUpcomingcontests,
+  getRecentContests, 
+  getUpcomingcontests,
   getTaskLinkList,
   getTaskMetadata,
   getEditorial,
@@ -14,22 +14,22 @@ import {
 export const maxDuration = 30;
 
 const tools = {
-  // getRecentContests: tool({
-  //   description: `Get list of recent AtCoder contests
-  //   example: getRecentContests({})`,
-  //   parameters: z.object({}),
-  //   execute: getRecentContests,
-  // }),
-  // getUpcomingcontests: tool({
-  //   description: `Get list of upcoming AtCoder contests
-  //   example: getUpcomningcontests({})`,
-  //   parameters: z.object({}),
-  //   execute: getUpcomingcontests,
-  // }),
+  fetchRecentContests: tool({
+    description: `Get list of recent AtCoder contests
+    example: fetchRecentContests({})`,
+    parameters: z.object({}),
+    execute: getRecentContests,
+  }),
+  fetchUpcomingcontests: tool({
+    description: `Get list of upcoming AtCoder contests
+    example: fetchUpcomingcontests({})`,
+    parameters: z.object({}),
+    execute: getUpcomingcontests,
+  }),
 
-  getTaskLinkList: tool({
+  fetchTaskLinkList: tool({
     description: `Get list of task links from an AtCoder contest URL.
-    example: getTaskLinkList({contestUrl: "https://atcoder.jp/contests/abc314"})`,
+    example: fetchTaskLinkList({contestUrl: "https://atcoder.jp/contests/abc314"})`,
     parameters: z.object({
       contestUrl: z.string().describe("The URL of the AtCoder contest"),
     }),
@@ -37,9 +37,9 @@ const tools = {
       return await getTaskLinkList(contestUrl);
     },
   }),
-  getTaskMetadata: tool({
+  fetchTaskMetadata: tool({
     description: `Get metadata for a specific AtCoder task
-    example: getTaskMetadata({taskUrl: "https://atcoder.jp/contests/abc314/tasks/abc314_a"})`,
+    example: fetchTaskMetadata({taskUrl: "https://atcoder.jp/contests/abc314/tasks/abc314_a"})`,
     parameters: z.object({
       taskUrl: z.string().describe("The URL of the AtCoder task"),
     }),
@@ -47,9 +47,9 @@ const tools = {
       return await getTaskMetadata(taskUrl);
     },
   }),
-  getEditorial: tool({
+  fetchEditorial: tool({
     description: `Get the editorial for a specific AtCoder task
-    example: getEditorial({taskUrl: "https://atcoder.jp/contests/abc314/tasks/abc314_a"})`,
+    example: fetchEditorial({taskUrl: "https://atcoder.jp/contests/abc314/tasks/abc314_a"})`,
     parameters: z.object({
       taskUrl: z.string().describe("The URL of the AtCoder task"),
     }),
