@@ -18,17 +18,17 @@ const tools:ToolSet = {
     description: `Get list of recent AtCoder contests
     example: fetchRecentContests({})`,
     parameters: z.object({}),
-    execute: async (_args) => {
+    execute: async () => {
       return await getRecentContests();
-    },
+    } as any,
   }),
   fetchUpcomingcontests: tool({
     description: `Get list of upcoming AtCoder contests
     example: fetchUpcomingcontests({})`,
     parameters: z.object({}),
-    execute: async (_args) => {
+    execute: async () => {
       return await getUpcomingcontests();
-    },
+    } as any,
   }),
 
   fetchTaskLinkList: tool({
@@ -39,7 +39,7 @@ const tools:ToolSet = {
     }),
     execute: async ({ contestUrl }) => {
       return await getTaskLinkList(contestUrl);
-    },
+    }as any,
   }),
   fetchTaskMetadata: tool({
     description: `Get metadata for a specific AtCoder task
@@ -49,7 +49,7 @@ const tools:ToolSet = {
     }),
     execute: async ({ taskUrl }) => {
       return await getTaskMetadata(taskUrl);
-    },
+    }as any,
   }),
   fetchEditorial: tool({
     description: `Get the editorial for a specific AtCoder task
@@ -59,7 +59,7 @@ const tools:ToolSet = {
     }),
     execute: async ({ taskUrl }) => {
       return await getEditorial(taskUrl);
-    },
+    } as any,
   }),
   // google_search: google.tools.googleSearch({}),
 };
