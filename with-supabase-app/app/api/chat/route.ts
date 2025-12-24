@@ -18,13 +18,17 @@ const tools = {
     description: `Get list of recent AtCoder contests
     example: fetchRecentContests({})`,
     parameters: z.object({}),
-    execute: getRecentContests,
+    execute: async (_args) => {
+      return await getRecentContests();
+    },
   }),
   fetchUpcomingcontests: tool({
     description: `Get list of upcoming AtCoder contests
     example: fetchUpcomingcontests({})`,
     parameters: z.object({}),
-    execute: getUpcomingcontests,
+    execute: async (_args) => {
+      return await getUpcomingcontests();
+    },
   }),
 
   fetchTaskLinkList: tool({
