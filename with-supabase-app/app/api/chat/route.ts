@@ -3,8 +3,8 @@ import { convertToModelMessages, streamText, UIMessage, tool, stepCountIs } from
 import { google } from "@ai-sdk/google";
 import { z } from "zod";
 import {
-  getRecentContests, 
-  getUpcomingcontests,
+  // getRecentContests, 
+  // getUpcomingcontests,
   getTaskLinkList,
   getTaskMetadata,
   getEditorial,
@@ -14,18 +14,18 @@ import {
 export const maxDuration = 30;
 
 const tools = {
-  getRecentContests: tool({
-    description: `Get list of recent AtCoder contests
-    example: getRecentContests({})`,
-    parameters: z.object({}),
-    execute: getRecentContests,
-  }),
-  getUpcomingcontests: tool({
-    description: `Get list of upcoming AtCoder contests
-    example: getUpcomningcontests({})`,
-    parameters: z.object({}),
-    execute: getUpcomingcontests,
-  }),
+  // getRecentContests: tool({
+  //   description: `Get list of recent AtCoder contests
+  //   example: getRecentContests({})`,
+  //   parameters: z.object({}),
+  //   execute: getRecentContests,
+  // }),
+  // getUpcomingcontests: tool({
+  //   description: `Get list of upcoming AtCoder contests
+  //   example: getUpcomningcontests({})`,
+  //   parameters: z.object({}),
+  //   execute: getUpcomingcontests,
+  // }),
 
   getTaskLinkList: tool({
     description: `Get list of task links from an AtCoder contest URL.
