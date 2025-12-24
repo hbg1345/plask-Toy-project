@@ -117,9 +117,9 @@ export const ConfirmationAccepted = ({
   // Only show when approved and in response states
   if (
     !approval?.approved ||
-        // @ts-expect-error state only available in AI SDK v6
+        
     (state !== "approval-responded" &&
-        // @ts-expect-error state only available in AI SDK v6
+
       state !== "output-denied" &&
       state !== "output-available")
   ) {
