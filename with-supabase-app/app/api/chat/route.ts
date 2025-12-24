@@ -1,5 +1,5 @@
 import { convertToModelMessages, streamText, UIMessage, tool, stepCountIs } from "ai";
-
+import type { ToolSet } from "ai";
 import { google } from "@ai-sdk/google";
 import { z } from "zod";
 import {
@@ -13,7 +13,7 @@ import {
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
 
-const tools = {
+const tools:ToolSet = {
   fetchRecentContests: tool({
     description: `Get list of recent AtCoder contests
     example: fetchRecentContests({})`,
