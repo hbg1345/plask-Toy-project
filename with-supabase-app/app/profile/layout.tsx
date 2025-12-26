@@ -9,7 +9,7 @@ export default function ProfileLayout({
     <AppLayout 
       contentWrapperClassName="flex-1 flex flex-col gap-20 p-5"
     >
-      {children}
+          {children}
     </AppLayout>
   );
 }

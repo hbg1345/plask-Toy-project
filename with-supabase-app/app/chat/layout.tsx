@@ -1,16 +1,17 @@
 import { AppLayout } from "@/components/app-layout";
+import { ChatLayoutWrapper } from "./ChatLayoutWrapper";
 
 export default function ChatLayout({
   children,
 }: {
   children: React.ReactNode;
-}) {  
+}) {
   return (
-    <AppLayout 
-      contentWrapperClassName="flex-1 flex flex-col gap-20 p-5 max-h-[80vh]"
+    <AppLayout
+      contentWrapperClassName="flex flex-col p-0 max-w-5xl mx-auto w-full h-[calc(100vh-4rem-3rem)]"
+      outerWrapperClassName="flex w-full flex-col items-center"
     >
-      {children}
+      <ChatLayoutWrapper>{children}</ChatLayoutWrapper>
     </AppLayout>
   );
 }
-

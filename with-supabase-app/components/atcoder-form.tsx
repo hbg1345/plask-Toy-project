@@ -19,7 +19,7 @@ export function AtcoderForm({ onSuccess }: AtcoderFormProps) {
         e.preventDefault();
         setIsLoading(true);
         try {
-            await updatAtcoderHandle(handle);
+        await updatAtcoderHandle(handle);
             // 서버 컴포넌트를 다시 렌더링하여 업데이트된 프로필 정보를 가져옴
             router.refresh();
             // 성공 콜백 호출

@@ -22,7 +22,13 @@ export function ChatSidebar({ isOpen, onToggle, onSelectChat, selectedChatId, re
         const loadChatList = async () => {
             setIsLoading(true);
             const list = await getChatHistoryList();
-            setChatList(list);
+            // 최근 업데이트 순으로 정렬 (updated_at 기준 내림차순)
+            const sortedList = [...list].sort((a, b) => {
+                const dateA = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+                const dateB = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+                return dateB - dateA; // 내림차순 (최신이 위로)
+            });
+            setChatList(sortedList);
             setIsLoading(false);
         };
         loadChatList();
@@ -43,7 +49,13 @@ export function ChatSidebar({ isOpen, onToggle, onSelectChat, selectedChatId, re
                 }
                 // 목록 새로고침
                 const list = await getChatHistoryList();
-                setChatList(list);
+                // 최근 업데이트 순으로 정렬 (updated_at 기준 내림차순)
+                const sortedList = [...list].sort((a, b) => {
+                    const dateA = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+                    const dateB = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+                    return dateB - dateA; // 내림차순 (최신이 위로)
+                });
+                setChatList(sortedList);
             }
         }
     };
@@ -103,7 +115,11 @@ export function ChatSidebar({ isOpen, onToggle, onSelectChat, selectedChatId, re
                                         className="flex-1 justify-start gap-2 text-left h-auto py-2"
                                     >
                                         <MessageSquare className="h-4 w-4 shrink-0" />
-                                        <span className="truncate flex-1">{chat.title}</span>
+                                        <span className="truncate flex-1">
+                                          {chat.title.length > 12
+                                            ? `${chat.title.substring(0, 12)}...`
+                                            : chat.title}
+                                        </span>
                                     </Button>
                                     <Button
                                         variant="ghost"
@@ -111,7 +127,7 @@ export function ChatSidebar({ isOpen, onToggle, onSelectChat, selectedChatId, re
                                         onClick={(e) => handleDeleteChat(e, chat.id)}
                                         className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                                     >
-                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                        <Trash2 className="h-4 w-4 text-destructive dark:text-red-400" />
                                     </Button>
                                 </div>
                             ))}

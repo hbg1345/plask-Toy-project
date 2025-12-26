@@ -1,16 +1,16 @@
-'use client';
+"use client";
 import {
   Conversation,
   ConversationContent,
   ConversationScrollButton,
-} from '@/components/ai-elements/conversation';
+} from "@/components/ai-elements/conversation";
 import {
   Message,
   MessageContent,
   MessageResponse,
   MessageActions,
   MessageAction,
-} from '@/components/ai-elements/message';
+} from "@/components/ai-elements/message";
 import {
   PromptInput,
   PromptInputActionAddAttachments,
@@ -32,31 +32,35 @@ import {
   PromptInputTextarea,
   PromptInputFooter,
   PromptInputTools,
-} from '@/components/ai-elements/prompt-input';
-import { Fragment, useState, useEffect, useRef } from 'react';
-import { useChat } from '@ai-sdk/react';
-import { CopyIcon, GlobeIcon, RefreshCcwIcon } from 'lucide-react';
-import { saveChatHistory, getChatHistory, type Message } from '@/app/actions';
+} from "@/components/ai-elements/prompt-input";
+import { useState, useEffect, useRef } from "react";
+import { useChat } from "@ai-sdk/react";
+import { CopyIcon, GlobeIcon, RefreshCcwIcon } from "lucide-react";
+import {
+  saveChatHistory,
+  getChatHistory,
+  type Message as ChatMessage,
+} from "@/app/actions";
 import {
   Source,
   Sources,
   SourcesContent,
   SourcesTrigger,
-} from '@/components/ai-elements/sources';
+} from "@/components/ai-elements/sources";
 import {
   Reasoning,
   ReasoningContent,
   ReasoningTrigger,
-} from '@/components/ai-elements/reasoning';
-import { Loader } from '@/components/ai-elements/loader';
+} from "@/components/ai-elements/reasoning";
+import { Loader } from "@/components/ai-elements/loader";
 const models = [
   {
-    name: 'GPT 4o',
-    value: 'openai/gpt-4o',
+    name: "GPT 4o",
+    value: "openai/gpt-4o",
   },
   {
-    name: 'Deepseek R1',
-    value: 'deepseek/deepseek-r1',
+    name: "Deepseek R1",
+    value: "deepseek/deepseek-r1",
   },
 ];
 interface ChatBotDemoProps {
@@ -65,10 +69,11 @@ interface ChatBotDemoProps {
 }
 
 const ChatBotDemo = ({ chatId, onChatIdChange }: ChatBotDemoProps) => {
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [model, setModel] = useState<string>(models[0].value);
   const [webSearch, setWebSearch] = useState(false);
   const [isLoadingChat, setIsLoadingChat] = useState(false);
+  const [problemUrl, setProblemUrl] = useState<string | null>(null);
   const { messages, setMessages, sendMessage, status, regenerate } = useChat();
   const prevChatIdRef = useRef<string | null>(chatId || null);
   const lastSavedMessageCountRef = useRef<number>(0);
@@ -78,7 +83,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange }: ChatBotDemoProps) => {
   useEffect(() => {
     if (chatId !== prevChatIdRef.current) {
       prevChatIdRef.current = chatId || null;
-      
+
       if (chatId) {
         setIsLoadingChat(true);
         getChatHistory(chatId).then((chatData) => {
@@ -87,10 +92,12 @@ const ChatBotDemo = ({ chatId, onChatIdChange }: ChatBotDemoProps) => {
             const convertedMessages = chatData.messages.map((msg) => ({
               id: msg.id,
               role: msg.role,
-              parts: [{ type: 'text' as const, text: msg.content }],
+              parts: [{ type: "text" as const, text: msg.content }],
             }));
             setMessages(convertedMessages);
             lastSavedMessageCountRef.current = convertedMessages.length;
+            // problemUrl 저장
+            setProblemUrl(chatData.problemUrl || null);
           }
           setIsLoadingChat(false);
         });
@@ -99,6 +106,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange }: ChatBotDemoProps) => {
         setMessages([]);
         lastSavedMessageCountRef.current = 0;
         isSavingRef.current = false;
+        setProblemUrl(null);
       }
     }
   }, [chatId, setMessages]);
@@ -112,66 +120,80 @@ const ChatBotDemo = ({ chatId, onChatIdChange }: ChatBotDemoProps) => {
       return;
     }
 
-    // 조건: status가 ready 또는 idle이고, 메시지가 있고, 새 메시지가 추가된 경우
+    // 조건: status가 ready이고, 메시지가 있고, 새 메시지가 추가된 경우
     const hasNewMessages = messages.length > lastSavedMessageCountRef.current;
     const lastMessage = messages[messages.length - 1];
-    const shouldSave = 
-      (status === 'ready' || status === 'idle') && 
+    const shouldSave =
+      status === "ready" &&
       messages.length > 0 &&
       hasNewMessages &&
-      lastMessage?.role === 'assistant';
+      lastMessage?.role === "assistant";
 
     if (shouldSave) {
       // 저장 시작 전에 플래그 설정 및 카운트 업데이트
       isSavingRef.current = true;
       lastSavedMessageCountRef.current = messages.length;
-      
-      console.log('Saving chat history...', { 
-        messagesCount: messages.length, 
-        chatId, 
+
+      console.log("Saving chat history...", {
+        messagesCount: messages.length,
+        chatId,
         status,
-        lastMessageRole: lastMessage?.role 
+        lastMessageRole: lastMessage?.role,
       });
-      
+
       const saveHistory = async () => {
         try {
-          const firstUserMessage = messages.find(m => m.role === 'user');
-          let title = 'New Chat';
+          const firstUserMessage = messages.find((m) => m.role === "user");
+          let title = "New Chat";
           if (firstUserMessage) {
-            const textPart = firstUserMessage.parts?.find((part: any) => part.type === 'text');
-            if (textPart?.text) {
+            const textPart = firstUserMessage.parts?.find(
+              (part) => part.type === "text"
+            );
+            if (textPart && "text" in textPart) {
               title = textPart.text.substring(0, 50);
             }
           }
-          
-          const messagesToSave: Message[] = messages.map((msg) => ({
+
+          const messagesToSave: ChatMessage[] = messages.map((msg) => ({
             id: msg.id,
             role: msg.role,
-            content: msg.parts?.map((part: any) => {
-              if (part.type === 'text') return part.text;
-              return '';
-            }).join('') || '',
+            content:
+              msg.parts
+                ?.map((part) => {
+                  if (part.type === "text" && "text" in part) return part.text;
+                  return "";
+                })
+                .join("") || "",
           }));
-          
-          console.log('Calling saveChatHistory...', { chatId, title, messagesCount: messagesToSave.length });
-          const savedChatId = await saveChatHistory(chatId, messagesToSave, title);
-          console.log('saveChatHistory result:', savedChatId);
-          
+
+          console.log("Calling saveChatHistory...", {
+            chatId,
+            title,
+            messagesCount: messagesToSave.length,
+          });
+          const savedChatId = await saveChatHistory(
+            chatId,
+            messagesToSave,
+            title,
+            problemUrl ?? null
+          );
+          console.log("saveChatHistory result:", savedChatId);
+
           // 저장이 완료된 후 부모에게 알림 (새로 생성된 경우만)
           if (savedChatId && savedChatId !== chatId && onChatIdChange) {
             onChatIdChange(savedChatId);
           }
         } catch (error) {
-          console.error('Error saving chat history:', error);
+          console.error("Error saving chat history:", error);
         } finally {
           // 저장 완료 후 플래그 해제
           isSavingRef.current = false;
         }
       };
-      
+
       saveHistory();
     }
-  }, [messages, status]);
+  }, [messages, status, chatId, problemUrl, onChatIdChange]);
 
   const handleSubmit = (message: PromptInputMessage) => {
     const hasText = Boolean(message.text);
@@ -180,87 +202,95 @@ const ChatBotDemo = ({ chatId, onChatIdChange }: ChatBotDemoProps) => {
       return;
     }
     sendMessage(
-      { 
-        text: message.text || 'Sent with attachments',
-        files: message.files 
+      {
+        text: message.text || "Sent with attachments",
+        files: message.files,
       },
       {
         body: {
           model: model,
           webSearch: webSearch,
+          chatId: chatId || undefined,
+          problemUrl: problemUrl || undefined,
         },
-      },
+      }
     );
-    setInput('');
+    setInput("");
   };
   return (
-    <div className="max-w-4xl mx-auto p-6 relative size-full h-screen">
-      <div className="flex flex-col h-full">
-        {isLoadingChat ? (
-          <div className="flex-1 flex items-center justify-center">
-            <Loader />
-          </div>
-        ) : (
-          <Conversation className="h-full">
-            <ConversationContent>
-              {messages.map((message) => (
-              <div key={message.id}>
-                {message.role === 'assistant' && message.parts.filter((part) => part.type === 'source-url').length > 0 && (
-                  <Sources>
-                    <SourcesTrigger
-                      count={
-                        message.parts.filter(
-                          (part) => part.type === 'source-url',
-                        ).length
-                      }
-                    />
-                    {message.parts.filter((part) => part.type === 'source-url').map((part, i) => (
-                      <SourcesContent key={`${message.id}-${i}`}>
-                        <Source
-                          key={`${message.id}-${i}`}
-                          href={part.url}
-                          title={part.url}
-                        />
-                      </SourcesContent>
-                    ))}
-                  </Sources>
-                )}
+    <div className="w-full h-full flex flex-col overflow-hidden max-w-4xl mx-auto">
+      {isLoadingChat ? (
+        <div className="flex-1 flex items-center justify-center">
+          <Loader />
+        </div>
+      ) : (
+        <Conversation className="flex-1 min-h-0">
+          <ConversationContent>
+            {messages.map((message, messageIndex) => (
+              <div key={`${message.id}-${messageIndex}`}>
+                {message.role === "assistant" &&
+                  message.parts.filter((part) => part.type === "source-url")
+                    .length > 0 && (
+                    <Sources>
+                      <SourcesTrigger
+                        count={
+                          message.parts.filter(
+                            (part) => part.type === "source-url"
+                          ).length
+                        }
+                      />
+                      {message.parts
+                        .filter((part) => part.type === "source-url")
+                        .map((part, i) => (
+                          <SourcesContent key={`${message.id}-${i}`}>
+                            <Source
+                              key={`${message.id}-${i}`}
+                              href={part.url}
+                              title={part.url}
+                            />
+                          </SourcesContent>
+                        ))}
+                    </Sources>
+                  )}
                 {message.parts.map((part, i) => {
                   switch (part.type) {
-                    case 'text':
+                    case "text":
                       return (
                         <Message key={`${message.id}-${i}`} from={message.role}>
                           <MessageContent>
-                            <MessageResponse>
-                              {part.text}
-                            </MessageResponse>
+                            <MessageResponse>{part.text}</MessageResponse>
                           </MessageContent>
-                          {message.role === 'assistant' && i === messages.length - 1 && (
-                            <MessageActions>
-                              <MessageAction
-                                onClick={() => regenerate()}
-                                label="Retry"
-                              >
-                                <RefreshCcwIcon className="size-3" />
-                              </MessageAction>
-                              <MessageAction
-                                onClick={() =>
-                                  navigator.clipboard.writeText(part.text)
-                                }
-                                label="Copy"
-                              >
-                                <CopyIcon className="size-3" />
-                              </MessageAction>
-                            </MessageActions>
-                          )}
+                          {message.role === "assistant" &&
+                            i === messages.length - 1 && (
+                              <MessageActions>
+                                <MessageAction
+                                  onClick={() => regenerate()}
+                                  label="Retry"
+                                >
+                                  <RefreshCcwIcon className="size-3" />
+                                </MessageAction>
+                                <MessageAction
+                                  onClick={() =>
+                                    navigator.clipboard.writeText(part.text)
+                                  }
+                                  label="Copy"
+                                >
+                                  <CopyIcon className="size-3" />
+                                </MessageAction>
+                              </MessageActions>
+                            )}
                         </Message>
                       );
-                    case 'reasoning':
+                    case "reasoning":
                       return (
                         <Reasoning
                           key={`${message.id}-${i}`}
                           className="w-full"
-                          isStreaming={status === 'streaming' && i === message.parts.length - 1 && message.id === messages.at(-1)?.id}
+                          isStreaming={
+                            status === "streaming" &&
+                            i === message.parts.length - 1 &&
+                            message.id === messages.at(-1)?.id
+                          }
                         >
                           <ReasoningTrigger />
                           <ReasoningContent>{part.text}</ReasoningContent>
@@ -272,12 +302,13 @@ const ChatBotDemo = ({ chatId, onChatIdChange }: ChatBotDemoProps) => {
                 })}
               </div>
             ))}
-            {status === 'submitted' && <Loader />}
+            {status === "submitted" && <Loader />}
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
-        )}
-        <PromptInput onSubmit={handleSubmit} className="mt-4" globalDrop={true} multiple={true}>
+      )}
+      <div className="flex-shrink-0 p-4 border-t">
+        <PromptInput onSubmit={handleSubmit} globalDrop={true} multiple={true}>
           <PromptInputHeader>
             <PromptInputAttachments>
               {(attachment) => <PromptInputAttachment data={attachment} />}
@@ -298,7 +329,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange }: ChatBotDemoProps) => {
                 </PromptInputActionMenuContent>
               </PromptInputActionMenu>
               <PromptInputButton
-                variant={webSearch ? 'default' : 'ghost'}
+                variant={webSearch ? "default" : "ghost"}
                 onClick={() => setWebSearch(!webSearch)}
               >
                 <GlobeIcon size={16} />
@@ -315,7 +346,10 @@ const ChatBotDemo = ({ chatId, onChatIdChange }: ChatBotDemoProps) => {
                 </PromptInputSelectTrigger>
                 <PromptInputSelectContent>
                   {models.map((model) => (
-                    <PromptInputSelectItem key={model.value} value={model.value}>
+                    <PromptInputSelectItem
+                      key={model.value}
+                      value={model.value}
+                    >
                       {model.name}
                     </PromptInputSelectItem>
                   ))}

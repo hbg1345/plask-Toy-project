@@ -41,7 +41,8 @@ export async function updatAtcoderHandle(handle: string) {
 export async function saveChatHistory(
   chatId: string | null,
   messages: Message[],
-  title: string
+  title: string,
+  problemUrl?: string | null
 ) {
   console.log("saveChatHistory called", {
     chatId,
@@ -65,12 +66,20 @@ export async function saveChatHistory(
     if (chatId) {
       // 기존 채팅 업데이트
       console.log("Updating existing chat", { chatId });
+      const updateData: {
+        messages: string;
+        title: string;
+        problem_url?: string | null;
+      } = {
+        messages: messagesJson,
+        title: title,
+      };
+      if (problemUrl !== undefined) {
+        updateData.problem_url = problemUrl;
+      }
       const { data, error } = await supabase
         .from("chat_history")
-        .update({
-          messages: messagesJson,
-          title: title,
-        })
+        .update(updateData)
         .eq("id", chatId)
         .eq("user_id", userId)
         .select()
@@ -85,13 +94,22 @@ export async function saveChatHistory(
     } else {
       // 새 채팅 생성
       console.log("Creating new chat", { userId, title });
+      const insertData: {
+        user_id: string;
+        messages: string;
+        title: string;
+        problem_url?: string | null;
+      } = {
+        user_id: userId,
+        messages: messagesJson,
+        title: title,
+      };
+      if (problemUrl !== undefined) {
+        insertData.problem_url = problemUrl;
+      }
       const { data, error } = await supabase
         .from("chat_history")
-        .insert({
-          user_id: userId,
-          messages: messagesJson,
-          title: title,
-        })
+        .insert(insertData)
         .select()
         .single();
 
@@ -142,9 +160,9 @@ export async function getChatHistoryList(): Promise<ChatHistoryItem[]> {
   }
 }
 
-export async function getChatHistory(
-  chatId: string
-): Promise<{ messages: Message[]; title: string } | null> {
+export async function getChatByProblemUrl(
+  problemUrl: string
+): Promise<string | null> {
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;
@@ -157,7 +175,44 @@ export async function getChatHistory(
   try {
     const { data, error } = await supabase
       .from("chat_history")
-      .select("messages, title")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("problem_url", problemUrl)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error) {
+      // 채팅이 없으면 null 반환 (에러가 아닌 정상적인 경우)
+      if (error.code === "PGRST116") {
+        return null;
+      }
+      console.error("Failed to get chat by problem URL:", error);
+      return null;
+    }
+    return data?.id || null;
+  } catch (error) {
+    console.error("Failed to get chat by problem URL:", error);
+    return null;
+  }
+}
+
+export async function getChatHistory(
+  chatId: string
+): Promise<{ messages: Message[]; title: string; problemUrl?: string | null } | null> {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (!claims) {
+    console.log("User not authenticated");
+    return null;
+  }
+  const userId = claims.sub as string;
+
+  try {
+    const { data, error } = await supabase
+      .from("chat_history")
+      .select("messages, title, problem_url")
       .eq("id", chatId)
       .eq("user_id", userId)
       .single();
@@ -168,7 +223,7 @@ export async function getChatHistory(
     }
 
     const messages = JSON.parse(data.messages) as Message[];
-    return { messages, title: data.title };
+    return { messages, title: data.title, problemUrl: data.problem_url };
   } catch (error) {
     console.error("Failed to get chat history:", error);
     return null;
@@ -200,5 +255,93 @@ export async function deleteChatHistory(chatId: string): Promise<boolean> {
   } catch (error) {
     console.error("Failed to delete chat history:", error);
     return false;
+  }
+}
+
+/**
+ * Kenkoo API를 사용하여 문제 수집을 시작하는 Server Action
+ * 이 방법이 훨씬 빠르고 효율적입니다.
+ */
+export async function startProblemCollectionFromKenkoo() {
+  // 인증 확인
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (!claims) {
+    console.log("User not authenticated");
+    return { success: false, error: "Not authenticated" };
+  }
+
+  try {
+    const {
+      collectAllProblemsFromKenkoo,
+      populateContestsFromKenkooAPI,
+      populateContestProblemsFromKenkooAPI,
+    } = await import("@/lib/atcoder/problems");
+
+    // 1. contests 수집 (먼저 실행)
+    console.log("Starting contests collection...");
+    const contestsResult = await populateContestsFromKenkooAPI();
+    console.log(
+      `Contests collection completed: Processed ${contestsResult.processed}, Saved ${contestsResult.saved}`
+    );
+
+    // 2. 문제 수집
+    console.log("Starting problems collection...");
+    const problemResult = await collectAllProblemsFromKenkoo();
+    console.log(
+      `Problems collection completed: Processed ${problemResult.processed}, Saved ${problemResult.saved}`
+    );
+
+    // 3. contest_problems 관계 수집
+    console.log("Starting contest_problems collection...");
+    const contestProblemResult = await populateContestProblemsFromKenkooAPI();
+    console.log(
+      `Contest_problems collection completed: Processed ${contestProblemResult.processed}, Saved ${contestProblemResult.saved}`
+    );
+
+    return {
+      success: true,
+      contests: contestsResult,
+      problems: problemResult,
+      contestProblems: contestProblemResult,
+    };
+  } catch (error) {
+    console.error("Failed to collect problems from Kenkoo:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+/**
+ * 문제 수집을 시작하는 Server Action (기존 방식 - AtCoder 크롤링)
+ * 주의: 이 작업은 매우 오래 걸릴 수 있습니다.
+ */
+export async function startProblemCollection(
+  limit?: number,
+  startFrom: number = 0
+) {
+  // 인증 확인 (관리자만 실행 가능하도록 할 수도 있음)
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (!claims) {
+    console.log("User not authenticated");
+    return { success: false, error: "Not authenticated" };
+  }
+
+  try {
+    // 동적 import로 문제 수집 함수 가져오기
+    const { collectAllProblems } = await import("@/lib/atcoder/problems");
+    const result = await collectAllProblems(limit, startFrom);
+    return { success: true, ...result };
+  } catch (error) {
+    console.error("Failed to collect problems:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
   }
 }
