@@ -5,9 +5,14 @@ import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export function ChatLink() {
+interface NavLinkProps {
+  href: string;
+  children: React.ReactNode;
+}
+
+export function NavLink({ href, children }: NavLinkProps) {
   const pathname = usePathname();
-  const isActive = pathname === "/chat";
+  const isActive = pathname === href;
 
   return (
     <Button
@@ -19,7 +24,8 @@ export function ChatLink() {
         isActive && "bg-accent text-yellow-500 dark:text-yellow-400"
       )}
     >
-      <Link href="/chat">Chat</Link>
+      <Link href={href}>{children}</Link>
     </Button>
   );
 }
+
