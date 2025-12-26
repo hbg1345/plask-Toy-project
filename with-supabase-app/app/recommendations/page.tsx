@@ -110,7 +110,9 @@ function formatDifficulty(difficulty: number | null): string {
 }
 
 async function RecommendationsContent() {
-  // 인증 체크 및 사용자 레이팅 가져오기
+  // ⚠️ PAGE-LEVEL AUTHENTICATION CHECK
+  // Authentication is handled at the page level, NOT in middleware.
+  // See lib/supabase/proxy.ts for architecture details.
   const supabase = await createClient();
   const { data: claimsData } = await supabase.auth.getClaims();
   const claims = claimsData?.claims;

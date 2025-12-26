@@ -121,7 +121,9 @@ async function ProblemsContent({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
-  // 인증 체크 (profile 페이지와 동일한 방식)
+  // ⚠️ PAGE-LEVEL AUTHENTICATION CHECK
+  // Authentication is handled at the page level, NOT in middleware.
+  // See lib/supabase/proxy.ts for architecture details.
   const supabase = await createClient();
   const { data: claimsData } = await supabase.auth.getClaims();
   const claims = claimsData?.claims;
