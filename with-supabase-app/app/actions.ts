@@ -4,12 +4,14 @@ import { fetchUserInfo } from '@qatadaazzeh/atcoder-api';
 
 export async function updatAtcoderHandle(handle: string) {
     const supabase = await createClient();
-    const {data:authData, error: authError } = await supabase.auth.getUser();
-    if (authError || !authData.user) {
+    // getClaims() is faster than getUser() as it reads from JWT directly
+    const { data } = await supabase.auth.getClaims();
+    const claims = data?.claims;
+    if (!claims) {
         console.log("User not authenticated");
         return;
     }
-    const userId = authData.user.id;
+    const userId = claims.sub as string;
     try {
         const atcoderUser = await fetchUserInfo(handle);
         const userName = atcoderUser.userName;
