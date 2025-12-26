@@ -9,7 +9,7 @@ import { usePathname } from "next/navigation";
 
 export function Header() {
   const pathname = usePathname();
-  const isProtectedPage = pathname === "/profile" || pathname === "/chat";
+  const isProtectedPage = pathname === "/profile";
 
   return (
     <nav className="w-full flex justify-center border-b border-b-foreground/10 h-16">
@@ -17,11 +17,9 @@ export function Header() {
         <div className="flex gap-5 items-center font-semibold">
           <Link href={"/"}>Atcoder Supporter</Link>
           <Link href={"/problems"}>Problems</Link>
+          <Link href={"/chat"}>Chat</Link>
           {isProtectedPage && (
-            <>
-              <Link href={"/profile"}>Profile</Link>
-              <Link href={"/chat"}>Chat</Link>
-            </>
+            <Link href={"/profile"}>Profile</Link>
           )}
         </div>
         {!hasEnvVars ? (
