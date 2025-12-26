@@ -3,6 +3,7 @@ import {
   extractProblemIndex,
 } from "@/lib/atcoder/problems";
 import Link from "next/link";
+import { ProblemLink } from "@/components/problem-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -297,45 +298,19 @@ async function ProblemsContent({ page = 1 }: { page: number }) {
                             );
                           }
 
-                          const colors = getDifficultyColor(problem.difficulty);
-
                           return (
                             <div
                               key={i}
                               className="p-2 border-r last:border-r-0 border-border min-w-[120px]"
                             >
-                              <Link
-                                href={`/chat?problemId=${problem.id}&problemTitle=${encodeURIComponent(problem.title)}&problemUrl=${encodeURIComponent(`https://atcoder.jp/contests/${contestId}/tasks/${problem.id}`)}`}
+                              <ProblemLink
+                                problemId={problem.id}
+                                problemTitle={problem.title}
+                                problemUrl={`https://atcoder.jp/contests/${contestId}/tasks/${problem.id}`}
+                                contestId={contestId}
+                                difficulty={problem.difficulty}
                                 className="group"
-                              >
-                                {/* Problem Title */}
-                                <div
-                                  className={cn(
-                                    "text-xs font-bold truncate group-hover:underline",
-                                    problem.difficulty && problem.difficulty >= 3200
-                                      ? ""
-                                      : colors.text
-                                  )}
-                                  title={problem.title}
-                                >
-                                  {problem.difficulty && problem.difficulty >= 3200 ? (
-                                    problem.title.length > 0 ? (
-                                      <>
-                                        <span className="text-black dark:text-white">
-                                          {problem.title[0]}
-                                        </span>
-                                        <span className="text-red-600 dark:text-red-400">
-                                          {problem.title.slice(1)}
-                                        </span>
-                                      </>
-                                    ) : (
-                                      problem.title
-                                    )
-                                  ) : (
-                                    problem.title
-                                  )}
-                                </div>
-                              </Link>
+                              />
                             </div>
                           );
                         })}

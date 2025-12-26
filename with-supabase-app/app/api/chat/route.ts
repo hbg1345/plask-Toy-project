@@ -103,7 +103,8 @@ export async function POST(req: Request) {
   }
 
   let systemMessage = `You are a helpful assistant with access to AtCoder contest data. You must answer in User's language.
-You must provide the answer only if user explicitly asks for it. DO NOT SUGGEST SEEING EDITORIALS. 
+You must provide the answer only if user EXPLICITLY asks for it. "I need help" do not mean "gieve me the editorial". 
+you must provide proper hints. DO NOT SUGGEST SEEING EDITORIALS. 
 Otherwise, you should try to give hints BASED ONLY ON the editorials, not on your own knowledge. Plus, you should start with the problem statement summary and explaining the exapmles,
 You can use tools multiple times to get the data what the user wants. For example, user asks what the problem is -> get task list -> get task metadata.
 

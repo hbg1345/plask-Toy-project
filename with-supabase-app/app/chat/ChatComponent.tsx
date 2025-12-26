@@ -41,6 +41,7 @@ import {
   getChatHistory,
   type Message as ChatMessage,
 } from "@/app/actions";
+import { useChatLayout } from "./ChatLayoutContext";
 import {
   Source,
   Sources,
@@ -74,7 +75,9 @@ const ChatBotDemo = ({ chatId, onChatIdChange }: ChatBotDemoProps) => {
   const [webSearch, setWebSearch] = useState(false);
   const [isLoadingChat, setIsLoadingChat] = useState(false);
   const [problemUrl, setProblemUrl] = useState<string | null>(null);
+  const [chatTitle, setChatTitle] = useState<string | null>(null);
   const { messages, setMessages, sendMessage, status, regenerate } = useChat();
+  const { setRefreshTrigger } = useChatLayout();
   const prevChatIdRef = useRef<string | null>(chatId || null);
   const lastSavedMessageCountRef = useRef<number>(0);
   const isSavingRef = useRef<boolean>(false);
@@ -96,8 +99,25 @@ const ChatBotDemo = ({ chatId, onChatIdChange }: ChatBotDemoProps) => {
             }));
             setMessages(convertedMessages);
             lastSavedMessageCountRef.current = convertedMessages.length;
-            // problemUrl 저장
+            // problemUrl과 title 저장
             setProblemUrl(chatData.problemUrl || null);
+            setChatTitle(chatData.title || null);
+            console.log(
+              "Chat loaded with title:",
+              chatData.title,
+              "problemUrl:",
+              chatData.problemUrl
+            );
+
+            // 제목이 로드되면 사이드바도 새로고침 (문제 링크로 생성된 채팅인 경우)
+            if (chatData.title && chatData.problemUrl) {
+              // 약간의 지연을 두고 사이드바 새로고침
+              setTimeout(() => {
+                setRefreshTrigger((prev) => prev + 1);
+              }, 200);
+            }
+          } else {
+            console.error("Failed to load chat data");
           }
           setIsLoadingChat(false);
         });
@@ -107,6 +127,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange }: ChatBotDemoProps) => {
         lastSavedMessageCountRef.current = 0;
         isSavingRef.current = false;
         setProblemUrl(null);
+        setChatTitle(null);
       }
     }
   }, [chatId, setMessages]);
@@ -143,14 +164,32 @@ const ChatBotDemo = ({ chatId, onChatIdChange }: ChatBotDemoProps) => {
 
       const saveHistory = async () => {
         try {
-          const firstUserMessage = messages.find((m) => m.role === "user");
-          let title = "New Chat";
-          if (firstUserMessage) {
-            const textPart = firstUserMessage.parts?.find(
-              (part) => part.type === "text"
-            );
-            if (textPart && "text" in textPart) {
-              title = textPart.text.substring(0, 50);
+          // 문제 링크로 생성된 채팅인 경우 제목을 업데이트하지 않음
+          let title: string | undefined = undefined;
+          let shouldUpdateTitle = true;
+
+          if (chatId && problemUrl) {
+            // problemUrl이 있으면 절대 제목을 업데이트하지 않음
+            shouldUpdateTitle = false;
+            // 기존 제목을 가져옴 (없어도 업데이트 안 함)
+            const existingChat = await getChatHistory(chatId);
+            if (existingChat?.title) {
+              title = existingChat.title;
+            } else {
+              // 제목이 없어도 problemUrl이 있으면 업데이트하지 않음
+              title = chatTitle || "New Chat";
+            }
+          } else {
+            // problemUrl이 없으면 첫 번째 사용자 메시지로 제목 생성
+            const firstUserMessage = messages.find((m) => m.role === "user");
+            title = "New Chat";
+            if (firstUserMessage) {
+              const textPart = firstUserMessage.parts?.find(
+                (part) => part.type === "text"
+              );
+              if (textPart && "text" in textPart) {
+                title = textPart.text.substring(0, 50);
+              }
             }
           }
 
@@ -169,20 +208,32 @@ const ChatBotDemo = ({ chatId, onChatIdChange }: ChatBotDemoProps) => {
           console.log("Calling saveChatHistory...", {
             chatId,
             title,
+            shouldUpdateTitle,
             messagesCount: messagesToSave.length,
           });
+
+          // problemUrl이 있으면 제목을 업데이트하지 않음
           const savedChatId = await saveChatHistory(
             chatId ?? null,
             messagesToSave,
             title,
-            problemUrl ?? null
+            problemUrl ?? null,
+            shouldUpdateTitle // 제목 업데이트 여부
           );
           console.log("saveChatHistory result:", savedChatId);
+
+          // 제목 state 업데이트 (problemUrl이 있으면 기존 제목 유지)
+          if (shouldUpdateTitle || !chatTitle) {
+            setChatTitle(title);
+          }
 
           // 저장이 완료된 후 부모에게 알림 (새로 생성된 경우만)
           if (savedChatId && savedChatId !== chatId && onChatIdChange) {
             onChatIdChange(savedChatId);
           }
+
+          // 사이드바 새로고침 (제목이 업데이트되었을 수 있으므로)
+          setRefreshTrigger((prev) => prev + 1);
         } catch (error) {
           console.error("Error saving chat history:", error);
         } finally {
@@ -224,89 +275,102 @@ const ChatBotDemo = ({ chatId, onChatIdChange }: ChatBotDemoProps) => {
           <Loader />
         </div>
       ) : (
-        <Conversation className="flex-1 min-h-0">
-          <ConversationContent>
-            {messages.map((message, messageIndex) => (
-              <div key={`${message.id}-${messageIndex}`}>
-                {message.role === "assistant" &&
-                  message.parts.filter((part) => part.type === "source-url")
-                    .length > 0 && (
-                    <Sources>
-                      <SourcesTrigger
-                        count={
-                          message.parts.filter(
-                            (part) => part.type === "source-url"
-                          ).length
-                        }
-                      />
-                      {message.parts
-                        .filter((part) => part.type === "source-url")
-                        .map((part, i) => (
-                          <SourcesContent key={`${message.id}-${i}`}>
-                            <Source
-                              key={`${message.id}-${i}`}
-                              href={part.url}
-                              title={part.url}
-                            />
-                          </SourcesContent>
-                        ))}
-                    </Sources>
-                  )}
-                {message.parts.map((part, i) => {
-                  switch (part.type) {
-                    case "text":
-                      // Streamdown이 remark-math와 rehype-katex로 LaTeX를 자동 처리
-                      return (
-                        <Message key={`${message.id}-${i}`} from={message.role}>
-                          <MessageContent>
-                            <MessageResponse>{part.text}</MessageResponse>
-                          </MessageContent>
-                          {message.role === "assistant" &&
-                            i === messages.length - 1 && (
-                              <MessageActions>
-                                <MessageAction
-                                  onClick={() => regenerate()}
-                                  label="Retry"
-                                >
-                                  <RefreshCcwIcon className="size-3" />
-                                </MessageAction>
-                                <MessageAction
-                                  onClick={() =>
-                                    navigator.clipboard.writeText(part.text)
-                                  }
-                                  label="Copy"
-                                >
-                                  <CopyIcon className="size-3" />
-                                </MessageAction>
-                              </MessageActions>
-                            )}
-                        </Message>
-                      );
-                    case "reasoning":
-                      return (
-                        <Reasoning
-                          key={`${message.id}-${i}`}
-                          className="w-full"
-                          isStreaming={
-                            status === "streaming" &&
-                            i === message.parts.length - 1 &&
-                            message.id === messages.at(-1)?.id
+        <>
+          {/* 채팅 제목 표시 */}
+          {chatTitle && (
+            <div className="flex-shrink-0 px-4 py-3 border-b text-center">
+              <h2 className="text-lg font-semibold text-foreground truncate">
+                {chatTitle}
+              </h2>
+            </div>
+          )}
+          <Conversation className="flex-1 min-h-0">
+            <ConversationContent>
+              {messages.map((message, messageIndex) => (
+                <div key={`${message.id}-${messageIndex}`}>
+                  {message.role === "assistant" &&
+                    message.parts.filter((part) => part.type === "source-url")
+                      .length > 0 && (
+                      <Sources>
+                        <SourcesTrigger
+                          count={
+                            message.parts.filter(
+                              (part) => part.type === "source-url"
+                            ).length
                           }
-                        >
-                          <ReasoningTrigger />
-                          <ReasoningContent>{part.text}</ReasoningContent>
-                        </Reasoning>
-                      );
-                    default:
-                      return null;
-                  }
-                })}
-              </div>
-            ))}
-            {status === "submitted" && <Loader />}
-          </ConversationContent>
-          <ConversationScrollButton />
-        </Conversation>
+                        />
+                        {message.parts
+                          .filter((part) => part.type === "source-url")
+                          .map((part, i) => (
+                            <SourcesContent key={`${message.id}-${i}`}>
+                              <Source
+                                key={`${message.id}-${i}`}
+                                href={part.url}
+                                title={part.url}
+                              />
+                            </SourcesContent>
+                          ))}
+                      </Sources>
+                    )}
+                  {message.parts.map((part, i) => {
+                    switch (part.type) {
+                      case "text":
+                        // Streamdown이 remark-math와 rehype-katex로 LaTeX를 자동 처리
+                        return (
+                          <Message
+                            key={`${message.id}-${i}`}
+                            from={message.role}
+                          >
+                            <MessageContent>
+                              <MessageResponse>{part.text}</MessageResponse>
+                            </MessageContent>
+                            {message.role === "assistant" &&
+                              i === messages.length - 1 && (
+                                <MessageActions>
+                                  <MessageAction
+                                    onClick={() => regenerate()}
+                                    label="Retry"
+                                  >
+                                    <RefreshCcwIcon className="size-3" />
+                                  </MessageAction>
+                                  <MessageAction
+                                    onClick={() =>
+                                      navigator.clipboard.writeText(part.text)
+                                    }
+                                    label="Copy"
+                                  >
+                                    <CopyIcon className="size-3" />
+                                  </MessageAction>
+                                </MessageActions>
+                              )}
+                          </Message>
+                        );
+                      case "reasoning":
+                        return (
+                          <Reasoning
+                            key={`${message.id}-${i}`}
+                            className="w-full"
+                            isStreaming={
+                              status === "streaming" &&
+                              i === message.parts.length - 1 &&
+                              message.id === messages.at(-1)?.id
+                            }
+                          >
+                            <ReasoningTrigger />
+                            <ReasoningContent>{part.text}</ReasoningContent>
+                          </Reasoning>
+                        );
+                      default:
+                        return null;
+                    }
+                  })}
+                </div>
+              ))}
+              {status === "submitted" && <Loader />}
+            </ConversationContent>
+            <ConversationScrollButton />
+          </Conversation>
+        </>
       )}
       <div className="flex-shrink-0 p-4 border-t">
         <PromptInput onSubmit={handleSubmit} globalDrop={true} multiple={true}>
