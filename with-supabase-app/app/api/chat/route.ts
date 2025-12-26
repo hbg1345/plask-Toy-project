@@ -98,7 +98,17 @@ export async function POST(req: Request) {
         detectedProblemUrl = chatData.problem_url;
       }
     } catch (error) {
-      console.error("Failed to get problem_url from chat:", error);
+      console.error("Failed to get problem_url from chat:", error);Type error: Type '{ children: Element; className: string; orientation: string; }' is not assignable to type 'IntrinsicAttributes & ScrollAreaProps & RefAttributes<HTMLDivElement>'.
+      Property 'orientation' does not exist on type 'IntrinsicAttributes & ScrollAreaProps & RefAttributes<HTMLDivElement>'.
+      226 |         </CardHeader>
+      227 |         <CardContent>
+    > 228 |           <ScrollArea className="w-full" orientation="horizontal">
+          |                                          ^
+      229 |             <div className="min-w-[800px]">
+      230 |               <div className="border rounded-lg overflow-hidden">
+      231 |                 {/* Table Header */}
+    Next.js build worker exited with code: 1 and signal: null
+    Error: Command "next build" exited with 1
     }
   }
 

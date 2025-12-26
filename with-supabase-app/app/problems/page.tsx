@@ -4,7 +4,7 @@ import {
 } from "@/lib/atcoder/problems";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Suspense } from "react";
@@ -225,7 +225,7 @@ async function ProblemsContent({ page = 1 }: { page: number }) {
           <CardTitle>Contests & Problems</CardTitle>
         </CardHeader>
         <CardContent>
-          <ScrollArea className="w-full" orientation="horizontal">
+          <ScrollArea className="w-full">
             <div className="min-w-[800px]">
               <div className="border rounded-lg overflow-hidden">
                 {/* Table Header */}
@@ -349,6 +349,7 @@ async function ProblemsContent({ page = 1 }: { page: number }) {
                 </div>
               </div>
             </div>
+            <ScrollBar orientation="horizontal" />
           </ScrollArea>
         </CardContent>
       </Card>
