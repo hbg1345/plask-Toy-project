@@ -116,7 +116,23 @@ function getDifficultyPercentage(difficulty: number | null): number {
   return Math.min((difficulty / 4000) * 100, 100);
 }
 
-async function ProblemsContent({ page = 1 }: { page: number }) {
+async function ProblemsContent({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  // 인증 체크 (profile 페이지와 동일한 방식)
+  const supabase = await createClient();
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const claims = claimsData?.claims;
+
+  if (!claims) {
+    redirect("/auth/login");
+  }
+
+  const params = await searchParams;
+  const page = params.page ? parseInt(params.page, 10) : 1;
+
   const CONTESTS_PER_PAGE = 30;
   const { grouped: problemsByContest, totalContests } =
     await getProblemsGroupedByContest(page, CONTESTS_PER_PAGE);
@@ -411,29 +427,10 @@ export default function ProblemsPage({
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col gap-8 items-start">
           <Suspense fallback={<ProblemsLoading />}>
-            <ProblemsContentWrapper searchParams={searchParams} />
+            <ProblemsContent searchParams={searchParams} />
           </Suspense>
         </div>
       </div>
     </div>
   );
-}
-
-async function ProblemsContentWrapper({
-  searchParams,
-}: {
-  searchParams: Promise<{ page?: string }>;
-}) {
-  // 인증 체크 (profile 페이지와 동일한 방식)
-  const supabase = await createClient();
-  const { data: claimsData } = await supabase.auth.getClaims();
-  const claims = claimsData?.claims;
-
-  if (!claims) {
-    redirect("/auth/login");
-  }
-
-  const params = await searchParams;
-  const page = params.page ? parseInt(params.page, 10) : 1;
-  return <ProblemsContent page={page} />;
 }
