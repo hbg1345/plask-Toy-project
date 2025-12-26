@@ -8,6 +8,8 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 import {
   ChevronLeft,
   ChevronRight,
@@ -460,6 +462,15 @@ async function ProblemsContentWrapper({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
+  // 인증 체크 (profile 페이지와 동일한 방식)
+  const supabase = await createClient();
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const claims = claimsData?.claims;
+
+  if (!claims) {
+    redirect("/auth/login");
+  }
+
   const params = await searchParams;
   const page = params.page ? parseInt(params.page, 10) : 1;
   return <ProblemsContent page={page} />;
