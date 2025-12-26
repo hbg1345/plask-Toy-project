@@ -172,7 +172,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange }: ChatBotDemoProps) => {
             messagesCount: messagesToSave.length,
           });
           const savedChatId = await saveChatHistory(
-            chatId,
+            chatId ?? null,
             messagesToSave,
             title,
             problemUrl ?? null
