@@ -12,6 +12,7 @@ interface ProblemLinkProps {
   contestId: string;
   difficulty: number | null;
   className?: string;
+  children?: React.ReactNode;
 }
 
 export function ProblemLink({
@@ -21,6 +22,7 @@ export function ProblemLink({
   contestId,
   difficulty,
   className,
+  children,
 }: ProblemLinkProps) {
   const router = useRouter();
 
@@ -44,30 +46,32 @@ export function ProblemLink({
 
   return (
     <Link href="/chat" onClick={handleClick} className={className}>
-      <div
-        className={cn(
-          "text-xs font-bold truncate group-hover:underline",
-          difficulty && difficulty >= 3200 ? "" : colors.text
-        )}
-        title={problemTitle}
-      >
-        {difficulty && difficulty >= 3200 ? (
-          problemTitle.length > 0 ? (
-            <>
-              <span className="text-black dark:text-white">
-                {problemTitle[0]}
-              </span>
-              <span className="text-red-600 dark:text-red-400">
-                {problemTitle.slice(1)}
-              </span>
-            </>
+      {children || (
+        <div
+          className={cn(
+            "text-xs font-bold truncate group-hover:underline",
+            difficulty && difficulty >= 3200 ? "" : colors.text
+          )}
+          title={problemTitle}
+        >
+          {difficulty && difficulty >= 3200 ? (
+            problemTitle.length > 0 ? (
+              <>
+                <span className="text-black dark:text-white">
+                  {problemTitle[0]}
+                </span>
+                <span className="text-red-600 dark:text-red-400">
+                  {problemTitle.slice(1)}
+                </span>
+              </>
+            ) : (
+              problemTitle
+            )
           ) : (
             problemTitle
-          )
-        ) : (
-          problemTitle
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </Link>
   );
 }
