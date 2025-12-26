@@ -255,6 +255,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange }: ChatBotDemoProps) => {
                 {message.parts.map((part, i) => {
                   switch (part.type) {
                     case "text":
+                      // Streamdown이 remark-math와 rehype-katex로 LaTeX를 자동 처리
                       return (
                         <Message key={`${message.id}-${i}`} from={message.role}>
                           <MessageContent>

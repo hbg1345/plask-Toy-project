@@ -255,6 +255,13 @@ async function ProblemsContent({ page = 1 }: { page: number }) {
                       problemMap.set(idx.toLowerCase(), p);
                     });
 
+                    // 콘테스트의 최고 난이도 찾기
+                    const maxDifficulty = problems.reduce((max, p) => {
+                      if (p.difficulty === null) return max;
+                      return Math.max(max, p.difficulty);
+                    }, 0);
+                    const contestColors = getDifficultyColor(maxDifficulty > 0 ? maxDifficulty : null);
+
                     return (
                       <div
                         key={contestId}
@@ -266,7 +273,7 @@ async function ProblemsContent({ page = 1 }: { page: number }) {
                             href={`https://atcoder.jp/contests/${contestId}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-primary hover:underline"
+                            className={cn("hover:underline", contestColors.text)}
                           >
                             {contestId}
                           </Link>
@@ -291,33 +298,20 @@ async function ProblemsContent({ page = 1 }: { page: number }) {
                           }
 
                           const colors = getDifficultyColor(problem.difficulty);
-                          const percentage = getDifficultyPercentage(
-                            problem.difficulty
-                          );
 
                           return (
                             <div
                               key={i}
-                              className="p-2 border-r last:border-r-0 border-border flex flex-col gap-1 min-w-[120px]"
+                              className="p-2 border-r last:border-r-0 border-border min-w-[120px]"
                             >
                               <Link
                                 href={`/chat?problemId=${problem.id}&problemTitle=${encodeURIComponent(problem.title)}&problemUrl=${encodeURIComponent(`https://atcoder.jp/contests/${contestId}/tasks/${problem.id}`)}`}
                                 className="group"
                               >
-                                {/* Progress Bar */}
-                                <div className="w-full h-2 bg-muted rounded-full overflow-hidden border border-border">
-                                  <div
-                                    className={cn(
-                                      "h-full transition-all",
-                                      colors.bg
-                                    )}
-                                    style={{ width: `${percentage}%` }}
-                                  />
-                                </div>
                                 {/* Problem Title */}
                                 <div
                                   className={cn(
-                                    "text-xs font-bold mt-1 truncate group-hover:underline",
+                                    "text-xs font-bold truncate group-hover:underline",
                                     problem.difficulty && problem.difficulty >= 3200
                                       ? ""
                                       : colors.text
@@ -375,15 +369,8 @@ async function ProblemsContent({ page = 1 }: { page: number }) {
               { range: "3200+", difficulty: 3400, label: "Rainbow" },
             ].map(({ range, difficulty, label }) => {
               const colors = getDifficultyColor(difficulty);
-              const percentage = getDifficultyPercentage(difficulty);
               return (
                 <div key={range} className="flex items-center gap-2">
-                  <div className="w-16 h-2 bg-muted rounded-full overflow-hidden border border-border">
-                    <div
-                      className={cn("h-full", colors.bg)}
-                      style={{ width: `${percentage}%` }}
-                    />
-                  </div>
                   <span className={cn("text-sm font-medium", colors.text)}>
                     {label}
                   </span>

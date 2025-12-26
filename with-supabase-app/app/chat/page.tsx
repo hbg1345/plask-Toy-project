@@ -30,7 +30,7 @@ export default function Page() {
           chatId={selectedChatId}
           onChatIdChange={handleChatIdChange}
         />
-      </Suspense>
+    </Suspense>
     </div>
   );
 }
