@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { Suspense } from "react";
-import { ProfileForm } from "@/components/profile-form";
+import { ProfileWithGrass } from "@/components/profile-form";
 import { UserInfoRow } from "@/types/supabase";
 async function UserDetails() {
   const supabase = await createClient();
@@ -29,7 +29,7 @@ async function UserDetails() {
   }
 
   const userData = data as UserInfoRow;
-  return <ProfileForm rating={userData.rating} atcoder_handle={userData.atcoder_handle} />;
+  return <ProfileWithGrass rating={userData.rating} atcoder_handle={userData.atcoder_handle} />;
 }
 
 export default function ProfilePage() {
