@@ -127,9 +127,9 @@ export async function getRecentYearSubmissions(
 }
 
 /**
- * 제출 기록을 날짜별로 그룹화합니다.
+ * 제출 기록을 날짜별로 그룹화합니다. (AC만 카운트)
  * @param submissions 제출 기록 배열
- * @returns 날짜별 제출 횟수 객체 (YYYY-MM-DD 형식의 키)
+ * @returns 날짜별 AC 횟수 객체 (YYYY-MM-DD 형식의 키)
  */
 export function groupSubmissionsByDate(
   submissions: Submission[]
@@ -137,6 +137,11 @@ export function groupSubmissionsByDate(
   const grouped: Record<string, number> = {};
 
   for (const submission of submissions) {
+    // AC(정답)인 제출만 카운트
+    if (submission.result !== "AC") {
+      continue;
+    }
+
     const date = new Date(submission.epoch_second * 1000);
     const dateKey = date.toISOString().split("T")[0]; // YYYY-MM-DD
 

@@ -76,60 +76,54 @@ const ChatBotDemo = ({ chatId, onChatIdChange }: ChatBotDemoProps) => {
   const [isLoadingChat, setIsLoadingChat] = useState(false);
   const [problemUrl, setProblemUrl] = useState<string | null>(null);
   const [chatTitle, setChatTitle] = useState<string | null>(null);
-  const { messages, setMessages, sendMessage, status, regenerate } = useChat();
+  const { messages, setMessages, sendMessage, status, regenerate } = useChat({
+    api: '/api/chat',
+  });
   const { setRefreshTrigger } = useChatLayout();
-  const prevChatIdRef = useRef<string | null>(chatId || null);
+  const prevChatIdRef = useRef<string | null>(null);
   const lastSavedMessageCountRef = useRef<number>(0);
   const isSavingRef = useRef<boolean>(false);
 
   // chatId가 변경되면 해당 채팅 로드
   useEffect(() => {
-    if (chatId !== prevChatIdRef.current) {
-      prevChatIdRef.current = chatId || null;
-
-      if (chatId) {
-        setIsLoadingChat(true);
-        getChatHistory(chatId).then((chatData) => {
-          if (chatData) {
-            // Message 타입을 useChat이 사용하는 형식으로 변환
-            const convertedMessages = chatData.messages.map((msg) => ({
-              id: msg.id,
-              role: msg.role,
-              parts: [{ type: "text" as const, text: msg.content }],
-            }));
-            setMessages(convertedMessages);
-            lastSavedMessageCountRef.current = convertedMessages.length;
-            // problemUrl과 title 저장
-            setProblemUrl(chatData.problemUrl || null);
-            setChatTitle(chatData.title || null);
-            console.log(
-              "Chat loaded with title:",
-              chatData.title,
-              "problemUrl:",
-              chatData.problemUrl
-            );
-
-            // 제목이 로드되면 사이드바도 새로고침 (문제 링크로 생성된 채팅인 경우)
-            if (chatData.title && chatData.problemUrl) {
-              // 약간의 지연을 두고 사이드바 새로고침
-              setTimeout(() => {
-                setRefreshTrigger((prev) => prev + 1);
-              }, 200);
-            }
-          } else {
-            console.error("Failed to load chat data");
-          }
-          setIsLoadingChat(false);
-        });
-      } else {
-        // 새 채팅 - 메시지와 저장 카운트 초기화
-        setMessages([]);
-        lastSavedMessageCountRef.current = 0;
-        isSavingRef.current = false;
-        setProblemUrl(null);
-        setChatTitle(null);
-      }
+    const prevChatId = prevChatIdRef.current;
+    
+    // chatId가 변경되지 않았으면 무시
+    if (chatId === prevChatId) {
+      return;
     }
+    
+    if (chatId) {
+      setIsLoadingChat(true);
+      getChatHistory(chatId).then((chatData) => {
+        if (chatData) {
+          // Message 타입을 useChat이 사용하는 형식으로 변환
+          const convertedMessages = chatData.messages.map((msg) => ({
+            id: msg.id,
+            role: msg.role,
+            parts: [{ type: "text" as const, text: msg.content }],
+          }));
+          setMessages(convertedMessages);
+          lastSavedMessageCountRef.current = convertedMessages.length;
+          // problemUrl과 title 저장
+          setProblemUrl(chatData.problemUrl || null);
+          setChatTitle(chatData.title || null);
+        } else {
+          console.error("Failed to load chat data");
+        }
+        setIsLoadingChat(false);
+      });
+    } else if (!chatId) {
+      // chatId가 null/undefined인 경우 - 상태 초기화만 (새 채팅은 사이드바에서 생성)
+      setMessages([]);
+      lastSavedMessageCountRef.current = 0;
+      isSavingRef.current = false;
+      setProblemUrl(null);
+      setChatTitle(null);
+    }
+    
+    prevChatIdRef.current = chatId || null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatId, setMessages]);
 
   // chatId 변경 시 부모에게 알림은 저장 완료 후에만 수행 (saveHistory 함수 내에서)
@@ -222,6 +216,9 @@ const ChatBotDemo = ({ chatId, onChatIdChange }: ChatBotDemoProps) => {
           );
           console.log("saveChatHistory result:", savedChatId);
 
+          // 제목이 실제로 변경되었는지 확인
+          const titleChanged = shouldUpdateTitle && title !== chatTitle;
+
           // 제목 state 업데이트 (problemUrl이 있으면 기존 제목 유지)
           if (shouldUpdateTitle || !chatTitle) {
             setChatTitle(title);
@@ -232,8 +229,10 @@ const ChatBotDemo = ({ chatId, onChatIdChange }: ChatBotDemoProps) => {
             onChatIdChange(savedChatId);
           }
 
-          // 사이드바 새로고침 (제목이 업데이트되었을 수 있으므로)
-          setRefreshTrigger((prev) => prev + 1);
+          // 사이드바 새로고침 (제목이 변경되었을 때만)
+          if (titleChanged) {
+            setRefreshTrigger((prev) => prev + 1);
+          }
         } catch (error) {
           console.error("Error saving chat history:", error);
         } finally {

@@ -91,8 +91,8 @@ export function ProfileWithGrass({ rating, atcoder_handle }: UserInfoRow) {
   }
 
   return (
-    <div className="w-full max-w-4xl space-y-6">
-      <Card className="w-full">
+    <div className="w-full max-w-5xl space-y-6">
+      <Card className="w-full max-w-md mx-auto">
         <CardHeader>
           <CardTitle>프로필 정보</CardTitle>
           <CardDescription>Atcoder 계정 정보를 확인하세요</CardDescription>
@@ -131,9 +131,9 @@ export function ProfileWithGrass({ rating, atcoder_handle }: UserInfoRow) {
       {atcoder_handle && (
         <Card className="w-full">
           <CardHeader>
-            <CardTitle>제출 기록</CardTitle>
+            <CardTitle>AC Table</CardTitle>
             <CardDescription>
-              GitHub 잔디 스타일로 표시되는 최근 1년간의 제출 기록
+              당신의 기록을 확인하세요
             </CardDescription>
           </CardHeader>
           <CardContent>

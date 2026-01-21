@@ -245,6 +245,29 @@ export async function deleteChatHistory(chatId: string): Promise<boolean> {
   const userId = claims.sub as string;
 
   try {
+    // 먼저 해당 채팅이 존재하는지 확인
+    const { data: chatData, error: fetchError } = await supabase
+      .from("chat_history")
+      .select("id, user_id")
+      .eq("id", chatId)
+      .single();
+
+    if (fetchError) {
+      console.error("Failed to fetch chat before deletion:", fetchError);
+      return false;
+    }
+
+    if (!chatData) {
+      console.error("Chat not found:", chatId);
+      return false;
+    }
+
+    if (chatData.user_id !== userId) {
+      console.error("User does not own this chat:", { chatId, userId, chatUserId: chatData.user_id });
+      return false;
+    }
+
+    // 삭제 실행
     const { error } = await supabase
       .from("chat_history")
       .delete()
@@ -253,11 +276,15 @@ export async function deleteChatHistory(chatId: string): Promise<boolean> {
 
     if (error) {
       console.error("Failed to delete chat history:", error);
+      console.error("Error details:", JSON.stringify(error, null, 2));
       return false;
     }
+
+    console.log("Chat deleted successfully:", { chatId });
     return true;
   } catch (error) {
     console.error("Failed to delete chat history:", error);
+    console.error("Error details:", error instanceof Error ? error.stack : String(error));
     return false;
   }
 }

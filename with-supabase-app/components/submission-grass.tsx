@@ -69,7 +69,9 @@ export function SubmissionGrass({ userId }: SubmissionGrassProps) {
         }
 
         setData(days);
-        setTotalSubmissions(submissions.length);
+        // AC만 카운트
+        const acCount = submissions.filter((s) => s.result === "AC").length;
+        setTotalSubmissions(acCount);
       } catch (err) {
         console.error("Error loading submission data:", err);
         setError(
@@ -219,82 +221,53 @@ export function SubmissionGrass({ userId }: SubmissionGrassProps) {
               ))}
             </SelectContent>
           </Select>
-          <h3 className="text-sm font-medium">{selectedYear}년 제출 기록</h3>
+          <h3 className="text-sm font-medium">{selectedYear}년 정답 기록</h3>
         </div>
         <div className="text-sm text-muted-foreground">
-          총 {totalSubmissions}회 제출
+          총 {totalSubmissions}회 AC
         </div>
       </div>
 
-      <div className="space-y-2">
-        {/* 월 레이블 */}
-        <div className="flex gap-1 pl-[26px] -mx-6 px-6">
+      {/* 잔디 그래프 */}
+      <div className="overflow-x-auto">
+        <div className="flex gap-[3px]">
+          {/* 요일 레이블 (세로) */}
+          <div className="flex flex-col gap-[3px]" style={{ width: "20px" }}>
+            <div className="h-4" /> {/* 월 레이블 높이만큼 빈 공간 */}
+            <div className="text-xs text-muted-foreground leading-[14px] h-[14px]">일</div>
+            <div className="text-xs text-muted-foreground leading-[14px] h-[14px]">월</div>
+            <div className="text-xs text-muted-foreground leading-[14px] h-[14px]">화</div>
+            <div className="text-xs text-muted-foreground leading-[14px] h-[14px]">수</div>
+            <div className="text-xs text-muted-foreground leading-[14px] h-[14px]">목</div>
+            <div className="text-xs text-muted-foreground leading-[14px] h-[14px]">금</div>
+            <div className="text-xs text-muted-foreground leading-[14px] h-[14px]">토</div>
+          </div>
+
+          {/* 주별 데이터 (월 레이블 포함) */}
           {weeks.map((week, weekIndex) => {
             const monthLabel = monthLabels.find(
               (label) => label.weekIndex === weekIndex
             );
-            if (monthLabel) {
-              return (
-                <div
-                  key={weekIndex}
-                  className="text-xs text-muted-foreground whitespace-nowrap"
-                  style={{ width: "13px" }}
-                >
-                  {monthLabel.month + 1}월
+            return (
+              <div key={weekIndex} className="flex flex-col gap-[3px]">
+                {/* 월 레이블 */}
+                <div className="h-4 text-xs text-muted-foreground whitespace-nowrap">
+                  {monthLabel ? `${monthLabel.month + 1}월` : ""}
                 </div>
-              );
-            }
-            return <div key={weekIndex} style={{ width: "13px" }} />;
-          })}
-        </div>
-
-        {/* 잔디 그래프 */}
-        <div className="overflow-x-auto -mx-6 px-6">
-          <div
-            className="flex gap-1 min-w-max"
-            style={{ paddingRight: "2rem", paddingBottom: "0.5rem" }}
-          >
-            {/* 요일 레이블 (세로) */}
-            <div className="flex flex-col gap-1 pr-2">
-              <div className="text-xs text-muted-foreground leading-3 h-3">
-                일
-              </div>
-              <div className="text-xs text-muted-foreground leading-3 h-3">
-                월
-              </div>
-              <div className="text-xs text-muted-foreground leading-3 h-3">
-                화
-              </div>
-              <div className="text-xs text-muted-foreground leading-3 h-3">
-                수
-              </div>
-              <div className="text-xs text-muted-foreground leading-3 h-3">
-                목
-              </div>
-              <div className="text-xs text-muted-foreground leading-3 h-3">
-                금
-              </div>
-              <div className="text-xs text-muted-foreground leading-3 h-3">
-                토
-              </div>
-            </div>
-
-            {/* 주별 데이터 */}
-            {weeks.map((week, weekIndex) => (
-              <div key={weekIndex} className="flex flex-col gap-1">
+                {/* 날짜 셀 */}
                 {week.map((day, dayIndex) => {
                   const dateKey = day.date.toISOString().split("T")[0];
                   const isCurrentYear = day.date.getFullYear() === selectedYear;
                   const tooltip = isCurrentYear
-                    ? `${dateKey}\n제출 ${day.count}회`
+                    ? `${dateKey}\nAC ${day.count}회`
                     : "";
 
                   return (
                     <div
                       key={`${weekIndex}-${dayIndex}`}
-                      className={`w-3 h-3 rounded-sm ${getColor(day.count)} ${
+                      className={`w-3 h-[14px] rounded-sm ${getColor(day.count)} ${
                         isCurrentYear
-                          ? "hover:ring-2 hover:ring-primary cursor-pointer"
+                          ? "hover:ring-1 hover:ring-primary cursor-pointer"
                           : "opacity-30"
                       } transition-colors`}
                       title={tooltip}
@@ -303,21 +276,21 @@ export function SubmissionGrass({ userId }: SubmissionGrassProps) {
                   );
                 })}
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
       </div>
 
       {/* 범례 */}
       <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
         <span>적음</span>
-        <div className="flex gap-1">
-          <div className="w-3 h-3 rounded bg-gray-100 dark:bg-gray-800" />
-          <div className="w-3 h-3 rounded bg-green-200 dark:bg-green-900" />
-          <div className="w-3 h-3 rounded bg-green-300 dark:bg-green-800" />
-          <div className="w-3 h-3 rounded bg-green-400 dark:bg-green-700" />
-          <div className="w-3 h-3 rounded bg-green-600 dark:bg-green-600" />
-          <div className="w-3 h-3 rounded bg-green-800 dark:bg-green-500" />
+        <div className="flex gap-[3px]">
+          <div className="w-3 h-3 rounded-sm bg-gray-100 dark:bg-gray-800" />
+          <div className="w-3 h-3 rounded-sm bg-green-200 dark:bg-green-900" />
+          <div className="w-3 h-3 rounded-sm bg-green-300 dark:bg-green-800" />
+          <div className="w-3 h-3 rounded-sm bg-green-400 dark:bg-green-700" />
+          <div className="w-3 h-3 rounded-sm bg-green-600 dark:bg-green-600" />
+          <div className="w-3 h-3 rounded-sm bg-green-800 dark:bg-green-500" />
         </div>
         <span>많음</span>
       </div>

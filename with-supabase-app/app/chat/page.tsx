@@ -27,6 +27,7 @@ export default function Page() {
         }
       >
         <ChatComponent
+          key={selectedChatId || 'new-chat'}
           chatId={selectedChatId}
           onChatIdChange={handleChatIdChange}
         />

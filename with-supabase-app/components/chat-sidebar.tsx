@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, Plus, MessageSquare, Trash2 } from "lucide-react";
-import { getChatHistoryList, deleteChatHistory, type ChatHistoryItem } from "@/app/actions";
+import { getChatHistoryList, deleteChatHistory, saveChatHistory, type ChatHistoryItem } from "@/app/actions";
 import { cn } from "@/lib/utils";
 
 interface ChatSidebarProps {
@@ -34,8 +34,20 @@ export function ChatSidebar({ isOpen, onToggle, onSelectChat, selectedChatId, re
         loadChatList();
     }, [refreshTrigger]);
 
-    const handleNewChat = () => {
-        onSelectChat(null);
+    const handleNewChat = async () => {
+        // 새 채팅 생성
+        const savedChatId = await saveChatHistory(null, [], "New Chat", null, true);
+        if (savedChatId) {
+            onSelectChat(savedChatId);
+            // 목록 새로고침
+            const list = await getChatHistoryList();
+            const sortedList = [...list].sort((a, b) => {
+                const dateA = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+                const dateB = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+                return dateB - dateA;
+            });
+            setChatList(sortedList);
+        }
     };
 
     const handleDeleteChat = async (e: React.MouseEvent, chatId: string) => {
@@ -56,6 +68,8 @@ export function ChatSidebar({ isOpen, onToggle, onSelectChat, selectedChatId, re
                     return dateB - dateA; // 내림차순 (최신이 위로)
                 });
                 setChatList(sortedList);
+            } else {
+                alert("채팅 삭제에 실패했습니다. 콘솔을 확인해주세요.");
             }
         }
     };

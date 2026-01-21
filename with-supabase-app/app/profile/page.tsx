@@ -36,8 +36,8 @@ export default function ProfilePage() {
   return (
     <div className="w-full">
       <div className="max-w-5xl mx-auto">
-        <div className="flex flex-col gap-8 items-start">
-          <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-8 items-center">
+          <div className="flex flex-col gap-2 self-start">
             <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
             <p className="text-muted-foreground">
               프로필 정보를 확인하고 관리하세요

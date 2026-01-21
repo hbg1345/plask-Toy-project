@@ -26,83 +26,84 @@ function getDifficultyColor(difficulty: number | null): {
   text: string;
   border: string;
 } {
+  // AtCoder 공식 색상에 맞춤
   if (difficulty === null) {
     return {
-      bg: "bg-gray-400 dark:bg-gray-600",
-      text: "text-gray-700 dark:text-gray-300",
-      border: "border-gray-400 dark:border-gray-600",
+      bg: "bg-gray-400 dark:bg-gray-500",
+      text: "text-gray-500 dark:text-gray-400",
+      border: "border-gray-400 dark:border-gray-500",
     };
   }
 
   // Gray: < 400
   if (difficulty < 400) {
     return {
-      bg: "bg-gray-400 dark:bg-gray-600",
-      text: "text-gray-700 dark:text-gray-300",
-      border: "border-gray-400 dark:border-gray-600",
+      bg: "bg-gray-400 dark:bg-gray-500",
+      text: "text-gray-500 dark:text-gray-400",
+      border: "border-gray-400 dark:border-gray-500",
     };
   }
   // Brown: 400-799
   if (difficulty < 800) {
     return {
-      bg: "bg-amber-600 dark:bg-amber-700",
-      text: "text-amber-900 dark:text-amber-100",
-      border: "border-amber-600 dark:border-amber-700",
+      bg: "bg-amber-800 dark:bg-amber-700",
+      text: "text-amber-800 dark:text-amber-600",
+      border: "border-amber-800 dark:border-amber-700",
     };
   }
   // Green: 800-1199
   if (difficulty < 1200) {
     return {
-      bg: "bg-green-500 dark:bg-green-600",
-      text: "text-green-900 dark:text-green-100",
-      border: "border-green-500 dark:border-green-600",
+      bg: "bg-green-600 dark:bg-green-500",
+      text: "text-green-600 dark:text-green-400",
+      border: "border-green-600 dark:border-green-500",
     };
   }
   // Cyan: 1200-1599
   if (difficulty < 1600) {
     return {
-      bg: "bg-cyan-400 dark:bg-cyan-500",
-      text: "text-cyan-900 dark:text-cyan-100",
-      border: "border-cyan-400 dark:border-cyan-500",
+      bg: "bg-cyan-500 dark:bg-cyan-400",
+      text: "text-cyan-600 dark:text-cyan-400",
+      border: "border-cyan-500 dark:border-cyan-400",
     };
   }
   // Blue: 1600-1999
   if (difficulty < 2000) {
     return {
-      bg: "bg-blue-500 dark:bg-blue-600",
-      text: "text-blue-900 dark:text-blue-100",
-      border: "border-blue-500 dark:border-blue-600",
+      bg: "bg-blue-700 dark:bg-blue-600",
+      text: "text-blue-700 dark:text-blue-500",
+      border: "border-blue-700 dark:border-blue-600",
     };
   }
   // Yellow: 2000-2399
   if (difficulty < 2400) {
     return {
-      bg: "bg-yellow-400 dark:bg-yellow-500",
-      text: "text-yellow-900 dark:text-yellow-100",
-      border: "border-yellow-400 dark:border-yellow-500",
+      bg: "bg-yellow-400 dark:bg-yellow-300",
+      text: "text-yellow-500 dark:text-yellow-300",
+      border: "border-yellow-400 dark:border-yellow-300",
     };
   }
   // Orange: 2400-2799
   if (difficulty < 2800) {
     return {
-      bg: "bg-orange-500 dark:bg-orange-600",
-      text: "text-orange-900 dark:text-orange-100",
-      border: "border-orange-500 dark:border-orange-600",
+      bg: "bg-orange-500 dark:bg-orange-400",
+      text: "text-orange-500 dark:text-orange-400",
+      border: "border-orange-500 dark:border-orange-400",
     };
   }
   // Red: 2800-3199
   if (difficulty < 3200) {
     return {
-      bg: "bg-red-500 dark:bg-red-600",
-      text: "text-red-900 dark:text-red-100",
-      border: "border-red-500 dark:border-red-600",
+      bg: "bg-red-600 dark:bg-red-500",
+      text: "text-red-600 dark:text-red-400",
+      border: "border-red-600 dark:border-red-500",
     };
   }
-  // Rainbow: 3200+ (gradient)
+  // 3200+: 첫 글자 검은색/금색, 나머지 빨간색 (별도 처리 필요)
   return {
-    bg: "bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 dark:from-purple-600 dark:via-pink-600 dark:to-red-600",
-    text: "text-white dark:text-white",
-    border: "border-purple-500 dark:border-purple-600",
+    bg: "bg-red-600 dark:bg-red-500",
+    text: "text-red-600 dark:text-red-400",
+    border: "border-red-600 dark:border-red-500",
   };
 }
 
@@ -359,15 +360,23 @@ async function ProblemsContent({
               { range: "2000-2399", difficulty: 2200, label: "Yellow" },
               { range: "2400-2799", difficulty: 2600, label: "Orange" },
               { range: "2800-3199", difficulty: 3000, label: "Red" },
-              { range: "3200+", difficulty: 3400, label: "Rainbow" },
+              { range: "3200+", difficulty: 3400, label: "Gold" },
             ].map(({ range, difficulty, label }) => {
               const colors = getDifficultyColor(difficulty);
+              const isGold = difficulty >= 3200;
               return (
                 <div key={range} className="flex items-center gap-2">
-                  <span className={cn("text-sm font-medium", colors.text)}>
-                    {label}
-                  </span>
-                  <span className="text-sm text-muted-foreground">
+                  {isGold ? (
+                    <span className="text-sm font-medium">
+                      <span className="text-black dark:text-white">G</span>
+                      <span className="text-red-600 dark:text-red-400">old</span>
+                    </span>
+                  ) : (
+                    <span className={cn("text-sm font-medium", colors.text)}>
+                      {label}
+                    </span>
+                  )}
+                  <span className="text-sm text-black dark:text-white">
                     ({range})
                   </span>
                 </div>
