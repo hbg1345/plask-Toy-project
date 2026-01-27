@@ -76,9 +76,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange }: ChatBotDemoProps) => {
   const [isLoadingChat, setIsLoadingChat] = useState(false);
   const [problemUrl, setProblemUrl] = useState<string | null>(null);
   const [chatTitle, setChatTitle] = useState<string | null>(null);
-  const { messages, setMessages, sendMessage, status, regenerate } = useChat({
-    api: '/api/chat',
-  });
+  const { messages, setMessages, sendMessage, status, regenerate } = useChat();
   const { setRefreshTrigger } = useChatLayout();
   const prevChatIdRef = useRef<string | null>(null);
   const lastSavedMessageCountRef = useRef<number>(0);

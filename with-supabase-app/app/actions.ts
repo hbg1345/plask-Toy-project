@@ -38,6 +38,158 @@ export async function updatAtcoderHandle(handle: string) {
     }
 }
 
+/**
+ * 기존 AtCoder 핸들로 최신 레이팅을 갱신합니다.
+ * 프로필 페이지 로드 시 호출됩니다.
+ */
+export interface SolvedProblem {
+  problem_id: string;
+  contest_id: string;
+  title: string | null;
+  difficulty: number | null;
+}
+
+/**
+ * 사용자가 푼 문제 목록을 가져옵니다.
+ * AtCoder API에서 AC 제출을 조회하고, DB에서 난이도 정보를 매칭합니다.
+ */
+export async function getSolvedProblems(atcoderHandle: string): Promise<SolvedProblem[]> {
+  try {
+    // 모든 제출 기록 가져오기 (페이지네이션)
+    const allSubmissions: { problem_id: string; contest_id: string; result: string; epoch_second: number }[] = [];
+    let fromSecond = 0;
+    const maxCalls = 20; // 최대 20번 호출 (10000개 제한)
+
+    for (let i = 0; i < maxCalls; i++) {
+      const response = await fetch(
+        `https://kenkoooo.com/atcoder/atcoder-api/v3/user/submissions?user=${atcoderHandle}&from_second=${fromSecond}`,
+        { next: { revalidate: 3600 } }
+      );
+
+      if (!response.ok) {
+        console.error("Failed to fetch submissions");
+        break;
+      }
+
+      const submissions = await response.json();
+      if (submissions.length === 0) break;
+
+      allSubmissions.push(...submissions);
+
+      // 500개 미만이면 더 이상 데이터가 없음
+      if (submissions.length < 500) break;
+
+      // 다음 페이지를 위해 마지막 제출의 시간 + 1
+      const lastEpoch = Math.max(...submissions.map((s: { epoch_second: number }) => s.epoch_second));
+      fromSecond = lastEpoch + 1;
+    }
+
+    // AC인 제출에서 고유 문제 ID 추출
+    const solvedProblemIds = new Set<string>();
+    const problemContestMap = new Map<string, string>();
+
+    for (const sub of allSubmissions) {
+      if (sub.result === "AC") {
+        solvedProblemIds.add(sub.problem_id);
+        problemContestMap.set(sub.problem_id, sub.contest_id);
+      }
+    }
+
+    if (solvedProblemIds.size === 0) {
+      return [];
+    }
+
+    // DB에서 문제 정보 조회 (배치로 나눠서 조회)
+    const supabase = await createClient();
+    const problemIds = Array.from(solvedProblemIds);
+    const problemInfoMap = new Map<string, { title: string; difficulty: number | null }>();
+
+    // 100개씩 배치로 조회 (Supabase IN 쿼리 제한)
+    const batchSize = 100;
+    for (let i = 0; i < problemIds.length; i += batchSize) {
+      const batch = problemIds.slice(i, i + batchSize);
+      const links = batch.map(id => `https://atcoder.jp/contests/${problemContestMap.get(id)}/tasks/${id}`);
+
+      const { data: problemsData } = await supabase
+        .from("problems")
+        .select("link, title, difficulty")
+        .in("link", links);
+
+      if (problemsData) {
+        for (const p of problemsData) {
+          const match = p.link.match(/tasks\/([^/]+)$/);
+          if (match) {
+            problemInfoMap.set(match[1], { title: p.title, difficulty: p.difficulty });
+          }
+        }
+      }
+    }
+
+    // 결과 생성
+    const result: SolvedProblem[] = [];
+    for (const problemId of problemIds) {
+      const info = problemInfoMap.get(problemId);
+      result.push({
+        problem_id: problemId,
+        contest_id: problemContestMap.get(problemId) || "",
+        title: info?.title || null,
+        difficulty: info?.difficulty ?? null,
+      });
+    }
+
+    // 난이도 내림차순 정렬 (높은 난이도가 먼저)
+    result.sort((a, b) => (b.difficulty ?? -1) - (a.difficulty ?? -1));
+
+    return result;
+  } catch (error) {
+    console.error("Failed to get solved problems:", error);
+    return [];
+  }
+}
+
+export async function refreshAtcoderRating(): Promise<number | null> {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (!claims) {
+    return null;
+  }
+  const userId = claims.sub as string;
+
+  // 현재 저장된 핸들 조회
+  const { data: userData, error: fetchError } = await supabase
+    .from("user_info")
+    .select("atcoder_handle")
+    .eq("id", userId)
+    .single();
+
+  if (fetchError || !userData?.atcoder_handle) {
+    return null;
+  }
+
+  try {
+    // AtCoder API에서 최신 레이팅 조회
+    const atcoderUser = await fetchUserInfo(userData.atcoder_handle);
+    const userRating = atcoderUser.userRating;
+
+    // DB 업데이트
+    const { error: updateError } = await supabase
+      .from("user_info")
+      .update({ rating: userRating })
+      .eq("id", userId);
+
+    if (updateError) {
+      console.log("Failed to update rating:", updateError);
+      return null;
+    }
+
+    return userRating;
+  } catch (error) {
+    console.log("Failed to refresh AtCoder rating:", error);
+    return null;
+  }
+}
+
 export async function saveChatHistory(
   chatId: string | null,
   messages: Message[],
