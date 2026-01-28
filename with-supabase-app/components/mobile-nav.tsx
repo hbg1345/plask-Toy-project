@@ -11,15 +11,13 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Menu, MessageSquare, Archive, User, Home, Lightbulb } from "lucide-react";
+import { Menu, MessageSquare, Archive, Lightbulb } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/", label: "Home", icon: Home },
   { href: "/problems", label: "Problems", icon: Archive },
   { href: "/recommendations", label: "Recommendations", icon: Lightbulb },
   { href: "/chat", label: "Chat", icon: MessageSquare },
-  { href: "/profile", label: "Profile", icon: User },
 ];
 
 interface MobileNavProps {
@@ -40,7 +38,7 @@ export function MobileNav({ children }: MobileNavProps) {
       </SheetTrigger>
       <SheetContent side="right" className="w-[280px] sm:w-[320px]">
         <SheetHeader>
-          <SheetTitle>AtCoder Supporter</SheetTitle>
+          <SheetTitle>앳코더 도우미</SheetTitle>
         </SheetHeader>
         <nav className="flex flex-col gap-2 mt-6">
           {navItems.map((item) => {

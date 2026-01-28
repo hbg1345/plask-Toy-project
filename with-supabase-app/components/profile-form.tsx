@@ -17,7 +17,9 @@ import { SolvedProblemsList } from "./solved-problems";
 import { DifficultyDistribution } from "./difficulty-distribution";
 import { AvatarUpload } from "./avatar-upload";
 import { TokenUsageCard } from "./token-usage";
+import { RatingGraph } from "./rating-graph";
 import { SolvedProblem, refreshAtcoderRating, getSolvedProblems } from "@/app/actions";
+import { getRatingColor } from "@/lib/atcoder/rating-history";
 import { RefreshCw, Pencil, Check, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { updatAtcoderHandle } from "@/app/actions";
@@ -92,13 +94,14 @@ export function ProfileWithGrass({ rating: initialRating, atcoder_handle, avatar
   const [avatarUrl, setAvatarUrl] = useState(initialAvatarUrl);
   const [solvedProblems, setSolvedProblems] = useState(initialSolvedProblems);
   const [isPending, startTransition] = useTransition();
+  const [refreshKey, setRefreshKey] = useState(0);
   const router = useRouter();
 
   const handleRefresh = () => {
     if (!atcoder_handle) return;
 
     startTransition(async () => {
-      // 레이팅 갱신
+      // 레이팅 갱신 (히스토리도 함께 갱신됨)
       const newRating = await refreshAtcoderRating();
       if (newRating !== null) {
         setRating(newRating);
@@ -107,6 +110,9 @@ export function ProfileWithGrass({ rating: initialRating, atcoder_handle, avatar
       // 푼 문제 목록 갱신
       const newSolvedProblems = await getSolvedProblems(atcoder_handle);
       setSolvedProblems(newSolvedProblems);
+
+      // RatingGraph 리렌더링 트리거
+      setRefreshKey((prev) => prev + 1);
     });
   };
 
@@ -115,9 +121,28 @@ export function ProfileWithGrass({ rating: initialRating, atcoder_handle, avatar
 
     setIsUpdating(true);
     try {
-      await updatAtcoderHandle(editHandle);
-      router.refresh();
+      const result = await updatAtcoderHandle(editHandle);
+      if (!result.success) {
+        alert("핸들 업데이트에 실패했습니다.");
+        return;
+      }
+
+      // 레이팅 업데이트
+      if (result.rating !== null) {
+        setRating(result.rating);
+      }
+
+      // 푼 문제 목록 갱신
+      if (result.handle) {
+        const newSolvedProblems = await getSolvedProblems(result.handle);
+        setSolvedProblems(newSolvedProblems);
+      }
+
+      // RatingGraph 리렌더링 트리거
+      setRefreshKey((prev) => prev + 1);
+
       setModify(false);
+      router.refresh();
     } catch (error) {
       console.error("Failed to update handle:", error);
       alert("핸들 업데이트에 실패했습니다.");
@@ -176,80 +201,92 @@ export function ProfileWithGrass({ rating: initialRating, atcoder_handle, avatar
         </Button>
       </div>
       <div className="w-full max-w-5xl space-y-6">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>프로필 정보</CardTitle>
-            <CardDescription>Atcoder 계정 정보를 확인하세요</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-start gap-6">
-              <AvatarUpload
-                avatarUrl={avatarUrl}
-                onUpload={(url) => setAvatarUrl(url)}
-              />
-              <div className="flex-1 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-muted-foreground">
-                    Atcoder Handle
-                  </span>
-                  {modify ? (
-                    <div className="flex items-center gap-1">
-                      <Input
-                        value={editHandle}
-                        onChange={(e) => setEditHandle(e.target.value)}
-                        className="h-7 w-32 text-sm"
-                        disabled={isUpdating}
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={handleSaveHandle}
-                        disabled={isUpdating}
-                      >
-                        <Check className="h-4 w-4 text-green-600" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={handleCancelEdit}
-                        disabled={isUpdating}
-                      >
-                        <X className="h-4 w-4 text-red-600" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-sm">
-                        {atcoder_handle}
-                      </Badge>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => setModify(true)}
-                      >
-                        <Pencil className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-muted-foreground">
-                    Rating
-                  </span>
-                  <Badge variant="default" className="text-sm">
-                    {rating}
-                  </Badge>
+        <div className="flex flex-col md:flex-row gap-6">
+          <Card
+            className="w-full md:flex-1 border-2"
+            style={{ borderColor: getRatingColor(rating ?? 0) }}
+          >
+            <CardHeader>
+              <CardTitle>프로필 정보</CardTitle>
+              <CardDescription>Atcoder 계정 정보를 확인하세요</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-start gap-6">
+                <AvatarUpload
+                  avatarUrl={avatarUrl}
+                  onUpload={(url) => setAvatarUrl(url)}
+                />
+                <div className="flex-1 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-muted-foreground">
+                      Atcoder Handle
+                    </span>
+                    {modify ? (
+                      <div className="flex items-center gap-1">
+                        <Input
+                          value={editHandle}
+                          onChange={(e) => setEditHandle(e.target.value)}
+                          className="h-7 w-32 text-sm"
+                          disabled={isUpdating}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={handleSaveHandle}
+                          disabled={isUpdating}
+                        >
+                          <Check className="h-4 w-4 text-green-600" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={handleCancelEdit}
+                          disabled={isUpdating}
+                        >
+                          <X className="h-4 w-4 text-red-600" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-sm">
+                          {atcoder_handle}
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => setModify(true)}
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  <Separator />
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-muted-foreground">
+                      Rating
+                    </span>
+                    <Badge
+                      className="text-sm text-white"
+                      style={{ backgroundColor: getRatingColor(rating ?? 0) }}
+                    >
+                      {rating}
+                    </Badge>
+                  </div>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <TokenUsageCard />
+          <div className="w-full md:flex-1">
+            <TokenUsageCard />
+          </div>
+        </div>
+
+        {atcoder_handle && <RatingGraph key={refreshKey} atcoderHandle={atcoder_handle} />}
 
       {atcoder_handle && (
         <Card className="w-full">

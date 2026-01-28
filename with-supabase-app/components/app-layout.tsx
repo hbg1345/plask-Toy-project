@@ -1,11 +1,8 @@
 import { EnvVarWarning } from "@/components/env-var-warning";
 import { AuthButton } from "@/components/auth-button";
-import { ThemeSwitcher } from "@/components/theme-switcher";
 import { hasEnvVars } from "@/lib/utils";
 import { Suspense } from "react";
-import Link from "next/link";
-import { DesktopNav } from "./desktop-nav";
-import { MobileNav } from "./mobile-nav";
+import { CollapsibleHeader } from "./collapsible-header";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -18,46 +15,25 @@ export function AppLayout({
   contentWrapperClassName,
   outerWrapperClassName,
 }: AppLayoutProps) {
+  const authButton = !hasEnvVars ? (
+    <EnvVarWarning />
+  ) : (
+    <Suspense fallback={<div className="h-8 w-20 bg-muted animate-pulse rounded" />}>
+      <AuthButton />
+    </Suspense>
+  );
+
+  const mobileAuthButton = !hasEnvVars ? (
+    <EnvVarWarning />
+  ) : (
+    <Suspense fallback={<div className="h-8 w-full bg-muted animate-pulse rounded" />}>
+      <AuthButton />
+    </Suspense>
+  );
+
   return (
     <main className="min-h-screen flex flex-col">
-      {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 max-w-5xl items-center mx-auto px-4">
-          {/* Logo */}
-          <Link href="/" className="mr-6 flex items-center space-x-2">
-            <span className="font-bold text-lg">AtCoder Supporter</span>
-          </Link>
-
-          {/* Desktop Navigation */}
-          <DesktopNav />
-
-          {/* Desktop Auth & Theme */}
-          <div className="hidden md:flex items-center gap-2">
-            <ThemeSwitcher />
-            {!hasEnvVars ? (
-              <EnvVarWarning />
-            ) : (
-              <Suspense fallback={<div className="h-8 w-20 bg-muted animate-pulse rounded" />}>
-                <AuthButton />
-              </Suspense>
-            )}
-          </div>
-
-          {/* Mobile Menu */}
-          <div className="flex flex-1 items-center justify-end md:hidden gap-2">
-            <ThemeSwitcher />
-            <MobileNav>
-              {!hasEnvVars ? (
-                <EnvVarWarning />
-              ) : (
-                <Suspense fallback={<div className="h-8 w-full bg-muted animate-pulse rounded" />}>
-                  <AuthButton />
-                </Suspense>
-              )}
-            </MobileNav>
-          </div>
-        </div>
-      </header>
+      <CollapsibleHeader authButton={authButton} mobileAuthButton={mobileAuthButton} />
 
       {/* Content */}
       <div

@@ -8,20 +8,40 @@ export type Message = {
   content: string;
 };
 
-export async function updatAtcoderHandle(handle: string) {
+export async function updatAtcoderHandle(handle: string): Promise<{ success: boolean; rating: number | null; handle: string | null }> {
     const supabase = await createClient();
   // getClaims() is faster than getUser() as it reads from JWT directly
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;
   if (!claims) {
         console.log("User not authenticated");
-        return;
+        return { success: false, rating: null, handle: null };
     }
   const userId = claims.sub as string;
     try {
+        // 핸들 유효성 검사 (AtCoder API로 유저 정보 확인)
         const atcoderUser = await fetchUserInfo(handle);
         const userName = atcoderUser.userName;
-        const userRating = atcoderUser.userRating;
+
+        // 레이팅 히스토리 먼저 갱신
+        const historyResult = await refreshRatingHistory(userName);
+
+        // 레이팅 히스토리에서 최신 레이팅 가져오기
+        let userRating = atcoderUser.userRating;
+        if (historyResult.success && historyResult.count > 0) {
+          const { data: latestHistory } = await supabase
+            .from("contest_history")
+            .select("new_rating")
+            .eq("atcoder_handle", userName)
+            .order("end_time", { ascending: false })
+            .limit(1)
+            .single();
+
+          if (latestHistory) {
+            userRating = latestHistory.new_rating;
+          }
+        }
+
         console.log(userName, userRating);
     const { error } = await supabase
       .from("user_info")
@@ -30,11 +50,13 @@ export async function updatAtcoderHandle(handle: string) {
         console.log("userid", userId);
         if (error) {
             console.log(error);
-            return;
+            return { success: false, rating: null, handle: null };
         }
+
+        return { success: true, rating: userRating, handle: userName };
     } catch (error) {
         console.log("Failed to fetch Atcoder user info:", error);
-        return;
+        return { success: false, rating: null, handle: null };
     }
 }
 
@@ -164,9 +186,28 @@ export async function refreshAtcoderRating(): Promise<number | null> {
   }
 
   try {
-    // AtCoder API에서 최신 레이팅 조회
-    const atcoderUser = await fetchUserInfo(userData.atcoder_handle);
-    const userRating = atcoderUser.userRating;
+    // 레이팅 히스토리 먼저 갱신
+    const historyResult = await refreshRatingHistory(userData.atcoder_handle);
+
+    // 레이팅 히스토리에서 최신 레이팅 가져오기
+    let userRating = 0;
+    if (historyResult.success && historyResult.count > 0) {
+      const { data: latestHistory } = await supabase
+        .from("contest_history")
+        .select("new_rating")
+        .eq("atcoder_handle", userData.atcoder_handle)
+        .order("end_time", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (latestHistory) {
+        userRating = latestHistory.new_rating;
+      }
+    } else {
+      // 히스토리가 없으면 기존 방식으로 시도
+      const atcoderUser = await fetchUserInfo(userData.atcoder_handle);
+      userRating = atcoderUser.userRating;
+    }
 
     // DB 업데이트
     const { error: updateError } = await supabase
@@ -661,6 +702,130 @@ export async function getWeeklyTokenUsage(): Promise<
   } catch (error) {
     console.error("Failed to get weekly token usage:", error);
     return [];
+  }
+}
+
+/**
+ * AtCoder 레이팅 히스토리를 가져옵니다.
+ */
+export interface RatingHistoryEntry {
+  ContestScreenName: string;
+  ContestName: string;
+  NewRating: number;
+  OldRating: number;
+  Performance: number;
+  Increment: number;
+  EndTime: string;
+  IsRated: boolean;
+  Place: number;
+}
+
+/**
+ * DB에서 레이팅 히스토리를 조회합니다.
+ */
+export async function getRatingHistory(
+  username: string
+): Promise<RatingHistoryEntry[]> {
+  const supabase = await createClient();
+
+  try {
+    const { data, error } = await supabase
+      .from("contest_history")
+      .select("*")
+      .eq("atcoder_handle", username)
+      .order("end_time", { ascending: true });
+
+    if (error) {
+      console.error("Failed to fetch rating history from DB:", error);
+      return [];
+    }
+
+    if (!data || data.length === 0) {
+      return [];
+    }
+
+    return data.map((entry) => ({
+      ContestScreenName: entry.contest_screen_name,
+      ContestName: entry.contest_name,
+      NewRating: entry.new_rating,
+      OldRating: entry.old_rating,
+      Performance: entry.performance,
+      Increment: entry.new_rating - entry.old_rating,
+      EndTime: entry.end_time,
+      IsRated: true,
+      Place: entry.place,
+    }));
+  } catch (error) {
+    console.error("Failed to fetch rating history:", error);
+    return [];
+  }
+}
+
+/**
+ * AtCoder API에서 레이팅 히스토리를 가져와 DB에 저장합니다.
+ */
+export async function refreshRatingHistory(
+  username: string
+): Promise<{ success: boolean; count: number }> {
+  const supabase = await createClient();
+
+  try {
+    // AtCoder API에서 히스토리 가져오기
+    const response = await fetch(
+      `https://atcoder.jp/users/${username}/history/json`
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch rating history: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    const entries = data
+      .filter((entry: { IsRated: boolean }) => entry.IsRated)
+      .map((entry: {
+        ContestScreenName: string;
+        ContestName: string;
+        ContestNameEn: string;
+        NewRating: number;
+        OldRating: number;
+        Performance: number;
+        EndTime: string;
+        Place: number;
+      }) => ({
+        atcoder_handle: username,
+        contest_screen_name: entry.ContestScreenName,
+        contest_name: entry.ContestName || entry.ContestNameEn,
+        new_rating: entry.NewRating,
+        old_rating: entry.OldRating,
+        performance: entry.Performance,
+        end_time: entry.EndTime,
+        place: entry.Place,
+      }));
+
+    if (entries.length === 0) {
+      return { success: true, count: 0 };
+    }
+
+    // 기존 데이터 삭제 후 새로 삽입 (upsert 대신 replace)
+    await supabase
+      .from("contest_history")
+      .delete()
+      .eq("atcoder_handle", username);
+
+    const { error } = await supabase
+      .from("contest_history")
+      .insert(entries);
+
+    if (error) {
+      console.error("Failed to save rating history:", error);
+      return { success: false, count: 0 };
+    }
+
+    return { success: true, count: entries.length };
+  } catch (error) {
+    console.error("Failed to refresh rating history:", error);
+    return { success: false, count: 0 };
   }
 }
 
