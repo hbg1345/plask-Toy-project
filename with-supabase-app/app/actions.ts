@@ -108,19 +108,15 @@ export async function getSolvedProblems(atcoderHandle: string): Promise<SolvedPr
     const batchSize = 100;
     for (let i = 0; i < problemIds.length; i += batchSize) {
       const batch = problemIds.slice(i, i + batchSize);
-      const links = batch.map(id => `https://atcoder.jp/contests/${problemContestMap.get(id)}/tasks/${id}`);
 
       const { data: problemsData } = await supabase
         .from("problems")
-        .select("link, title, difficulty")
-        .in("link", links);
+        .select("id, title, difficulty")
+        .in("id", batch);
 
       if (problemsData) {
         for (const p of problemsData) {
-          const match = p.link.match(/tasks\/([^/]+)$/);
-          if (match) {
-            problemInfoMap.set(match[1], { title: p.title, difficulty: p.difficulty });
-          }
+          problemInfoMap.set(p.id, { title: p.title, difficulty: p.difficulty });
         }
       }
     }

@@ -14,8 +14,13 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SubmissionGrass } from "./submission-grass";
 import { SolvedProblemsList } from "./solved-problems";
+import { DifficultyDistribution } from "./difficulty-distribution";
+import { AvatarUpload } from "./avatar-upload";
 import { SolvedProblem, refreshAtcoderRating, getSolvedProblems } from "@/app/actions";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Pencil, Check, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { updatAtcoderHandle } from "@/app/actions";
+import { useRouter } from "next/navigation";
 
 export function ProfileForm({ rating, atcoder_handle }: UserInfoRow) {
     const [modify, setModify] = useState(false);
@@ -78,11 +83,15 @@ interface ProfileWithGrassProps extends UserInfoRow {
   solvedProblems?: SolvedProblem[];
 }
 
-export function ProfileWithGrass({ rating: initialRating, atcoder_handle, solvedProblems: initialSolvedProblems = [] }: ProfileWithGrassProps) {
+export function ProfileWithGrass({ rating: initialRating, atcoder_handle, avatar_url: initialAvatarUrl, solvedProblems: initialSolvedProblems = [] }: ProfileWithGrassProps) {
   const [modify, setModify] = useState(false);
+  const [editHandle, setEditHandle] = useState(atcoder_handle || "");
+  const [isUpdating, setIsUpdating] = useState(false);
   const [rating, setRating] = useState(initialRating);
+  const [avatarUrl, setAvatarUrl] = useState(initialAvatarUrl);
   const [solvedProblems, setSolvedProblems] = useState(initialSolvedProblems);
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
   const handleRefresh = () => {
     if (!atcoder_handle) return;
@@ -100,7 +109,28 @@ export function ProfileWithGrass({ rating: initialRating, atcoder_handle, solved
     });
   };
 
-  if (rating === null || modify) {
+  const handleSaveHandle = async () => {
+    if (!editHandle.trim()) return;
+
+    setIsUpdating(true);
+    try {
+      await updatAtcoderHandle(editHandle);
+      router.refresh();
+      setModify(false);
+    } catch (error) {
+      console.error("Failed to update handle:", error);
+      alert("핸들 업데이트에 실패했습니다.");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditHandle(atcoder_handle || "");
+    setModify(false);
+  };
+
+  if (rating === null) {
     return (
       <>
         <div className="flex flex-col gap-2 self-start w-full">
@@ -117,7 +147,7 @@ export function ProfileWithGrass({ rating: initialRating, atcoder_handle, solved
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <AtcoderForm onSuccess={() => setModify(false)} />
+            <AtcoderForm />
           </CardContent>
         </Card>
       </>
@@ -145,41 +175,78 @@ export function ProfileWithGrass({ rating: initialRating, atcoder_handle, solved
         </Button>
       </div>
       <div className="w-full max-w-5xl space-y-6">
-        <Card className="w-full max-w-md mx-auto">
+        <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>프로필 정보</CardTitle>
             <CardDescription>Atcoder 계정 정보를 확인하세요</CardDescription>
           </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-muted-foreground">
-                Atcoder Handle
-              </span>
-              <Badge variant="outline" className="text-sm">
-                {atcoder_handle}
-              </Badge>
+          <CardContent className="space-y-4">
+            <div className="flex items-start gap-6">
+              <AvatarUpload
+                avatarUrl={avatarUrl}
+                onUpload={(url) => setAvatarUrl(url)}
+              />
+              <div className="flex-1 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Atcoder Handle
+                  </span>
+                  {modify ? (
+                    <div className="flex items-center gap-1">
+                      <Input
+                        value={editHandle}
+                        onChange={(e) => setEditHandle(e.target.value)}
+                        className="h-7 w-32 text-sm"
+                        disabled={isUpdating}
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={handleSaveHandle}
+                        disabled={isUpdating}
+                      >
+                        <Check className="h-4 w-4 text-green-600" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={handleCancelEdit}
+                        disabled={isUpdating}
+                      >
+                        <X className="h-4 w-4 text-red-600" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-sm">
+                        {atcoder_handle}
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => setModify(true)}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Rating
+                  </span>
+                  <Badge variant="default" className="text-sm">
+                    {rating}
+                  </Badge>
+                </div>
+              </div>
             </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-muted-foreground">
-                Rating
-              </span>
-              <Badge variant="default" className="text-sm">
-                {rating}
-              </Badge>
-            </div>
-          </div>
-          <Separator />
-          <Button
-            onClick={() => setModify(true)}
-            variant="outline"
-            className="w-full"
-          >
-            수정하기
-          </Button>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
       {atcoder_handle && (
         <Card className="w-full">
@@ -196,17 +263,20 @@ export function ProfileWithGrass({ rating: initialRating, atcoder_handle, solved
       )}
 
       {solvedProblems.length > 0 && (
-        <Card className="w-full">
-          <CardHeader>
-            <CardTitle>Solved Problems</CardTitle>
-            <CardDescription>
-              총 {solvedProblems.length}개의 문제를 풀었습니다
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <SolvedProblemsList problems={solvedProblems} />
-          </CardContent>
-        </Card>
+        <>
+          <DifficultyDistribution problems={solvedProblems} />
+          <Card className="w-full">
+            <CardHeader>
+              <CardTitle>Solved Problems</CardTitle>
+              <CardDescription>
+                총 {solvedProblems.length}개의 문제를 풀었습니다
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SolvedProblemsList problems={solvedProblems} />
+            </CardContent>
+          </Card>
+        </>
       )}
       </div>
     </>

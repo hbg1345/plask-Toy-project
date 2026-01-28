@@ -22,16 +22,20 @@ async function UserDetails() {
 
   const { data, error } = await supabase
     .from("user_info")
-    .select("rating, atcoder_handle")
+    .select("rating, atcoder_handle, avatar_url")
     .eq("id", userId)
     .single();
 
   if (!data || error) {
-    console.log(error.message);
-    return;
+    console.log(error?.message);
+    return null;
   }
 
-  const userData = data as UserInfoRow;
+  const userData: UserInfoRow = {
+    rating: data.rating,
+    atcoder_handle: data.atcoder_handle,
+    avatar_url: data.avatar_url ?? null,
+  };
 
   // 푼 문제 목록 가져오기
   const solvedProblems = userData.atcoder_handle
@@ -42,6 +46,7 @@ async function UserDetails() {
     <ProfileWithGrass
       rating={userData.rating}
       atcoder_handle={userData.atcoder_handle}
+      avatar_url={userData.avatar_url}
       solvedProblems={solvedProblems}
     />
   );
@@ -51,10 +56,10 @@ export default function ProfilePage() {
   return (
     <div className="w-full">
       <div className="max-w-5xl mx-auto">
-        <div className="flex flex-col gap-8 items-center">
+        <div className="flex flex-col gap-8 items-start">
           <Suspense fallback={
             <>
-              <div className="flex flex-col gap-2 self-start">
+              <div className="flex flex-col gap-2">
                 <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
                 <p className="text-muted-foreground">
                   프로필 정보를 확인하고 관리하세요

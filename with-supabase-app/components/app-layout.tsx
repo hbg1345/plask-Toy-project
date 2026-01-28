@@ -1,10 +1,11 @@
 import { EnvVarWarning } from "@/components/env-var-warning";
 import { AuthButton } from "@/components/auth-button";
-import { ChatLink } from "@/components/chat-link";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { hasEnvVars } from "@/lib/utils";
 import { Suspense } from "react";
-import { NavLink } from "./nav-link";
+import Link from "next/link";
+import { DesktopNav } from "./desktop-nav";
+import { MobileNav } from "./mobile-nav";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -18,36 +19,52 @@ export function AppLayout({
   outerWrapperClassName,
 }: AppLayoutProps) {
   return (
-    <main className="min-h-screen flex flex-col items-center">
+    <main className="min-h-screen flex flex-col">
+      {/* Header */}
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-14 max-w-5xl items-center mx-auto px-4">
+          {/* Logo */}
+          <Link href="/" className="mr-6 flex items-center space-x-2">
+            <span className="font-bold text-lg">AtCoder Supporter</span>
+          </Link>
+
+          {/* Desktop Navigation */}
+          <DesktopNav />
+
+          {/* Desktop Auth & Theme */}
+          <div className="hidden md:flex items-center gap-2">
+            <ThemeSwitcher />
+            {!hasEnvVars ? (
+              <EnvVarWarning />
+            ) : (
+              <Suspense fallback={<div className="h-8 w-20 bg-muted animate-pulse rounded" />}>
+                <AuthButton />
+              </Suspense>
+            )}
+          </div>
+
+          {/* Mobile Menu */}
+          <div className="flex flex-1 items-center justify-end md:hidden gap-2">
+            <ThemeSwitcher />
+            <MobileNav>
+              {!hasEnvVars ? (
+                <EnvVarWarning />
+              ) : (
+                <Suspense fallback={<div className="h-8 w-full bg-muted animate-pulse rounded" />}>
+                  <AuthButton />
+                </Suspense>
+              )}
+            </MobileNav>
+          </div>
+        </div>
+      </header>
+
+      {/* Content */}
       <div
         className={
           outerWrapperClassName || "flex-1 w-full flex flex-col items-center"
         }
       >
-        <nav className="w-full flex justify-center border-b border-b-foreground/10 h-16">
-          <div className="w-full max-w-5xl flex justify-between items-center p-3 px-5 text-sm">
-            <div className="flex gap-1 items-center">
-              <NavLink href="/">Atcoder Supporter</NavLink>
-              <NavLink href="/problems">Problems</NavLink>
-              <NavLink href="/recommendations">Recommendations</NavLink>
-              <ChatLink />
-            </div>
-            {!hasEnvVars ? (
-              <EnvVarWarning />
-            ) : (
-              <Suspense
-                fallback={
-                  <div className="flex gap-2">
-                    <div className="h-9 w-20 bg-muted animate-pulse rounded-md" />
-                    <div className="h-9 w-20 bg-muted animate-pulse rounded-md" />
-                  </div>
-                }
-              >
-                <AuthButton />
-              </Suspense>
-            )}
-          </div>
-        </nav>
         <div
           className={`w-full ${
             contentWrapperClassName ||
@@ -57,6 +74,7 @@ export function AppLayout({
           {children}
         </div>
 
+        {/* Footer */}
         <footer className="w-full flex items-center justify-center border-t mx-auto text-center text-xs gap-8 py-4">
           <p>
             Powered by{" "}
@@ -69,7 +87,6 @@ export function AppLayout({
               Supabase
             </a>
           </p>
-          <ThemeSwitcher />
         </footer>
       </div>
     </main>
