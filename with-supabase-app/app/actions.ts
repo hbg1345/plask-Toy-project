@@ -524,3 +524,142 @@ export async function startProblemCollection(
     };
   }
 }
+
+/**
+ * 토큰 사용량 관련 타입 및 함수
+ */
+export interface TokenUsage {
+  total_input_tokens: number;
+  total_output_tokens: number;
+  total_tokens: number;
+  request_count: number;
+}
+
+export interface TokenUsageHistory {
+  id: string;
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+  model: string;
+  created_at: string;
+}
+
+/**
+ * 오늘의 토큰 사용량 조회
+ */
+export async function getTodayTokenUsage(): Promise<TokenUsage> {
+  const supabase = await createClient();
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const claims = claimsData?.claims;
+
+  if (!claims) {
+    return {
+      total_input_tokens: 0,
+      total_output_tokens: 0,
+      total_tokens: 0,
+      request_count: 0,
+    };
+  }
+
+  const userId = claims.sub as string;
+  const today = new Date().toISOString().split("T")[0];
+
+  try {
+    const { data, error } = await supabase
+      .from("token_usage")
+      .select("input_tokens, output_tokens, total_tokens")
+      .eq("user_id", userId)
+      .gte("created_at", `${today}T00:00:00`)
+      .lt("created_at", `${today}T23:59:59.999`);
+
+    if (error) {
+      console.error("Failed to get token usage:", error);
+      return {
+        total_input_tokens: 0,
+        total_output_tokens: 0,
+        total_tokens: 0,
+        request_count: 0,
+      };
+    }
+
+    const result = (data || []).reduce(
+      (acc, row) => ({
+        total_input_tokens: acc.total_input_tokens + (row.input_tokens || 0),
+        total_output_tokens: acc.total_output_tokens + (row.output_tokens || 0),
+        total_tokens: acc.total_tokens + (row.total_tokens || 0),
+        request_count: acc.request_count + 1,
+      }),
+      {
+        total_input_tokens: 0,
+        total_output_tokens: 0,
+        total_tokens: 0,
+        request_count: 0,
+      }
+    );
+
+    return result;
+  } catch (error) {
+    console.error("Failed to get token usage:", error);
+    return {
+      total_input_tokens: 0,
+      total_output_tokens: 0,
+      total_tokens: 0,
+      request_count: 0,
+    };
+  }
+}
+
+/**
+ * 최근 7일간 토큰 사용량 조회
+ */
+export async function getWeeklyTokenUsage(): Promise<
+  { date: string; total_tokens: number; request_count: number }[]
+> {
+  const supabase = await createClient();
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const claims = claimsData?.claims;
+
+  if (!claims) {
+    return [];
+  }
+
+  const userId = claims.sub as string;
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  try {
+    const { data, error } = await supabase
+      .from("token_usage")
+      .select("total_tokens, created_at")
+      .eq("user_id", userId)
+      .gte("created_at", sevenDaysAgo.toISOString())
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error("Failed to get weekly token usage:", error);
+      return [];
+    }
+
+    // 날짜별로 그룹화
+    const grouped = (data || []).reduce(
+      (acc, row) => {
+        const date = new Date(row.created_at).toISOString().split("T")[0];
+        if (!acc[date]) {
+          acc[date] = { total_tokens: 0, request_count: 0 };
+        }
+        acc[date].total_tokens += row.total_tokens || 0;
+        acc[date].request_count += 1;
+        return acc;
+      },
+      {} as Record<string, { total_tokens: number; request_count: number }>
+    );
+
+    return Object.entries(grouped).map(([date, stats]) => ({
+      date,
+      ...stats,
+    }));
+  } catch (error) {
+    console.error("Failed to get weekly token usage:", error);
+    return [];
+  }
+}

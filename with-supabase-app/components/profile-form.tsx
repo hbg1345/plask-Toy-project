@@ -16,6 +16,7 @@ import { SubmissionGrass } from "./submission-grass";
 import { SolvedProblemsList } from "./solved-problems";
 import { DifficultyDistribution } from "./difficulty-distribution";
 import { AvatarUpload } from "./avatar-upload";
+import { TokenUsageCard } from "./token-usage";
 import { SolvedProblem, refreshAtcoderRating, getSolvedProblems } from "@/app/actions";
 import { RefreshCw, Pencil, Check, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -247,6 +248,8 @@ export function ProfileWithGrass({ rating: initialRating, atcoder_handle, avatar
             </div>
           </CardContent>
         </Card>
+
+        <TokenUsageCard />
 
       {atcoder_handle && (
         <Card className="w-full">

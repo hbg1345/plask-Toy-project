@@ -15,6 +15,9 @@ import {
   getTaskMetadata,
   getEditorial,
 } from "@/lib/atcoder/contest";
+import { createClient } from "@/lib/supabase/server";
+
+const MODEL_NAME = "gemini-2.5-flash-lite";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
@@ -71,6 +74,14 @@ const tools: ToolSet = {
 };
 
 export async function POST(req: Request) {
+  const supabase = await createClient();
+
+  // 사용자 인증 확인
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
   const {
     messages,
     problemUrl,
@@ -86,8 +97,6 @@ export async function POST(req: Request) {
   } else if (chatId) {
     // chatId가 있으면 DB에서 problem_url 조회
     try {
-      const { createClient } = await import("@/lib/supabase/server");
-      const supabase = await createClient();
       const { data: chatData } = await supabase
         .from("chat_history")
         .select("problem_url")
@@ -174,11 +183,27 @@ REMEMBER: Answer BRIEFLY and CONCISELY. Provide hints only, not solutions. Answe
   }
 
   const result = streamText({
-    model: google("gemini-2.5-flash-lite"),
+    model: google(MODEL_NAME),
     system: systemMessage,
     messages: await convertToModelMessages(messages),
     tools,
     stopWhen: stepCountIs(10),
+    onFinish: async ({ usage }) => {
+      // 토큰 사용량 저장
+      if (usage) {
+        try {
+          await supabase.from("token_usage").insert({
+            user_id: user.id,
+            input_tokens: usage.inputTokens || 0,
+            output_tokens: usage.outputTokens || 0,
+            total_tokens: usage.totalTokens || 0,
+            model: MODEL_NAME,
+          });
+        } catch (error) {
+          console.error("Failed to save token usage:", error);
+        }
+      }
+    },
   });
   return result.toUIMessageStreamResponse({
     sendSources: true,
