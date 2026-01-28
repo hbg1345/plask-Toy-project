@@ -14,7 +14,9 @@ import {
 import {
   startProblemCollection,
   startProblemCollectionFromKenkoo,
+  collectAllUserRatings,
 } from "@/app/actions";
+import { RefreshCw } from "lucide-react";
 
 export default function CollectProblemsPage() {
   const [limit, setLimit] = useState<string>("5");
@@ -26,6 +28,15 @@ export default function CollectProblemsPage() {
     processed?: number;
     saved?: number;
     error?: string;
+  } | null>(null);
+
+  // 레이팅 수집 상태
+  const [isRatingLoading, setIsRatingLoading] = useState(false);
+  const [ratingResult, setRatingResult] = useState<{
+    success: boolean;
+    processed: number;
+    saved: number;
+    errors: string[];
   } | null>(null);
 
   const handleCollect = async () => {
@@ -54,8 +65,89 @@ export default function CollectProblemsPage() {
     }
   };
 
+  const handleRatingCollect = async () => {
+    setIsRatingLoading(true);
+    setRatingResult(null);
+
+    try {
+      const result = await collectAllUserRatings();
+      setRatingResult(result);
+    } catch (error) {
+      setRatingResult({
+        success: false,
+        processed: 0,
+        saved: 0,
+        errors: [error instanceof Error ? error.message : "Unknown error"],
+      });
+    } finally {
+      setIsRatingLoading(false);
+    }
+  };
+
   return (
-    <div className="w-full max-w-2xl mx-auto p-6">
+    <div className="w-full max-w-2xl mx-auto p-6 space-y-6">
+      {/* 레이팅 수집 카드 */}
+      <Card>
+        <CardHeader>
+          <CardTitle>레이팅 수집</CardTitle>
+          <CardDescription>
+            모든 사용자의 AtCoder 레이팅을 수집하여 기록합니다.
+            <br />
+            <strong>일주일에 한 번</strong> 실행해주세요.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Button
+            onClick={handleRatingCollect}
+            disabled={isRatingLoading}
+            className="w-full"
+          >
+            <RefreshCw
+              className={`mr-2 h-4 w-4 ${isRatingLoading ? "animate-spin" : ""}`}
+            />
+            {isRatingLoading ? "수집 중..." : "레이팅 수집 시작"}
+          </Button>
+
+          {ratingResult && (
+            <div
+              className={`p-4 rounded-md ${
+                ratingResult.success
+                  ? "bg-green-50 border border-green-200 dark:bg-green-950 dark:border-green-800"
+                  : "bg-red-50 border border-red-200 dark:bg-red-950 dark:border-red-800"
+              }`}
+            >
+              {ratingResult.success ? (
+                <div>
+                  <p className="font-semibold text-green-800 dark:text-green-200">
+                    수집 완료!
+                  </p>
+                  <p className="text-sm text-green-700 dark:text-green-300">
+                    처리된 사용자: {ratingResult.processed}명
+                    <br />
+                    저장 성공: {ratingResult.saved}명
+                  </p>
+                  {ratingResult.errors.length > 0 && (
+                    <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-2">
+                      에러: {ratingResult.errors.length}건
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <p className="font-semibold text-red-800 dark:text-red-200">
+                    오류 발생
+                  </p>
+                  <p className="text-sm text-red-700 dark:text-red-300">
+                    {ratingResult.errors.join(", ")}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 문제 수집 카드 */}
       <Card>
         <CardHeader>
           <CardTitle>문제 수집</CardTitle>

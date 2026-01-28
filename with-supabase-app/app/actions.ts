@@ -663,3 +663,80 @@ export async function getWeeklyTokenUsage(): Promise<
     return [];
   }
 }
+
+/**
+ * 모든 사용자의 AtCoder 레이팅을 수집하여 rating_history에 저장합니다.
+ * 관리자가 일주일에 한 번 수동으로 실행합니다.
+ */
+export async function collectAllUserRatings(): Promise<{
+  success: boolean;
+  processed: number;
+  saved: number;
+  errors: string[];
+}> {
+  const supabase = await createClient();
+
+  // 인증 확인
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (!claims) {
+    return { success: false, processed: 0, saved: 0, errors: ["Not authenticated"] };
+  }
+
+  // atcoder_handle이 있는 모든 사용자 조회
+  const { data: users, error } = await supabase
+    .from("user_info")
+    .select("id, atcoder_handle, rating")
+    .not("atcoder_handle", "is", null);
+
+  if (error || !users) {
+    return {
+      success: false,
+      processed: 0,
+      saved: 0,
+      errors: [error?.message || "Failed to fetch users"],
+    };
+  }
+
+  let savedCount = 0;
+  const errors: string[] = [];
+
+  for (const user of users) {
+    try {
+      // AtCoder API에서 최신 레이팅 조회
+      const atcoderUser = await fetchUserInfo(user.atcoder_handle);
+      const currentRating = atcoderUser.userRating;
+
+      // user_info 테이블 업데이트
+      await supabase
+        .from("user_info")
+        .update({ rating: currentRating })
+        .eq("id", user.id);
+
+      // rating_history에 기록
+      const { error: insertError } = await supabase.from("rating_history").insert({
+        user_id: user.id,
+        atcoder_handle: user.atcoder_handle,
+        rating: currentRating,
+      });
+
+      if (insertError) {
+        errors.push(`Failed to save history for ${user.atcoder_handle}: ${insertError.message}`);
+      } else {
+        savedCount++;
+      }
+
+      // Rate limiting (AtCoder API 보호)
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    } catch (err) {
+      errors.push(`Failed for ${user.atcoder_handle}: ${err}`);
+    }
+  }
+
+  return {
+    success: true,
+    processed: users.length,
+    saved: savedCount,
+    errors,
+  };
+}
