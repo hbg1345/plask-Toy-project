@@ -14,6 +14,8 @@ import {
   Lightbulb,
   ArrowLeft,
   RefreshCw,
+  AlertTriangle,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -28,6 +30,53 @@ const TIME_OPTIONS = [
   { label: "2시간", value: 120 },
 ];
 
+/**
+ * 사용자 레이팅과 문제 난이도 차이에 따라 추천 시간 계산
+ * @param userRating 사용자 레이팅
+ * @param problemDifficulty 문제 난이도
+ * @returns 추천 시간 (분)
+ */
+function calculateRecommendedTime(userRating: number, problemDifficulty: number): number {
+  const diff = problemDifficulty - userRating;
+
+  // 난이도 차이에 따른 시간 계산
+  // 기준: 레이팅 동일 = 30분
+  // 200점 차이마다 ±10분 조정
+  let baseTime = 30;
+
+  if (diff >= 400) {
+    // 매우 어려운 문제: 90분 ~ 120분
+    baseTime = 90 + Math.min(30, Math.floor((diff - 400) / 200) * 15);
+  } else if (diff >= 200) {
+    // 어려운 문제: 60분 ~ 90분
+    baseTime = 60 + Math.floor((diff - 200) / 100) * 15;
+  } else if (diff >= 0) {
+    // 적정 난이도: 30분 ~ 60분
+    baseTime = 30 + Math.floor(diff / 100) * 15;
+  } else if (diff >= -200) {
+    // 쉬운 문제: 20분 ~ 30분
+    baseTime = 30 + Math.floor(diff / 100) * 5;
+  } else {
+    // 매우 쉬운 문제: 15분 ~ 20분
+    baseTime = 15;
+  }
+
+  // 가장 가까운 TIME_OPTION 값으로 반올림
+  const optionValues = TIME_OPTIONS.map(o => o.value);
+  let closest = optionValues[0];
+  let minDiff = Math.abs(baseTime - closest);
+
+  for (const value of optionValues) {
+    const d = Math.abs(baseTime - value);
+    if (d < minDiff) {
+      minDiff = d;
+      closest = value;
+    }
+  }
+
+  return closest;
+}
+
 type PracticeStatus = "setup" | "running" | "paused" | "completed";
 
 interface Hint {
@@ -37,6 +86,11 @@ interface Hint {
 
 interface PracticeClientProps {
   problemId: string;
+}
+
+interface OngoingSession {
+  problemId: string;
+  problemTitle: string | null;
 }
 
 export default function PracticeClient({ problemId }: PracticeClientProps) {
@@ -50,29 +104,73 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
   const [isSolved, setIsSolved] = useState<boolean | null>(null);
   const [isCheckingSubmission, setIsCheckingSubmission] = useState(false);
   const [atcoderHandle, setAtcoderHandle] = useState<string | null>(null);
+  const [userRating, setUserRating] = useState<number | null>(null);
   const [isLoadingHints, setIsLoadingHints] = useState(false);
   const [problemTitle, setProblemTitle] = useState<string | null>(null);
   const [difficulty, setDifficulty] = useState<number | null>(null);
   const [sessionSaved, setSessionSaved] = useState(false);
+  const [otherOngoingSession, setOtherOngoingSession] = useState<OngoingSession | null>(null);
+  const [recommendedTime, setRecommendedTime] = useState<number | null>(null);
 
   // 문제 URL 생성
   const contestId = problemId.split("_")[0];
   const problemUrl = `https://atcoder.jp/contests/${contestId}/tasks/${problemId}`;
 
-  // AtCoder 핸들 가져오기
+  // localStorage key
+  const PRACTICE_STATE_KEY = "ongoing_practice";
+
+  // 다른 문제의 진행 중인 세션 확인
   useEffect(() => {
-    const fetchHandle = async () => {
+    try {
+      const saved = localStorage.getItem(PRACTICE_STATE_KEY);
+      if (saved) {
+        const state = JSON.parse(saved);
+        if (state.problemId && state.problemId !== problemId) {
+          setOtherOngoingSession({
+            problemId: state.problemId,
+            problemTitle: state.problemTitle,
+          });
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, [problemId]);
+
+  // 진행 중인 연습 상태 저장
+  useEffect(() => {
+    if (status === "running" || status === "paused") {
+      const practiceState = {
+        problemId,
+        problemTitle,
+        status,
+        selectedTime,
+        remainingTime,
+        elapsedTime,
+        startedAt: Date.now() - elapsedTime * 1000,
+      };
+      localStorage.setItem(PRACTICE_STATE_KEY, JSON.stringify(practiceState));
+    } else if (status === "completed" || status === "setup") {
+      // 완료되거나 설정 화면으로 돌아가면 localStorage에서 삭제
+      localStorage.removeItem(PRACTICE_STATE_KEY);
+    }
+  }, [status, problemId, problemTitle, selectedTime, remainingTime, elapsedTime]);
+
+  // AtCoder 핸들 및 레이팅 가져오기
+  useEffect(() => {
+    const fetchUserInfo = async () => {
       try {
         const response = await fetch("/api/user/handle");
         if (response.ok) {
           const data = await response.json();
           setAtcoderHandle(data.handle);
+          setUserRating(data.rating);
         }
       } catch (error) {
-        console.error("Failed to fetch handle:", error);
+        console.error("Failed to fetch user info:", error);
       }
     };
-    fetchHandle();
+    fetchUserInfo();
   }, []);
 
   // 힌트 가져오기
@@ -97,6 +195,15 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
     };
     fetchHints();
   }, [problemId, status]);
+
+  // 추천 시간 계산 (사용자 레이팅 & 문제 난이도 기반)
+  useEffect(() => {
+    if (userRating !== null && difficulty !== null && status === "setup") {
+      const recommended = calculateRecommendedTime(userRating, difficulty);
+      setRecommendedTime(recommended);
+      setSelectedTime(recommended); // 자동 선택
+    }
+  }, [userRating, difficulty, status]);
 
   // 세션 저장
   useEffect(() => {
@@ -237,6 +344,12 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
     setSessionSaved(false);
   };
 
+  // 다른 세션 포기하고 새로 시작
+  const handleAbandonOtherSession = () => {
+    localStorage.removeItem(PRACTICE_STATE_KEY);
+    setOtherOngoingSession(null);
+  };
+
   // 진행률 계산
   const progress = selectedTime * 60 > 0 ? (elapsedTime / (selectedTime * 60)) * 100 : 0;
 
@@ -247,7 +360,7 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="sm" asChild>
-              <Link href="/recommendations">
+              <Link href="/practice">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 돌아가기
               </Link>
@@ -315,22 +428,104 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
+                {/* 다른 문제 진행 중 경고 */}
+                {otherOngoingSession && (
+                  <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="font-medium text-amber-800 dark:text-amber-200">
+                          다른 문제 연습이 진행 중입니다
+                        </p>
+                        <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                          {otherOngoingSession.problemTitle || otherOngoingSession.problemId}
+                        </p>
+                        <div className="flex gap-2 mt-3">
+                          <Button size="sm" variant="outline" asChild>
+                            <Link href={`/practice/${otherOngoingSession.problemId}`}>
+                              이어하기
+                            </Link>
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={handleAbandonOtherSession}
+                            className="text-amber-700 dark:text-amber-300"
+                          >
+                            포기하고 새로 시작
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 레이팅 정보 표시 */}
+                {userRating !== null && difficulty !== null && (
+                  <div className="p-3 bg-muted/50 rounded-lg">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">내 레이팅</span>
+                      <span className="font-semibold">{userRating}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm mt-1">
+                      <span className="text-muted-foreground">문제 난이도</span>
+                      <span className={cn(
+                        "font-semibold",
+                        difficulty > userRating + 200 ? "text-red-500" :
+                        difficulty > userRating ? "text-amber-500" :
+                        difficulty > userRating - 200 ? "text-green-500" :
+                        "text-blue-500"
+                      )}>
+                        {difficulty}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm mt-1 pt-1 border-t">
+                      <span className="text-muted-foreground">난이도 차이</span>
+                      <span className={cn(
+                        "font-semibold",
+                        difficulty - userRating > 200 ? "text-red-500" :
+                        difficulty - userRating > 0 ? "text-amber-500" :
+                        difficulty - userRating > -200 ? "text-green-500" :
+                        "text-blue-500"
+                      )}>
+                        {difficulty - userRating > 0 ? "+" : ""}{difficulty - userRating}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 <p className="text-muted-foreground">
                   문제를 풀 시간을 선택하세요. 시간이 경과할수록 힌트가 하나씩
                   해금됩니다.
+                  {recommendedTime && (
+                    <span className="block mt-1 text-sm text-primary">
+                      레이팅 차이에 따라 {TIME_OPTIONS.find(o => o.value === recommendedTime)?.label}이 추천됩니다.
+                    </span>
+                  )}
                 </p>
 
                 <div className="grid grid-cols-3 gap-3">
-                  {TIME_OPTIONS.map((option) => (
-                    <Button
-                      key={option.value}
-                      variant={selectedTime === option.value ? "default" : "outline"}
-                      onClick={() => setSelectedTime(option.value)}
-                      className="h-16 text-lg"
-                    >
-                      {option.label}
-                    </Button>
-                  ))}
+                  {TIME_OPTIONS.map((option) => {
+                    const isRecommended = option.value === recommendedTime;
+                    return (
+                      <Button
+                        key={option.value}
+                        variant={selectedTime === option.value ? "default" : "outline"}
+                        onClick={() => setSelectedTime(option.value)}
+                        className={cn(
+                          "h-16 text-lg relative",
+                          isRecommended && selectedTime !== option.value && "ring-2 ring-primary/50"
+                        )}
+                      >
+                        {option.label}
+                        {isRecommended && (
+                          <span className="absolute -top-2 -right-2 px-1.5 py-0.5 text-[10px] font-semibold bg-primary text-primary-foreground rounded-full">
+                            추천
+                          </span>
+                        )}
+                      </Button>
+                    );
+                  })}
                 </div>
 
                 <div className="pt-4 border-t">
@@ -349,7 +544,7 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
                     size="lg"
                     className="w-full"
                     onClick={handleStart}
-                    disabled={isLoadingHints}
+                    disabled={isLoadingHints || !!otherOngoingSession}
                   >
                     <Play className="h-5 w-5 mr-2" />
                     연습 시작
@@ -399,13 +594,40 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
                   </div>
                 )}
 
+                {/* 못 풀었을 때 채팅 안내 */}
+                {!isSolved && (
+                  <div className="p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="font-medium text-blue-800 dark:text-blue-200">
+                          문제가 어려우셨나요?
+                        </p>
+                        <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                          AI 채팅에서 이 문제에 대해 질문하고 풀이 방법을 배워보세요.
+                        </p>
+                        <Button
+                          size="sm"
+                          className="mt-3 bg-blue-600 hover:bg-blue-700"
+                          asChild
+                        >
+                          <Link href={`/chat?problemId=${problemId}`}>
+                            <MessageSquare className="h-4 w-4 mr-2" />
+                            이 문제에 대해 질문하기
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex gap-3">
                   <Button variant="outline" className="flex-1" onClick={handleRestart}>
                     <RefreshCw className="h-4 w-4 mr-2" />
                     다시 도전
                   </Button>
                   <Button className="flex-1" asChild>
-                    <Link href="/recommendations">다른 문제 풀기</Link>
+                    <Link href="/practice">다른 문제 풀기</Link>
                   </Button>
                 </div>
               </CardContent>

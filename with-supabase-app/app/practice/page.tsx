@@ -1,7 +1,6 @@
 import {
   getRecommendedProblemsByRange,
   getRatingRanges,
-  type RatingRange,
 } from "@/lib/atcoder/recommendations";
 import { ProblemLink } from "@/components/problem-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +11,9 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { RefreshCw } from "lucide-react";
 import Link from "next/link";
+import { OngoingSessionCard } from "@/components/ongoing-session-card";
+import { PracticeHistory } from "@/components/practice-history";
+import { getPracticeSessions, getPracticeStats } from "@/app/actions";
 
 /**
  * AtCoder 레이팅 색상 (난이도에 따라)
@@ -21,7 +23,6 @@ function getDifficultyColor(difficulty: number | null): {
   text: string;
   border: string;
 } {
-  // AtCoder 공식 색상에 맞춤
   if (difficulty === null) {
     return {
       bg: "bg-gray-400 dark:bg-gray-500",
@@ -30,7 +31,6 @@ function getDifficultyColor(difficulty: number | null): {
     };
   }
 
-  // Gray: < 400
   if (difficulty < 400) {
     return {
       bg: "bg-gray-400 dark:bg-gray-500",
@@ -38,7 +38,6 @@ function getDifficultyColor(difficulty: number | null): {
       border: "border-gray-400 dark:border-gray-500",
     };
   }
-  // Brown: 400-799
   if (difficulty < 800) {
     return {
       bg: "bg-amber-800 dark:bg-amber-700",
@@ -46,7 +45,6 @@ function getDifficultyColor(difficulty: number | null): {
       border: "border-amber-800 dark:border-amber-700",
     };
   }
-  // Green: 800-1199
   if (difficulty < 1200) {
     return {
       bg: "bg-green-600 dark:bg-green-500",
@@ -54,7 +52,6 @@ function getDifficultyColor(difficulty: number | null): {
       border: "border-green-600 dark:border-green-500",
     };
   }
-  // Cyan: 1200-1599
   if (difficulty < 1600) {
     return {
       bg: "bg-cyan-500 dark:bg-cyan-400",
@@ -62,7 +59,6 @@ function getDifficultyColor(difficulty: number | null): {
       border: "border-cyan-500 dark:border-cyan-400",
     };
   }
-  // Blue: 1600-1999
   if (difficulty < 2000) {
     return {
       bg: "bg-blue-700 dark:bg-blue-600",
@@ -70,7 +66,6 @@ function getDifficultyColor(difficulty: number | null): {
       border: "border-blue-700 dark:border-blue-600",
     };
   }
-  // Yellow: 2000-2399
   if (difficulty < 2400) {
     return {
       bg: "bg-yellow-400 dark:bg-yellow-300",
@@ -78,7 +73,6 @@ function getDifficultyColor(difficulty: number | null): {
       border: "border-yellow-400 dark:border-yellow-300",
     };
   }
-  // Orange: 2400-2799
   if (difficulty < 2800) {
     return {
       bg: "bg-orange-500 dark:bg-orange-400",
@@ -86,7 +80,6 @@ function getDifficultyColor(difficulty: number | null): {
       border: "border-orange-500 dark:border-orange-400",
     };
   }
-  // Red: 2800-3199
   if (difficulty < 3200) {
     return {
       bg: "bg-red-600 dark:bg-red-500",
@@ -94,7 +87,6 @@ function getDifficultyColor(difficulty: number | null): {
       border: "border-red-600 dark:border-red-500",
     };
   }
-  // 3200+: 첫 글자 검은색/금색, 나머지 빨간색 (별도 처리 필요)
   return {
     bg: "bg-red-600 dark:bg-red-500",
     text: "text-red-600 dark:text-red-400",
@@ -102,18 +94,12 @@ function getDifficultyColor(difficulty: number | null): {
   };
 }
 
-/**
- * 난이도를 포맷팅합니다.
- */
 function formatDifficulty(difficulty: number | null): string {
   if (difficulty === null) return "N/A";
   return difficulty.toLocaleString();
 }
 
-async function RecommendationsContent() {
-  // ⚠️ PAGE-LEVEL AUTHENTICATION CHECK
-  // Authentication is handled at the page level, NOT in middleware.
-  // See lib/supabase/proxy.ts for architecture details.
+async function PracticeContent() {
   const supabase = await createClient();
   const { data: claimsData } = await supabase.auth.getClaims();
   const claims = claimsData?.claims;
@@ -167,11 +153,13 @@ async function RecommendationsContent() {
     );
   }
 
-  // 추천 문제 가져오기 (범위별로 그룹화)
-  const recommendedByRange = await getRecommendedProblemsByRange(
-    userData.rating,
-    10
-  );
+  // 추천 문제와 연습 기록을 병렬로 가져오기
+  const [recommendedByRange, practiceSessions, practiceStats] = await Promise.all([
+    getRecommendedProblemsByRange(userData.rating, 10),
+    getPracticeSessions(50),
+    getPracticeStats(),
+  ]);
+
   const ranges = getRatingRanges(userData.rating);
 
   const totalProblems = Array.from(recommendedByRange.values()).reduce(
@@ -200,20 +188,23 @@ async function RecommendationsContent() {
       <div className="flex flex-col gap-2 w-full">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">문제 추천</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Practice</h1>
             <p className="text-muted-foreground">
               현재 레이팅: <span className="font-semibold">{userData.rating}</span> (
               {userData.atcoder_handle || "Unknown"}) ±500 범위의 문제
             </p>
           </div>
           <Button asChild variant="outline" size="sm">
-            <Link href="/recommendations">
+            <Link href="/practice">
               <RefreshCw className="h-4 w-4 mr-2" />
               새로고침
             </Link>
           </Button>
         </div>
       </div>
+
+      {/* 진행 중인 연습 세션 */}
+      <OngoingSessionCard />
 
       {/* Recommended Problems Grid */}
       <Card className="w-full">
@@ -229,9 +220,7 @@ async function RecommendationsContent() {
               return (
                 <div key={rangeIndex} className="flex flex-col">
                   <div className="mb-3 pb-2 border-b">
-                    <h3 className="text-sm font-semibold">
-                      {range.label}
-                    </h3>
+                    <h3 className="text-sm font-semibold">{range.label}</h3>
                     <p className="text-xs text-muted-foreground mt-1">
                       {problems.length}개 문제
                     </p>
@@ -304,15 +293,18 @@ async function RecommendationsContent() {
           </div>
         </CardContent>
       </Card>
+
+      {/* 연습 기록 */}
+      <PracticeHistory sessions={practiceSessions} stats={practiceStats} />
     </>
   );
 }
 
-function RecommendationsLoading() {
+function PracticeLoading() {
   return (
     <>
       <div className="flex flex-col gap-2 w-full">
-        <h1 className="text-3xl font-bold tracking-tight">문제 추천</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Practice</h1>
         <p className="text-muted-foreground">로딩 중...</p>
       </div>
       <Card className="w-full">
@@ -327,15 +319,14 @@ function RecommendationsLoading() {
   );
 }
 
-export default function RecommendationsPage() {
+export default function PracticePage() {
   return (
     <div className="w-full">
       <div className="flex flex-col gap-8 items-start">
-        <Suspense fallback={<RecommendationsLoading />}>
-          <RecommendationsContent />
+        <Suspense fallback={<PracticeLoading />}>
+          <PracticeContent />
         </Suspense>
       </div>
     </div>
   );
 }
-

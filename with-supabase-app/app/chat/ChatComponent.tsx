@@ -69,9 +69,10 @@ const models = [
 interface ChatBotDemoProps {
   chatId?: string | null;
   onChatIdChange?: (chatId: string | null) => void;
+  initialProblemId?: string | null;
 }
 
-const ChatBotDemo = ({ chatId, onChatIdChange }: ChatBotDemoProps) => {
+const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoProps) => {
   const [input, setInput] = useState("");
   const [model, setModel] = useState<string>(models[0].value);
   const [webSearch, setWebSearch] = useState(false);
@@ -84,6 +85,56 @@ const ChatBotDemo = ({ chatId, onChatIdChange }: ChatBotDemoProps) => {
   const prevChatIdRef = useRef<string | null>(null);
   const lastSavedMessageCountRef = useRef<number>(0);
   const isSavingRef = useRef<boolean>(false);
+  const [initialMessage, setInitialMessage] = useState<string | null>(null);
+
+  // initialProblemId가 있으면 문제 정보 가져와서 컨텍스트 설정
+  useEffect(() => {
+    if (!initialProblemId) return;
+
+    const fetchProblemInfo = async () => {
+      try {
+        // 문제 정보 가져오기
+        const response = await fetch(`/api/problem?problemId=${initialProblemId}`);
+        if (response.ok) {
+          const data = await response.json();
+          const contestId = initialProblemId.split("_")[0];
+          const url = `https://atcoder.jp/contests/${contestId}/tasks/${initialProblemId}`;
+
+          setProblemUrl(url);
+          setChatTitle(data.title || initialProblemId);
+
+          // 초기 메시지 설정
+          setInitialMessage(
+            `${data.title || initialProblemId} 문제에 대해 질문이 있습니다.\n\n이 문제를 어떻게 접근해야 할지 알려주세요.`
+          );
+          setInput(
+            `${data.title || initialProblemId} 문제에 대해 질문이 있습니다.\n\n이 문제를 어떻게 접근해야 할지 알려주세요.`
+          );
+        } else {
+          // API 실패해도 기본 컨텍스트 설정
+          const contestId = initialProblemId.split("_")[0];
+          const url = `https://atcoder.jp/contests/${contestId}/tasks/${initialProblemId}`;
+
+          setProblemUrl(url);
+          setChatTitle(initialProblemId);
+          setInitialMessage(`${initialProblemId} 문제에 대해 질문이 있습니다.\n\n이 문제를 어떻게 접근해야 할지 알려주세요.`);
+          setInput(`${initialProblemId} 문제에 대해 질문이 있습니다.\n\n이 문제를 어떻게 접근해야 할지 알려주세요.`);
+        }
+      } catch (error) {
+        console.error("Failed to fetch problem info:", error);
+        // 실패해도 기본 컨텍스트 설정
+        const contestId = initialProblemId.split("_")[0];
+        const url = `https://atcoder.jp/contests/${contestId}/tasks/${initialProblemId}`;
+
+        setProblemUrl(url);
+        setChatTitle(initialProblemId);
+        setInitialMessage(`${initialProblemId} 문제에 대해 질문이 있습니다.\n\n이 문제를 어떻게 접근해야 할지 알려주세요.`);
+        setInput(`${initialProblemId} 문제에 대해 질문이 있습니다.\n\n이 문제를 어떻게 접근해야 할지 알려주세요.`);
+      }
+    };
+
+    fetchProblemInfo();
+  }, [initialProblemId]);
 
   // chatId가 변경되면 해당 채팅 로드
   useEffect(() => {

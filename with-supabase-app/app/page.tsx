@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { Hero } from "@/components/hero";
 import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { OngoingPracticeIndicator } from "@/components/ongoing-practice-indicator";
 
 function HeroSkeleton() {
   return (
@@ -38,6 +39,7 @@ export default function Home() {
       <Suspense fallback={<HeroSkeleton />}>
         <Hero />
       </Suspense>
+      <OngoingPracticeIndicator />
     </AppLayout>
   );
 }

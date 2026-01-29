@@ -15,13 +15,13 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from("user_info")
-    .select("atcoder_handle")
+    .select("atcoder_handle, rating")
     .eq("id", userId)
     .single();
 
   if (error || !data) {
-    return NextResponse.json({ handle: null });
+    return NextResponse.json({ handle: null, rating: null });
   }
 
-  return NextResponse.json({ handle: data.atcoder_handle });
+  return NextResponse.json({ handle: data.atcoder_handle, rating: data.rating });
 }

@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { ProfileWithGrass } from "@/components/profile-form";
 import { UserInfoRow } from "@/types/supabase";
 import { getSolvedProblems, getPracticeSessions, getPracticeStats } from "@/app/actions";
+import { OngoingPracticeIndicator } from "@/components/ongoing-practice-indicator";
 
 async function UserDetails() {
   const supabase = await createClient();
@@ -80,6 +81,7 @@ export default function ProfilePage() {
           </Suspense>
         </div>
       </div>
+      <OngoingPracticeIndicator />
     </div>
   );
 }
