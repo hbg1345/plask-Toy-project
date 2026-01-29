@@ -1,8 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { saveChatHistory, getChatByProblemUrl } from "@/app/actions";
 import { cn } from "@/lib/utils";
 
 interface ProblemLinkProps {
@@ -24,28 +22,13 @@ export function ProblemLink({
   className,
   children,
 }: ProblemLinkProps) {
-  const router = useRouter();
-
-  const handleClick = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    
-    // 기존 채팅이 있는지 확인
-    const existingChatId = await getChatByProblemUrl(problemUrl);
-    
-    if (!existingChatId) {
-      // 기존 채팅이 없으면 새로 생성
-      const title = `${problemId}: ${problemTitle}`;
-      await saveChatHistory(null, [], title, problemUrl);
-    }
-    
-    // /chat으로 이동 (ChatLayoutClient가 첫 번째 채팅을 자동으로 선택함)
-    router.push("/chat");
-  };
-
   const colors = getDifficultyColor(difficulty);
 
+  // 연습 페이지로 이동
+  const practiceUrl = `/practice/${problemId}`;
+
   return (
-    <Link href="/chat" onClick={handleClick} className={className}>
+    <Link href={practiceUrl} className={className}>
       {children || (
         <div
           className={cn(
