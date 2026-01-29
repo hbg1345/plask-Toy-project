@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Menu, Plus, MessageSquare, Trash2 } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, Plus, MessageSquare, Trash2 } from "lucide-react";
 import { getChatHistoryList, deleteChatHistory, saveChatHistory, type ChatHistoryItem } from "@/app/actions";
 import { cn } from "@/lib/utils";
 
@@ -99,8 +99,13 @@ export function ChatSidebar({ isOpen, onToggle, onSelectChat, selectedChatId, re
                     size="icon"
                     onClick={onToggle}
                     className="shrink-0"
+                    title={isOpen ? "사이드바 닫기" : "사이드바 열기"}
                 >
-                    <Menu className="h-4 w-4" />
+                    {isOpen ? (
+                        <PanelLeftClose className="h-4 w-4" />
+                    ) : (
+                        <PanelLeftOpen className="h-4 w-4" />
+                    )}
                 </Button>
             </div>
 

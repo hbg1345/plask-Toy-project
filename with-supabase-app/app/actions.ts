@@ -8,6 +8,11 @@ export type Message = {
   content: string;
 };
 
+export type Hint = {
+  step: number;
+  content: string;
+};
+
 export async function updatAtcoderHandle(handle: string): Promise<{ success: boolean; rating: number | null; handle: string | null }> {
     const supabase = await createClient();
   // getClaims() is faster than getUser() as it reads from JWT directly
@@ -65,6 +70,7 @@ export async function updatAtcoderHandle(handle: string): Promise<{ success: boo
  * 프로필 페이지 로드 시 호출됩니다.
  */
 export interface SolvedProblem {
+  id: string; // problem_id alias for consistency
   problem_id: string;
   contest_id: string;
   title: string | null;
@@ -72,95 +78,205 @@ export interface SolvedProblem {
 }
 
 /**
+ * AtCoder API에서 사용자의 풀이 목록을 가져옵니다 (내부 함수)
+ */
+async function fetchSolvedProblemsFromAPI(atcoderHandle: string): Promise<{
+  problem_id: string;
+  contest_id: string;
+  solved_at: Date | null;
+}[]> {
+  const allSubmissions: { problem_id: string; contest_id: string; result: string; epoch_second: number }[] = [];
+  let fromSecond = 0;
+  const maxCalls = 20;
+
+  for (let i = 0; i < maxCalls; i++) {
+    const response = await fetch(
+      `https://kenkoooo.com/atcoder/atcoder-api/v3/user/submissions?user=${atcoderHandle}&from_second=${fromSecond}`,
+      { cache: 'no-store' }
+    );
+
+    if (!response.ok) {
+      console.error("Failed to fetch submissions");
+      break;
+    }
+
+    const submissions = await response.json();
+    if (submissions.length === 0) break;
+
+    allSubmissions.push(...submissions);
+
+    if (submissions.length < 500) break;
+
+    const lastEpoch = Math.max(...submissions.map((s: { epoch_second: number }) => s.epoch_second));
+    fromSecond = lastEpoch + 1;
+  }
+
+  // AC인 제출에서 고유 문제 ID 추출 (최초 AC 시간 저장)
+  const solvedProblemsMap = new Map<string, { contest_id: string; solved_at: number }>();
+
+  for (const sub of allSubmissions) {
+    if (sub.result === "AC") {
+      const existing = solvedProblemsMap.get(sub.problem_id);
+      if (!existing || sub.epoch_second < existing.solved_at) {
+        solvedProblemsMap.set(sub.problem_id, {
+          contest_id: sub.contest_id,
+          solved_at: sub.epoch_second,
+        });
+      }
+    }
+  }
+
+  return Array.from(solvedProblemsMap.entries()).map(([problem_id, data]) => ({
+    problem_id,
+    contest_id: data.contest_id,
+    solved_at: new Date(data.solved_at * 1000),
+  }));
+}
+
+/**
  * 사용자가 푼 문제 목록을 가져옵니다.
- * AtCoder API에서 AC 제출을 조회하고, DB에서 난이도 정보를 매칭합니다.
+ * DB에서 먼저 조회하고, 없으면 API에서 가져와 DB에 저장합니다.
  */
 export async function getSolvedProblems(atcoderHandle: string): Promise<SolvedProblem[]> {
   try {
-    // 모든 제출 기록 가져오기 (페이지네이션)
-    const allSubmissions: { problem_id: string; contest_id: string; result: string; epoch_second: number }[] = [];
-    let fromSecond = 0;
-    const maxCalls = 20; // 최대 20번 호출 (10000개 제한)
+    const supabase = await createClient();
+    const { data: claimsData } = await supabase.auth.getClaims();
+    const claims = claimsData?.claims;
 
-    for (let i = 0; i < maxCalls; i++) {
-      const response = await fetch(
-        `https://kenkoooo.com/atcoder/atcoder-api/v3/user/submissions?user=${atcoderHandle}&from_second=${fromSecond}`,
-        { next: { revalidate: 3600 } }
-      );
-
-      if (!response.ok) {
-        console.error("Failed to fetch submissions");
-        break;
-      }
-
-      const submissions = await response.json();
-      if (submissions.length === 0) break;
-
-      allSubmissions.push(...submissions);
-
-      // 500개 미만이면 더 이상 데이터가 없음
-      if (submissions.length < 500) break;
-
-      // 다음 페이지를 위해 마지막 제출의 시간 + 1
-      const lastEpoch = Math.max(...submissions.map((s: { epoch_second: number }) => s.epoch_second));
-      fromSecond = lastEpoch + 1;
+    if (!claims) {
+      // 로그인 안 된 경우 API에서 직접 가져오기 (캐싱 없음)
+      return fetchAndEnrichProblems(atcoderHandle, null);
     }
 
-    // AC인 제출에서 고유 문제 ID 추출
-    const solvedProblemIds = new Set<string>();
-    const problemContestMap = new Map<string, string>();
+    const userId = claims.sub as string;
 
-    for (const sub of allSubmissions) {
-      if (sub.result === "AC") {
-        solvedProblemIds.add(sub.problem_id);
-        problemContestMap.set(sub.problem_id, sub.contest_id);
-      }
+    // DB에서 캐시된 풀이 목록 조회
+    const { data: cachedProblems, error: cacheError } = await supabase
+      .from("user_solved_problems")
+      .select("problem_id, contest_id")
+      .eq("user_id", userId);
+
+    // 캐시가 있으면 사용
+    if (!cacheError && cachedProblems && cachedProblems.length > 0) {
+      return enrichProblemsWithInfo(cachedProblems, supabase);
     }
 
-    if (solvedProblemIds.size === 0) {
+    // 캐시가 없으면 API에서 가져와 저장
+    return fetchAndEnrichProblems(atcoderHandle, userId);
+  } catch (error) {
+    console.error("Failed to get solved problems:", error);
+    return [];
+  }
+}
+
+/**
+ * API에서 풀이 목록을 가져와 DB에 저장하고 문제 정보를 매칭합니다.
+ */
+async function fetchAndEnrichProblems(atcoderHandle: string, userId: string | null): Promise<SolvedProblem[]> {
+  const supabase = await createClient();
+  const apiProblems = await fetchSolvedProblemsFromAPI(atcoderHandle);
+
+  if (apiProblems.length === 0) {
+    return [];
+  }
+
+  // userId가 있으면 DB에 저장
+  if (userId) {
+    // 기존 데이터 삭제 후 새로 삽입
+    await supabase
+      .from("user_solved_problems")
+      .delete()
+      .eq("user_id", userId);
+
+    // 배치로 삽입
+    const batchSize = 500;
+    for (let i = 0; i < apiProblems.length; i += batchSize) {
+      const batch = apiProblems.slice(i, i + batchSize).map((p) => ({
+        user_id: userId,
+        problem_id: p.problem_id,
+        contest_id: p.contest_id,
+        solved_at: p.solved_at?.toISOString() || null,
+      }));
+
+      await supabase.from("user_solved_problems").insert(batch);
+    }
+
+    // 동기화 시간 업데이트
+    await supabase
+      .from("user_info")
+      .update({ solved_problems_synced_at: new Date().toISOString() })
+      .eq("id", userId);
+  }
+
+  // 문제 정보 매칭
+  return enrichProblemsWithInfo(apiProblems, supabase);
+}
+
+/**
+ * 풀이 목록에 문제 정보(제목, 난이도)를 매칭합니다.
+ */
+async function enrichProblemsWithInfo(
+  problems: { problem_id: string; contest_id: string }[],
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<SolvedProblem[]> {
+  const problemIds = problems.map((p) => p.problem_id);
+  const problemInfoMap = new Map<string, { title: string; difficulty: number | null }>();
+
+  // 100개씩 배치로 조회
+  const batchSize = 100;
+  for (let i = 0; i < problemIds.length; i += batchSize) {
+    const batch = problemIds.slice(i, i + batchSize);
+
+    const { data: problemsData } = await supabase
+      .from("problems")
+      .select("id, title, difficulty")
+      .in("id", batch);
+
+    if (problemsData) {
+      for (const p of problemsData) {
+        problemInfoMap.set(p.id, { title: p.title, difficulty: p.difficulty });
+      }
+    }
+  }
+
+  // 결과 생성
+  const result: SolvedProblem[] = problems.map((p) => {
+    const info = problemInfoMap.get(p.problem_id);
+    return {
+      id: p.problem_id,
+      problem_id: p.problem_id,
+      contest_id: p.contest_id,
+      title: info?.title || null,
+      difficulty: info?.difficulty ?? null,
+    };
+  });
+
+  // 난이도 내림차순 정렬
+  result.sort((a, b) => (b.difficulty ?? -1) - (a.difficulty ?? -1));
+
+  return result;
+}
+
+/**
+ * 사용자의 풀이 목록을 강제로 새로고침합니다.
+ * 프로필 페이지의 "정보 갱신" 버튼에서 호출됩니다.
+ */
+export async function refreshSolvedProblems(atcoderHandle: string): Promise<SolvedProblem[]> {
+  try {
+    const supabase = await createClient();
+    const { data: claimsData } = await supabase.auth.getClaims();
+    const claims = claimsData?.claims;
+
+    if (!claims) {
       return [];
     }
 
-    // DB에서 문제 정보 조회 (배치로 나눠서 조회)
-    const supabase = await createClient();
-    const problemIds = Array.from(solvedProblemIds);
-    const problemInfoMap = new Map<string, { title: string; difficulty: number | null }>();
+    const userId = claims.sub as string;
 
-    // 100개씩 배치로 조회 (Supabase IN 쿼리 제한)
-    const batchSize = 100;
-    for (let i = 0; i < problemIds.length; i += batchSize) {
-      const batch = problemIds.slice(i, i + batchSize);
-
-      const { data: problemsData } = await supabase
-        .from("problems")
-        .select("id, title, difficulty")
-        .in("id", batch);
-
-      if (problemsData) {
-        for (const p of problemsData) {
-          problemInfoMap.set(p.id, { title: p.title, difficulty: p.difficulty });
-        }
-      }
-    }
-
-    // 결과 생성
-    const result: SolvedProblem[] = [];
-    for (const problemId of problemIds) {
-      const info = problemInfoMap.get(problemId);
-      result.push({
-        problem_id: problemId,
-        contest_id: problemContestMap.get(problemId) || "",
-        title: info?.title || null,
-        difficulty: info?.difficulty ?? null,
-      });
-    }
-
-    // 난이도 내림차순 정렬 (높은 난이도가 먼저)
-    result.sort((a, b) => (b.difficulty ?? -1) - (a.difficulty ?? -1));
-
-    return result;
+    // 강제로 API에서 가져와 DB 갱신
+    return fetchAndEnrichProblems(atcoderHandle, userId);
   } catch (error) {
-    console.error("Failed to get solved problems:", error);
+    console.error("Failed to refresh solved problems:", error);
     return [];
   }
 }
@@ -232,12 +348,14 @@ export async function saveChatHistory(
   messages: Message[],
   title: string,
   problemUrl?: string | null,
-  updateTitle: boolean = true
+  updateTitle: boolean = true,
+  hints?: Hint[] | null
 ) {
   console.log("saveChatHistory called", {
     chatId,
     title,
     messagesCount: messages.length,
+    hintsCount: hints?.length,
   });
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
@@ -260,6 +378,7 @@ export async function saveChatHistory(
         messages: string;
         title?: string;
         problem_url?: string | null;
+        hints?: Hint[] | null;
       } = {
         messages: messagesJson,
       };
@@ -269,6 +388,9 @@ export async function saveChatHistory(
       }
       if (problemUrl !== undefined) {
         updateData.problem_url = problemUrl;
+      }
+      if (hints !== undefined) {
+        updateData.hints = hints;
       }
       const { data, error } = await supabase
         .from("chat_history")
@@ -292,6 +414,7 @@ export async function saveChatHistory(
         messages: string;
         title: string;
         problem_url?: string | null;
+        hints?: Hint[] | null;
       } = {
         user_id: userId,
         messages: messagesJson,
@@ -299,6 +422,9 @@ export async function saveChatHistory(
       };
       if (problemUrl !== undefined) {
         insertData.problem_url = problemUrl;
+      }
+      if (hints !== undefined) {
+        insertData.hints = hints;
       }
       const { data, error } = await supabase
         .from("chat_history")
@@ -392,7 +518,7 @@ export async function getChatByProblemUrl(
 
 export async function getChatHistory(
   chatId: string
-): Promise<{ messages: Message[]; title: string; problemUrl?: string | null } | null> {
+): Promise<{ messages: Message[]; title: string; problemUrl?: string | null; hints?: Hint[] | null } | null> {
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;
@@ -405,7 +531,7 @@ export async function getChatHistory(
   try {
     const { data, error } = await supabase
       .from("chat_history")
-      .select("messages, title, problem_url")
+      .select("messages, title, problem_url, hints")
       .eq("id", chatId)
       .eq("user_id", userId)
       .single();
@@ -416,7 +542,7 @@ export async function getChatHistory(
     }
 
     const messages = JSON.parse(data.messages) as Message[];
-    return { messages, title: data.title, problemUrl: data.problem_url };
+    return { messages, title: data.title, problemUrl: data.problem_url, hints: data.hints };
   } catch (error) {
     console.error("Failed to get chat history:", error);
     return null;
@@ -641,6 +767,68 @@ export async function getTodayTokenUsage(): Promise<TokenUsage> {
     return result;
   } catch (error) {
     console.error("Failed to get token usage:", error);
+    return {
+      total_input_tokens: 0,
+      total_output_tokens: 0,
+      total_tokens: 0,
+      request_count: 0,
+    };
+  }
+}
+
+/**
+ * 전체 토큰 사용량 조회
+ */
+export async function getTotalTokenUsage(): Promise<TokenUsage> {
+  const supabase = await createClient();
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const claims = claimsData?.claims;
+
+  if (!claims) {
+    return {
+      total_input_tokens: 0,
+      total_output_tokens: 0,
+      total_tokens: 0,
+      request_count: 0,
+    };
+  }
+
+  const userId = claims.sub as string;
+
+  try {
+    const { data, error } = await supabase
+      .from("token_usage")
+      .select("input_tokens, output_tokens, total_tokens")
+      .eq("user_id", userId);
+
+    if (error) {
+      console.error("Failed to get total token usage:", error);
+      return {
+        total_input_tokens: 0,
+        total_output_tokens: 0,
+        total_tokens: 0,
+        request_count: 0,
+      };
+    }
+
+    const result = (data || []).reduce(
+      (acc, row) => ({
+        total_input_tokens: acc.total_input_tokens + (row.input_tokens || 0),
+        total_output_tokens: acc.total_output_tokens + (row.output_tokens || 0),
+        total_tokens: acc.total_tokens + (row.total_tokens || 0),
+        request_count: acc.request_count + 1,
+      }),
+      {
+        total_input_tokens: 0,
+        total_output_tokens: 0,
+        total_tokens: 0,
+        request_count: 0,
+      }
+    );
+
+    return result;
+  } catch (error) {
+    console.error("Failed to get total token usage:", error);
     return {
       total_input_tokens: 0,
       total_output_tokens: 0,

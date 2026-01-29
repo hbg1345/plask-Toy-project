@@ -192,25 +192,139 @@ export function extractProblemIndex(problemId: string): string {
 }
 
 /**
+ * 콘테스트 필터 타입
+ */
+export type ContestFilter = "all" | "abc" | "arc" | "agc";
+
+/**
  * DB에서 콘테스트별로 그룹화된 문제를 가져옵니다.
  * contest_problems 테이블과 problems 테이블을 JOIN하여 효율적으로 조회합니다.
  *
  * @param page - 페이지 번호 (1부터 시작)
  * @param contestsPerPage - 페이지당 콘테스트 수 (기본값: 30)
+ * @param filter - 콘테스트 필터 (all, abc, arc, agc)
+ * @param search - 검색어 (콘테스트 ID 또는 문제 제목 검색)
  */
 export async function getProblemsGroupedByContest(
   page: number = 1,
-  contestsPerPage: number = 30
+  contestsPerPage: number = 30,
+  filter: ContestFilter = "all",
+  search: string = ""
 ): Promise<{
   grouped: Map<string, Problem[]>;
   totalContests: number;
 }> {
   const supabase = await createClient();
 
+  // 필터 패턴 생성
+  const getFilterPattern = (f: ContestFilter): string | null => {
+    switch (f) {
+      case "abc": return "abc%";
+      case "arc": return "arc%";
+      case "agc": return "agc%";
+      default: return null;
+    }
+  };
+  const filterPattern = getFilterPattern(filter);
+  const searchLower = search.toLowerCase();
+
+  // 검색어가 있으면 문제 제목으로도 검색하여 해당 콘테스트 ID 수집
+  let contestIdsFromTitleSearch: Set<string> | null = null;
+  if (search) {
+    const { data: matchingProblems } = await supabase
+      .from("problems")
+      .select("id")
+      .ilike("title", `%${search}%`)
+      .limit(1000);
+
+    if (matchingProblems && matchingProblems.length > 0) {
+      contestIdsFromTitleSearch = new Set(
+        matchingProblems.map((p) => extractContestId(p.id))
+      );
+    }
+  }
+
   // 1. contests 테이블 존재 여부 확인 및 전체 콘테스트 수 가져오기
-  const { count: totalContests, error: countError } = await supabase
+  // 검색어가 있으면 콘테스트 ID 또는 문제 제목 매칭 콘테스트 모두 포함
+  let totalContests = 0;
+
+  if (search && contestIdsFromTitleSearch && contestIdsFromTitleSearch.size > 0) {
+    // 문제 제목 매칭 콘테스트 + 콘테스트 ID 매칭 모두 가져오기
+    const allMatchingContestIds = Array.from(contestIdsFromTitleSearch);
+
+    // 콘테스트 ID로 직접 매칭되는 것도 추가
+    let contestIdQuery = supabase
+      .from("contests")
+      .select("id")
+      .ilike("id", `%${searchLower}%`);
+
+    if (filterPattern) {
+      contestIdQuery = contestIdQuery.ilike("id", filterPattern);
+    }
+
+    const { data: contestIdMatches } = await contestIdQuery;
+    if (contestIdMatches) {
+      contestIdMatches.forEach((c) => allMatchingContestIds.push(c.id));
+    }
+
+    // 중복 제거
+    const uniqueContestIds = [...new Set(allMatchingContestIds)];
+
+    // 필터 적용
+    let filteredIds = uniqueContestIds;
+    if (filterPattern) {
+      const filterPrefix = filter; // abc, arc, agc
+      filteredIds = uniqueContestIds.filter((id) => id.startsWith(filterPrefix));
+    }
+
+    totalContests = filteredIds.length;
+
+    if (totalContests === 0) {
+      return { grouped: new Map(), totalContests: 0 };
+    }
+
+    // 페이지네이션을 위해 해당 콘테스트들을 날짜순으로 정렬해서 가져오기
+    const { data: sortedContests, error: sortError } = await supabase
+      .from("contests")
+      .select("id")
+      .in("id", filteredIds)
+      .order("start_epoch_second", { ascending: false });
+
+    if (sortError || !sortedContests) {
+      const fallbackResult = await getProblemsGroupedByContestFallback(filter, search);
+      return {
+        grouped: fallbackResult,
+        totalContests: fallbackResult.size,
+      };
+    }
+
+    const startIndex = (page - 1) * contestsPerPage;
+    const paginatedContestIds = sortedContests
+      .slice(startIndex, startIndex + contestsPerPage)
+      .map((c) => c.id);
+
+    if (paginatedContestIds.length === 0) {
+      return { grouped: new Map(), totalContests };
+    }
+
+    // 나머지 로직으로 진행
+    return fetchContestProblems(supabase, paginatedContestIds, totalContests, filter, search);
+  }
+
+  // 검색어가 없거나 문제 제목 매칭이 없는 경우 기존 로직
+  let countQuery = supabase
     .from("contests")
     .select("*", { count: "exact", head: true });
+
+  if (filterPattern) {
+    countQuery = countQuery.ilike("id", filterPattern);
+  }
+  if (search) {
+    countQuery = countQuery.ilike("id", `%${searchLower}%`);
+  }
+
+  const { count, error: countError } = await countQuery;
+  totalContests = count || 0;
 
   // contests 테이블이 없거나 에러가 발생하면 fallback 사용
   if (countError) {
@@ -218,7 +332,7 @@ export async function getProblemsGroupedByContest(
       "contests table not found or error occurred, using fallback:",
       countError
     );
-    const fallbackResult = await getProblemsGroupedByContestFallback();
+    const fallbackResult = await getProblemsGroupedByContestFallback(filter, search);
     return {
       grouped: fallbackResult,
       totalContests: fallbackResult.size,
@@ -226,9 +340,9 @@ export async function getProblemsGroupedByContest(
   }
 
   // contests 테이블이 비어있으면 fallback 사용
-  if (totalContests === 0 || totalContests === null) {
+  if (totalContests === 0) {
     console.warn("contests table is empty, using fallback");
-    const fallbackResult = await getProblemsGroupedByContestFallback();
+    const fallbackResult = await getProblemsGroupedByContestFallback(filter, search);
     return {
       grouped: fallbackResult,
       totalContests: fallbackResult.size,
@@ -239,15 +353,23 @@ export async function getProblemsGroupedByContest(
   const startIndex = (page - 1) * contestsPerPage;
   const endIndex = startIndex + contestsPerPage - 1;
 
-  const { data: contests, error: contestsError } = await supabase
+  let contestsQuery = supabase
     .from("contests")
     .select("id")
-    .order("start_epoch_second", { ascending: false })
-    .range(startIndex, endIndex);
+    .order("start_epoch_second", { ascending: false });
+
+  if (filterPattern) {
+    contestsQuery = contestsQuery.ilike("id", filterPattern);
+  }
+  if (search) {
+    contestsQuery = contestsQuery.ilike("id", `%${searchLower}%`);
+  }
+
+  const { data: contests, error: contestsError } = await contestsQuery.range(startIndex, endIndex);
 
   if (contestsError) {
     console.error("Failed to fetch contests:", contestsError);
-    const fallbackResult = await getProblemsGroupedByContestFallback();
+    const fallbackResult = await getProblemsGroupedByContestFallback(filter, search);
     return {
       grouped: fallbackResult,
       totalContests: fallbackResult.size,
@@ -260,8 +382,23 @@ export async function getProblemsGroupedByContest(
   }
 
   const paginatedContestIds = contests.map((c) => c.id);
+  return fetchContestProblems(supabase, paginatedContestIds, totalContests, filter, search);
+}
 
-  // 3. 해당 콘테스트들의 contest_problems 가져오기
+/**
+ * 콘테스트 ID 목록으로 문제들을 가져와 그룹화합니다.
+ */
+async function fetchContestProblems(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  paginatedContestIds: string[],
+  totalContests: number,
+  filter: ContestFilter,
+  search: string
+): Promise<{
+  grouped: Map<string, Problem[]>;
+  totalContests: number;
+}> {
+  // 해당 콘테스트들의 contest_problems 가져오기
   const { data: contestProblems, error: cpError } = await supabase
     .from("contest_problems")
     .select("contest_id, problem_index, problem_id")
@@ -272,7 +409,7 @@ export async function getProblemsGroupedByContest(
   if (cpError || !contestProblems || contestProblems.length === 0) {
     console.error("Failed to fetch contest_problems:", cpError);
     // Fallback 사용
-    const fallbackResult = await getProblemsGroupedByContestFallback();
+    const fallbackResult = await getProblemsGroupedByContestFallback(filter, search);
     return {
       grouped: fallbackResult,
       totalContests: fallbackResult.size,
@@ -340,10 +477,23 @@ export async function getProblemsGroupedByContest(
 /**
  * Fallback: contest_problems 테이블이 없을 때 사용하는 기존 방식
  */
-async function getProblemsGroupedByContestFallback(): Promise<
-  Map<string, Problem[]>
-> {
+async function getProblemsGroupedByContestFallback(
+  filter: ContestFilter = "all",
+  search: string = ""
+): Promise<Map<string, Problem[]>> {
   const supabase = await createClient();
+
+  // 필터 패턴 생성
+  const getFilterPrefix = (f: ContestFilter): string | null => {
+    switch (f) {
+      case "abc": return "abc";
+      case "arc": return "arc";
+      case "agc": return "agc";
+      default: return null;
+    }
+  };
+  const filterPrefix = getFilterPrefix(filter);
+  const searchLower = search.toLowerCase();
 
   // Supabase는 기본적으로 1000개 제한이 있으므로, 모든 데이터를 가져오기 위해 반복적으로 fetch
   let allProblems: Problem[] = [];
@@ -352,11 +502,18 @@ async function getProblemsGroupedByContestFallback(): Promise<
   let hasMore = true;
 
   while (hasMore) {
-    const { data, error } = await supabase
+    let query = supabase
       .from("problems")
       .select("id, title, difficulty, summary")
       .order("id")
       .range(from, from + pageSize - 1);
+
+    // 필터 적용
+    if (filterPrefix) {
+      query = query.ilike("id", `${filterPrefix}%`);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error("Failed to fetch problems:", error);
@@ -376,6 +533,16 @@ async function getProblemsGroupedByContestFallback(): Promise<
   const grouped = new Map<string, Problem[]>();
   for (const problem of allProblems) {
     const contestId = extractContestId(problem.id);
+
+    // 검색 필터 적용 (콘테스트 ID 또는 문제 제목)
+    if (searchLower) {
+      const matchesContestId = contestId.toLowerCase().includes(searchLower);
+      const matchesTitle = problem.title?.toLowerCase().includes(searchLower) || false;
+      if (!matchesContestId && !matchesTitle) {
+        continue;
+      }
+    }
+
     if (!grouped.has(contestId)) {
       grouped.set(contestId, []);
     }

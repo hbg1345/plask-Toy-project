@@ -10,7 +10,7 @@ export default function ChatLayout({
 }) {
   return (
     <AppLayout
-      contentWrapperClassName="flex flex-col p-0 w-full h-[calc(100vh-4rem-3rem)] pl-64"
+      contentWrapperClassName="flex flex-col p-0 w-full h-[calc(100vh-4rem-3rem)]"
       outerWrapperClassName="flex w-full flex-col items-center"
     >
       <Suspense

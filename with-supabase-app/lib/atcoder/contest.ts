@@ -1,5 +1,12 @@
 import * as cheerio from 'cheerio';
 import { fetchUpcomingContests, fetchRecentContests } from '@qatadaazzeh/atcoder-api';
+import { createClient } from '@/lib/supabase/server';
+
+// taskUrl에서 problem_id 추출 (e.g., "https://atcoder.jp/contests/abc314/tasks/abc314_a" -> "abc314_a")
+function extractProblemIdFromUrl(taskUrl: string): string | null {
+    const match = taskUrl.match(/\/tasks\/([^\/]+)$/);
+    return match ? match[1] : null;
+}
 
 export async function getUpcomingcontests() {
     try {
@@ -93,6 +100,23 @@ function getTaskIndexFromUrl(taskUrl: string) {
 
 export async function getEditorial(taskUrl: string) {
     try {
+        const problemId = extractProblemIdFromUrl(taskUrl);
+
+        // 1. DB에서 먼저 확인 (lazy loading)
+        if (problemId) {
+            const supabase = await createClient();
+            const { data } = await supabase
+                .from('problems')
+                .select('editorial')
+                .eq('id', problemId)
+                .single();
+
+            if (data?.editorial) {
+                return data.editorial;
+            }
+        }
+
+        // 2. DB에 없으면 크롤링
         const contestUrl = getContestUrlFromTaskUrl(taskUrl);
         const response = await fetch(`${contestUrl}/editorial`);
         if (!response.ok) {
@@ -101,10 +125,10 @@ export async function getEditorial(taskUrl: string) {
         const html = await response.text();
         const $ = cheerio.load(html);
         const taskIndex = getTaskIndexFromUrl(taskUrl);
-        
+
         const selector = `#main-container > div.row > div:nth-child(2) > ul:nth-child(${7+3*taskIndex}) > li > a:nth-child(2)`;
         const href = $(selector).attr('href');
-        
+
         if (!href) {
             return "에러: 해당 문제의 에디토리얼 링크를 찾을 수 없습니다.";
         }
@@ -117,9 +141,18 @@ export async function getEditorial(taskUrl: string) {
         const editorialHtml = await editorialResponse.text();
         const $$ = cheerio.load(editorialHtml);
         const editorialStatement = $$('#main-container > div.row > div:nth-child(2) > div:nth-child(4)').html();
-        
+
         if (!editorialStatement) {
             return "에러: 에디토리얼 본문을 파싱할 수 없습니다.";
+        }
+
+        // 3. 크롤링 성공하면 DB에 저장
+        if (problemId) {
+            const supabase = await createClient();
+            await supabase
+                .from('problems')
+                .update({ editorial: editorialStatement })
+                .eq('id', problemId);
         }
 
         return editorialStatement;

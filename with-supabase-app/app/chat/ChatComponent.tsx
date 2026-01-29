@@ -40,6 +40,7 @@ import {
   saveChatHistory,
   getChatHistory,
   type Message as ChatMessage,
+  type Hint,
 } from "@/app/actions";
 import { useChatLayout } from "./ChatLayoutContext";
 import {
@@ -54,6 +55,7 @@ import {
   ReasoningTrigger,
 } from "@/components/ai-elements/reasoning";
 import { Loader } from "@/components/ai-elements/loader";
+import { HintsCard, parseHintsFromMessage } from "@/components/hints-card";
 const models = [
   {
     name: "GPT 4o",
@@ -76,6 +78,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange }: ChatBotDemoProps) => {
   const [isLoadingChat, setIsLoadingChat] = useState(false);
   const [problemUrl, setProblemUrl] = useState<string | null>(null);
   const [chatTitle, setChatTitle] = useState<string | null>(null);
+  const [hints, setHints] = useState<Hint[] | null>(null);
   const { messages, setMessages, sendMessage, status, regenerate } = useChat();
   const { setRefreshTrigger } = useChatLayout();
   const prevChatIdRef = useRef<string | null>(null);
@@ -103,9 +106,10 @@ const ChatBotDemo = ({ chatId, onChatIdChange }: ChatBotDemoProps) => {
           }));
           setMessages(convertedMessages);
           lastSavedMessageCountRef.current = convertedMessages.length;
-          // problemUrl과 title 저장
+          // problemUrl, title, hints 저장
           setProblemUrl(chatData.problemUrl || null);
           setChatTitle(chatData.title || null);
+          setHints(chatData.hints || null);
         } else {
           console.error("Failed to load chat data");
         }
@@ -118,6 +122,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange }: ChatBotDemoProps) => {
       isSavingRef.current = false;
       setProblemUrl(null);
       setChatTitle(null);
+      setHints(null);
     }
     
     prevChatIdRef.current = chatId || null;
@@ -197,11 +202,24 @@ const ChatBotDemo = ({ chatId, onChatIdChange }: ChatBotDemoProps) => {
                 .join("") || "",
           }));
 
+          // 마지막 assistant 메시지에서 hints 추출
+          let newHints: Hint[] | null = null;
+          const lastAssistantMessage = messagesToSave.filter(m => m.role === "assistant").pop();
+          if (lastAssistantMessage) {
+            const parsed = parseHintsFromMessage(lastAssistantMessage.content);
+            if (parsed.hints) {
+              // 기존 hints와 새 hints 병합 (새 hints로 대체)
+              newHints = parsed.hints;
+              setHints(newHints);
+            }
+          }
+
           console.log("Calling saveChatHistory...", {
             chatId,
             title,
             shouldUpdateTitle,
             messagesCount: messagesToSave.length,
+            hintsCount: newHints?.length || hints?.length,
           });
 
           // problemUrl이 있으면 제목을 업데이트하지 않음
@@ -210,7 +228,8 @@ const ChatBotDemo = ({ chatId, onChatIdChange }: ChatBotDemoProps) => {
             messagesToSave,
             title,
             problemUrl ?? null,
-            shouldUpdateTitle // 제목 업데이트 여부
+            shouldUpdateTitle, // 제목 업데이트 여부
+            newHints ?? hints // 새 hints 또는 기존 hints
           );
           console.log("saveChatHistory result:", savedChatId);
 
@@ -281,6 +300,12 @@ const ChatBotDemo = ({ chatId, onChatIdChange }: ChatBotDemoProps) => {
               </h2>
             </div>
           )}
+          {/* 힌트 패널 - hints가 있을 때만 표시 */}
+          {hints && hints.length > 0 && (
+            <div className="flex-shrink-0 px-4 py-2 border-b bg-muted/30">
+              <HintsCard hints={hints} />
+            </div>
+          )}
           <Conversation className="flex-1 min-h-0">
             <ConversationContent>
               {messages.map((message, messageIndex) => (
@@ -312,14 +337,21 @@ const ChatBotDemo = ({ chatId, onChatIdChange }: ChatBotDemoProps) => {
                   {message.parts.map((part, i) => {
                     switch (part.type) {
                       case "text":
-                        // Streamdown이 remark-math와 rehype-katex로 LaTeX를 자동 처리
+                        // hints 블록 파싱
+                        const { hints, textWithoutHints } = parseHintsFromMessage(part.text);
+
                         return (
                           <Message
                             key={`${message.id}-${i}`}
                             from={message.role}
                           >
                             <MessageContent>
-                              <MessageResponse>{part.text}</MessageResponse>
+                              {/* 힌트 카드 표시 */}
+                              {hints && <HintsCard hints={hints} />}
+                              {/* 나머지 텍스트 표시 */}
+                              {textWithoutHints && (
+                                <MessageResponse>{textWithoutHints}</MessageResponse>
+                              )}
                             </MessageContent>
                             {message.role === "assistant" &&
                               i === messages.length - 1 && (

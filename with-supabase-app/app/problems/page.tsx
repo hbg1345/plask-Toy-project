@@ -1,12 +1,16 @@
 import {
   getProblemsGroupedByContest,
   extractProblemIndex,
+  ContestFilter,
 } from "@/lib/atcoder/problems";
+import { getSolvedProblems } from "@/app/actions";
 import Link from "next/link";
 import { ProblemLink } from "@/components/problem-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
@@ -16,6 +20,7 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Search,
 } from "lucide-react";
 
 /**
@@ -120,7 +125,7 @@ function getDifficultyPercentage(difficulty: number | null): number {
 async function ProblemsContent({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; filter?: string; search?: string; hideCompleted?: string }>;
 }) {
   // ⚠️ PAGE-LEVEL AUTHENTICATION CHECK
   // Authentication is handled at the page level, NOT in middleware.
@@ -133,17 +138,137 @@ async function ProblemsContent({
     redirect("/auth/login");
   }
 
+  const userId = claims.sub as string;
+
+  // 사용자의 atcoder_handle 가져오기
+  const { data: userData } = await supabase
+    .from("user_info")
+    .select("atcoder_handle")
+    .eq("id", userId)
+    .single();
+
+  const atcoderHandle = userData?.atcoder_handle || null;
+
   const params = await searchParams;
   const page = params.page ? parseInt(params.page, 10) : 1;
+  const filter = (params.filter as ContestFilter) || "all";
+  const search = params.search || "";
+  const hideCompleted = params.hideCompleted === "true";
+
+  // 사용자가 푼 문제 ID 목록 가져오기
+  let solvedProblemIds = new Set<string>();
+  if (hideCompleted && atcoderHandle) {
+    const solvedProblems = await getSolvedProblems(atcoderHandle);
+    solvedProblemIds = new Set(solvedProblems.map((p) => p.id));
+  }
 
   const CONTESTS_PER_PAGE = 30;
-  const { grouped: problemsByContest, totalContests } =
-    await getProblemsGroupedByContest(page, CONTESTS_PER_PAGE);
+  const { grouped: problemsByContest, totalContests: rawTotalContests } =
+    await getProblemsGroupedByContest(page, CONTESTS_PER_PAGE, filter, search);
 
-  // 이미 DB에서 날짜 기준 내림차순으로 정렬되어 있으므로 그대로 사용
-  const paginatedContests = Array.from(problemsByContest.entries());
-  const totalPages = Math.ceil(totalContests / CONTESTS_PER_PAGE);
-  const currentPage = Math.max(1, Math.min(page, totalPages));
+  // hideCompleted가 true이면 모든 문제를 푼 콘테스트 제외
+  let filteredContests = Array.from(problemsByContest.entries());
+  if (hideCompleted && solvedProblemIds.size > 0) {
+    filteredContests = filteredContests.filter(([, problems]) => {
+      // 콘테스트의 문제 중 하나라도 풀지 않은 문제가 있으면 포함
+      return problems.some((problem) => !solvedProblemIds.has(problem.id));
+    });
+  }
+
+  const paginatedContests = filteredContests;
+  const totalContests = hideCompleted ? filteredContests.length : rawTotalContests;
+  const totalPages = Math.ceil(rawTotalContests / CONTESTS_PER_PAGE);
+  const currentPage = Math.max(1, Math.min(page, totalPages || 1));
+
+  // URL 생성 헬퍼 함수
+  const buildUrl = (
+    pageNum: number,
+    filterValue: string = filter,
+    searchValue: string = search,
+    hideCompletedValue: boolean = hideCompleted
+  ) => {
+    const params = new URLSearchParams();
+    params.set("page", pageNum.toString());
+    if (filterValue !== "all") {
+      params.set("filter", filterValue);
+    }
+    if (searchValue) {
+      params.set("search", searchValue);
+    }
+    if (hideCompletedValue) {
+      params.set("hideCompleted", "true");
+    }
+    return `/problems?${params.toString()}`;
+  };
+
+  // 페이지네이션 컴포넌트
+  const Pagination = () => (
+    <div className="flex items-center justify-between flex-wrap gap-4">
+      <div className="text-sm text-muted-foreground">
+        페이지 {currentPage} / {totalPages} (총 {totalContests}개 콘테스트)
+      </div>
+      <div className="flex items-center gap-1">
+        {/* 더블 왼쪽 화살표: 10페이지 뒤로 */}
+        {currentPage > 10 && (
+          <Button variant="outline" size="icon" asChild>
+            <Link href={buildUrl(currentPage - 10)}>
+              <ChevronsLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+        )}
+        {/* 왼쪽 화살표: 1페이지 뒤로 */}
+        {currentPage > 1 && (
+          <Button variant="outline" size="icon" asChild>
+            <Link href={buildUrl(currentPage - 1)}>
+              <ChevronLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+        )}
+        {/* 페이지 번호들 */}
+        {Array.from({ length: totalPages }, (_, i) => i + 1)
+          .filter((pageNum) => {
+            return (
+              pageNum === 1 ||
+              pageNum === totalPages ||
+              (pageNum >= currentPage - 4 && pageNum <= currentPage + 4)
+            );
+          })
+          .map((pageNum, idx, array) => {
+            const showEllipsis = idx > 0 && pageNum - array[idx - 1] > 1;
+            return (
+              <div key={pageNum} className="flex items-center gap-1">
+                {showEllipsis && (
+                  <span className="px-2 text-muted-foreground">...</span>
+                )}
+                <Button
+                  variant={pageNum === currentPage ? "default" : "outline"}
+                  size="sm"
+                  asChild
+                >
+                  <Link href={buildUrl(pageNum)}>{pageNum}</Link>
+                </Button>
+              </div>
+            );
+          })}
+        {/* 오른쪽 화살표: 1페이지 앞으로 */}
+        {currentPage < totalPages && (
+          <Button variant="outline" size="icon" asChild>
+            <Link href={buildUrl(currentPage + 1)}>
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          </Button>
+        )}
+        {/* 더블 오른쪽 화살표: 10페이지 앞으로 */}
+        {currentPage < totalPages - 9 && (
+          <Button variant="outline" size="icon" asChild>
+            <Link href={buildUrl(currentPage + 10)}>
+              <ChevronsRight className="h-4 w-4" />
+            </Link>
+          </Button>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <>
@@ -163,81 +288,87 @@ async function ProblemsContent({
         </p>
       </div>
 
-      {/* Pagination */}
+      {/* Filter & Pagination */}
       <Card className="w-full">
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="text-sm text-muted-foreground">
-              페이지 {currentPage} / {totalPages} (총 {totalContests}개
-              콘테스트)
-            </div>
-            <div className="flex items-center gap-1">
-              {/* 더블 왼쪽 화살표: 10페이지 뒤로 */}
-              {currentPage > 10 && (
-                <Button variant="outline" size="icon" asChild>
-                  <Link href={`/problems?page=${currentPage - 10}`}>
-                    <ChevronsLeft className="h-4 w-4" />
-                  </Link>
+        <CardContent className="pt-6 space-y-4">
+          {/* Filter & Search */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            {/* Filter Buttons - Left */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-medium text-muted-foreground mr-2">
+                필터:
+              </span>
+              {[
+                { value: "all", label: "전체" },
+                { value: "abc", label: "ABC" },
+                { value: "arc", label: "ARC" },
+                { value: "agc", label: "AGC" },
+              ].map(({ value, label }) => (
+                <Button
+                  key={value}
+                  variant={filter === value ? "default" : "outline"}
+                  size="sm"
+                  asChild
+                >
+                  <Link href={buildUrl(1, value)}>{label}</Link>
                 </Button>
-              )}
-              {/* 왼쪽 화살표: 1페이지 뒤로 */}
-              {currentPage > 1 && (
-                <Button variant="outline" size="icon" asChild>
-                  <Link href={`/problems?page=${currentPage - 1}`}>
-                    <ChevronLeft className="h-4 w-4" />
-                  </Link>
-                </Button>
-              )}
-              {/* 페이지 번호들 */}
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .filter((pageNum) => {
-                  // 현재 페이지 기준으로 앞뒤 4개씩 표시
-                  return (
-                    pageNum === 1 ||
-                    pageNum === totalPages ||
-                    (pageNum >= currentPage - 4 && pageNum <= currentPage + 4)
-                  );
-                })
-                .map((pageNum, idx, array) => {
-                  // 연속되지 않는 페이지 사이에 ... 표시
-                  const showEllipsis = idx > 0 && pageNum - array[idx - 1] > 1;
-                  return (
-                    <div key={pageNum} className="flex items-center gap-1">
-                      {showEllipsis && (
-                        <span className="px-2 text-muted-foreground">...</span>
-                      )}
-                      <Button
-                        variant={
-                          pageNum === currentPage ? "default" : "outline"
-                        }
-                        size="sm"
-                        asChild
-                      >
-                        <Link href={`/problems?page=${pageNum}`}>
-                          {pageNum}
-                        </Link>
-                      </Button>
-                    </div>
-                  );
-                })}
-              {/* 오른쪽 화살표: 1페이지 앞으로 */}
-              {currentPage < totalPages && (
-                <Button variant="outline" size="icon" asChild>
-                  <Link href={`/problems?page=${currentPage + 1}`}>
-                    <ChevronRight className="h-4 w-4" />
-                  </Link>
-                </Button>
-              )}
-              {/* 더블 오른쪽 화살표: 10페이지 앞으로 */}
-              {currentPage < totalPages - 9 && (
-                <Button variant="outline" size="icon" asChild>
-                  <Link href={`/problems?page=${currentPage + 10}`}>
-                    <ChevronsRight className="h-4 w-4" />
-                  </Link>
-                </Button>
+              ))}
+              {/* 구분선 */}
+              <div className="h-6 w-px bg-border mx-1" />
+              {/* 푼 문제 포함 콘테스트 제외 체크박스 */}
+              {atcoderHandle ? (
+                <Link
+                  href={buildUrl(1, filter, search, !hideCompleted)}
+                  className="flex items-center gap-2"
+                >
+                  <Checkbox
+                    checked={hideCompleted}
+                    className="pointer-events-none"
+                  />
+                  <span className="text-sm">푼 문제 포함 콘테스트 제외</span>
+                </Link>
+              ) : (
+                <span className="text-xs text-muted-foreground">
+                  (AtCoder 연동 시 풀이 필터 가능)
+                </span>
               )}
             </div>
+            {/* Search Form - Right */}
+            <form action="/problems" method="GET" className="flex gap-2 max-w-sm">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  name="search"
+                  placeholder="콘테스트 또는 문제 검색"
+                  defaultValue={search}
+                  className="pl-9"
+                />
+              </div>
+              {filter !== "all" && (
+                <input type="hidden" name="filter" value={filter} />
+              )}
+              {hideCompleted && (
+                <input type="hidden" name="hideCompleted" value="true" />
+              )}
+              <Button type="submit" variant="secondary" size="icon">
+                <Search className="h-4 w-4" />
+              </Button>
+              {search && (
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={buildUrl(1, filter, "")}>초기화</Link>
+                </Button>
+              )}
+            </form>
           </div>
+          {/* Search Result Info */}
+          {search && (
+            <div className="text-sm text-muted-foreground">
+              &quot;{search}&quot; 검색 결과: {totalContests}개 콘테스트
+            </div>
+          )}
+          {/* Pagination */}
+          <Pagination />
         </CardContent>
       </Card>
 
@@ -385,6 +516,13 @@ async function ProblemsContent({
           </div>
         </CardContent>
       </Card>
+
+      {/* Bottom Pagination */}
+      <Card className="w-full">
+        <CardContent className="pt-6">
+          <Pagination />
+        </CardContent>
+      </Card>
     </>
   );
 }
@@ -431,7 +569,7 @@ function ProblemsLoading() {
 export default function ProblemsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; filter?: string; search?: string; hideCompleted?: string }>;
 }) {
   return (
     <div className="w-full">

@@ -32,6 +32,8 @@ export function ChatLayoutClient({ children }: ChatLayoutClientProps) {
     setProblemUrl,
     layoutMode,
     setLayoutMode,
+    sidebarOpen,
+    setSidebarOpen,
   } = useChatLayout();
   const isInitializedRef = useRef(false);
 
@@ -89,8 +91,12 @@ export function ChatLayoutClient({ children }: ChatLayoutClientProps) {
   // problemUrl이 있을 때만 레이아웃 토글 버튼 표시
   const showLayoutControls = problemUrl !== null;
 
+  const handleSidebarToggle = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
+
   return (
-    <div className="relative w-full h-full flex flex-col overflow-hidden">
+    <div className={`relative w-full h-full flex flex-col overflow-hidden transition-all duration-300 ${sidebarOpen ? 'pl-64' : 'pl-12'}`}>
       {/* 레이아웃 컨트롤 버튼 */}
       {showLayoutControls && (
         <div className="flex-shrink-0 px-4 py-2 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex items-center justify-end gap-1">
@@ -172,8 +178,8 @@ export function ChatLayoutClient({ children }: ChatLayoutClientProps) {
       {/* 사이드바 (전체 화면에 걸쳐 띄움) */}
       <div className="fixed left-0 top-16 bottom-0 z-10">
         <ChatSidebar
-          isOpen={true}
-          onToggle={() => {}}
+          isOpen={sidebarOpen}
+          onToggle={handleSidebarToggle}
           onSelectChat={handleChatIdChange}
           selectedChatId={selectedChatId}
           refreshTrigger={refreshTrigger}

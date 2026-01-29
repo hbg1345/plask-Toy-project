@@ -18,7 +18,7 @@ import { DifficultyDistribution } from "./difficulty-distribution";
 import { AvatarUpload } from "./avatar-upload";
 import { TokenUsageCard } from "./token-usage";
 import { RatingGraph } from "./rating-graph";
-import { SolvedProblem, refreshAtcoderRating, getSolvedProblems } from "@/app/actions";
+import { SolvedProblem, refreshAtcoderRating, getSolvedProblems, refreshSolvedProblems } from "@/app/actions";
 import { getRatingColor } from "@/lib/atcoder/rating-history";
 import { RefreshCw, Pencil, Check, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -107,8 +107,8 @@ export function ProfileWithGrass({ rating: initialRating, atcoder_handle, avatar
         setRating(newRating);
       }
 
-      // 푼 문제 목록 갱신
-      const newSolvedProblems = await getSolvedProblems(atcoder_handle);
+      // 푼 문제 목록 갱신 (API에서 새로 가져와 DB에 저장)
+      const newSolvedProblems = await refreshSolvedProblems(atcoder_handle);
       setSolvedProblems(newSolvedProblems);
 
       // RatingGraph 리렌더링 트리거
@@ -132,9 +132,9 @@ export function ProfileWithGrass({ rating: initialRating, atcoder_handle, avatar
         setRating(result.rating);
       }
 
-      // 푼 문제 목록 갱신
+      // 푼 문제 목록 갱신 (새 핸들로 API에서 가져와 DB에 저장)
       if (result.handle) {
-        const newSolvedProblems = await getSolvedProblems(result.handle);
+        const newSolvedProblems = await refreshSolvedProblems(result.handle);
         setSolvedProblems(newSolvedProblems);
       }
 

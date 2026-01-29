@@ -13,6 +13,8 @@ interface ChatLayoutContextType {
   setProblemUrl: (url: string | null) => void;
   layoutMode: LayoutMode;
   setLayoutMode: (mode: LayoutMode) => void;
+  sidebarOpen: boolean;
+  setSidebarOpen: (open: boolean) => void;
 }
 
 const ChatLayoutContext = createContext<ChatLayoutContextType | undefined>(
@@ -24,6 +26,7 @@ export function ChatLayoutProvider({ children }: { children: ReactNode }) {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [problemUrl, setProblemUrl] = useState<string | null>(null);
   const [layoutMode, setLayoutMode] = useState<LayoutMode>("both");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   return (
     <ChatLayoutContext.Provider
@@ -36,6 +39,8 @@ export function ChatLayoutProvider({ children }: { children: ReactNode }) {
         setProblemUrl,
         layoutMode,
         setLayoutMode,
+        sidebarOpen,
+        setSidebarOpen,
       }}
     >
       {children}

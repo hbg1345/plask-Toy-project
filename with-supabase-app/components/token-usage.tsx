@@ -8,18 +8,27 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getTodayTokenUsage, TokenUsage } from "@/app/actions";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getTodayTokenUsage, getTotalTokenUsage, TokenUsage } from "@/app/actions";
 import { Zap } from "lucide-react";
 
+type UsageTab = "today" | "total";
+
 export function TokenUsageCard() {
-  const [usage, setUsage] = useState<TokenUsage | null>(null);
+  const [todayUsage, setTodayUsage] = useState<TokenUsage | null>(null);
+  const [totalUsage, setTotalUsage] = useState<TokenUsage | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<UsageTab>("today");
 
   useEffect(() => {
     async function fetchUsage() {
       try {
-        const data = await getTodayTokenUsage();
-        setUsage(data);
+        const [today, total] = await Promise.all([
+          getTodayTokenUsage(),
+          getTotalTokenUsage(),
+        ]);
+        setTodayUsage(today);
+        setTotalUsage(total);
       } catch (error) {
         console.error("Failed to fetch token usage:", error);
       } finally {
@@ -29,13 +38,15 @@ export function TokenUsageCard() {
     fetchUsage();
   }, []);
 
+  const usage = activeTab === "today" ? todayUsage : totalUsage;
+
   if (loading) {
     return (
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Zap className="h-5 w-5" />
-            오늘의 API 사용량
+            API 사용량
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -48,11 +59,25 @@ export function TokenUsageCard() {
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Zap className="h-5 w-5" />
-          오늘의 API 사용량
-        </CardTitle>
-        <CardDescription>Gemini API 토큰 사용 현황</CardDescription>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <Zap className="h-5 w-5" />
+            API 사용량
+          </CardTitle>
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as UsageTab)}>
+            <TabsList className="h-8">
+              <TabsTrigger value="today" className="text-xs px-3">
+                오늘
+              </TabsTrigger>
+              <TabsTrigger value="total" className="text-xs px-3">
+                전체
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+        <CardDescription>
+          {activeTab === "today" ? "오늘의" : "전체"} Gemini API 토큰 사용 현황
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 gap-4">
