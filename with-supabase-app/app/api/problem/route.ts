@@ -38,16 +38,21 @@ export async function GET(request: NextRequest) {
     // 제목 추출
     const title = $("span.h2").text().trim();
 
+    // 시간/메모리 제한 추출 (콘텐츠 추출 전에 먼저)
+    // 보통 "Time Limit: 2 sec / Memory Limit: 1024 MiB" 형식으로 한 줄에 있음
+    const limitText = $("p:contains('Time Limit')").first().text().trim();
+    const timeLimit = limitText || "";
+    const memoryLimit = ""; // timeLimit에 이미 포함됨
+
+    // 콘텐츠에서 time/memory limit 요소 제거 (중복 방지)
+    $("#task-statement p:contains('Time Limit')").remove();
+
     // 영어 콘텐츠 추출
     const langEn = $("#task-statement .lang-en").html();
     // 일본어 콘텐츠 추출
     const langJa = $("#task-statement .lang-ja").html();
     // 전체 콘텐츠 (언어 구분 없는 경우)
     const fullContent = $("#task-statement").html();
-
-    // 시간/메모리 제한 추출
-    const timeLimit = $("p:contains('Time Limit')").text().trim();
-    const memoryLimit = $("p:contains('Memory Limit')").text().trim();
 
     // 기본 스타일
     const styles = `

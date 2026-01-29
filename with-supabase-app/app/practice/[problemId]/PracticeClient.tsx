@@ -16,19 +16,22 @@ import {
   RefreshCw,
   AlertTriangle,
   MessageSquare,
+  Minus,
+  Plus,
+  ChevronDown,
+  ChevronUp,
+  Lock,
 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { saveChatHistory, getChatByProblemUrl } from "@/app/actions";
 
-// 시간 옵션 (분 단위)
-const TIME_OPTIONS = [
-  { label: "15분", value: 15 },
-  { label: "30분", value: 30 },
-  { label: "45분", value: 45 },
-  { label: "1시간", value: 60 },
-  { label: "1시간 30분", value: 90 },
-  { label: "2시간", value: 120 },
-];
+// 최소 시간 (분 단위)
+const MIN_TIME = 1;
 
 /**
  * 사용자 레이팅과 문제 난이도 차이에 따라 추천 시간 계산
@@ -61,20 +64,9 @@ function calculateRecommendedTime(userRating: number, problemDifficulty: number)
     baseTime = 15;
   }
 
-  // 가장 가까운 TIME_OPTION 값으로 반올림
-  const optionValues = TIME_OPTIONS.map(o => o.value);
-  let closest = optionValues[0];
-  let minDiff = Math.abs(baseTime - closest);
-
-  for (const value of optionValues) {
-    const d = Math.abs(baseTime - value);
-    if (d < minDiff) {
-      minDiff = d;
-      closest = value;
-    }
-  }
-
-  return closest;
+  // 5분 단위로 반올림
+  const rounded = Math.round(baseTime / 5) * 5;
+  return Math.max(MIN_TIME, rounded);
 }
 
 type PracticeStatus = "setup" | "running" | "paused" | "completed";
@@ -111,6 +103,8 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
   const [sessionSaved, setSessionSaved] = useState(false);
   const [otherOngoingSession, setOtherOngoingSession] = useState<OngoingSession | null>(null);
   const [recommendedTime, setRecommendedTime] = useState<number | null>(null);
+  const [expandedHints, setExpandedHints] = useState<Set<number>>(new Set());
+  const router = useRouter();
 
   // 문제 URL 생성
   const contestId = problemId.split("_")[0];
@@ -173,14 +167,14 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
     fetchUserInfo();
   }, []);
 
-  // 힌트 가져오기
+  // 문제 정보 가져오기 (setup 단계에서는 AI 생성 없이 DB에서만)
   useEffect(() => {
-    const fetchHints = async () => {
+    const fetchProblemInfo = async () => {
       if (status !== "setup") return;
 
-      setIsLoadingHints(true);
       try {
-        const response = await fetch(`/api/practice/hints?problemId=${problemId}`);
+        // generate=false로 DB에서만 가져오기 (AI 생성 X)
+        const response = await fetch(`/api/practice/hints?problemId=${problemId}&generate=false`);
         if (response.ok) {
           const data = await response.json();
           setHints(data.hints || []);
@@ -188,12 +182,10 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
           if (data.difficulty) setDifficulty(data.difficulty);
         }
       } catch (error) {
-        console.error("Failed to fetch hints:", error);
-      } finally {
-        setIsLoadingHints(false);
+        console.error("Failed to fetch problem info:", error);
       }
     };
-    fetchHints();
+    fetchProblemInfo();
   }, [problemId, status]);
 
   // 추천 시간 계산 (사용자 레이팅 & 문제 난이도 기반)
@@ -250,12 +242,12 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
     return () => clearInterval(interval);
   }, [status]);
 
-  // 힌트 unlock 로직 (시간 경과에 따라)
+  // 힌트 unlock 로직 (시간 경과에 따라) - 15% 단위
   useEffect(() => {
     if (status !== "running" || hints.length === 0) return;
 
     const totalTime = selectedTime * 60;
-    const hintIntervals = [0.2, 0.4, 0.6, 0.8, 1.0]; // 20%, 40%, 60%, 80%, 100%
+    const hintIntervals = [0.15, 0.30, 0.45, 0.60, 0.75]; // 15%, 30%, 45%, 60%, 75%
     const progress = elapsedTime / totalTime;
 
     let newUnlocked = 0;
@@ -310,12 +302,28 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
   };
 
   // 시작
-  const handleStart = () => {
+  const handleStart = async () => {
     setRemainingTime(selectedTime * 60);
     setElapsedTime(0);
     setUnlockedHints(0);
     setIsSolved(null);
     setStatus("running");
+
+    // 힌트가 없으면 AI로 생성 (백그라운드에서)
+    if (hints.length === 0) {
+      setIsLoadingHints(true);
+      try {
+        const response = await fetch(`/api/practice/hints?problemId=${problemId}&generate=true`);
+        if (response.ok) {
+          const data = await response.json();
+          setHints(data.hints || []);
+        }
+      } catch (error) {
+        console.error("Failed to generate hints:", error);
+      } finally {
+        setIsLoadingHints(false);
+      }
+    }
   };
 
   // 일시정지
@@ -348,6 +356,25 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
   const handleAbandonOtherSession = () => {
     localStorage.removeItem(PRACTICE_STATE_KEY);
     setOtherOngoingSession(null);
+  };
+
+  // 채팅으로 질문하기
+  const handleAskQuestion = async () => {
+    // 기존 채팅이 있는지 확인
+    let chatId = await getChatByProblemUrl(problemUrl);
+
+    if (!chatId) {
+      // 기존 채팅이 없으면 새로 생성
+      const title = `${problemId}: ${problemTitle || problemId}`;
+      chatId = await saveChatHistory(null, [], title, problemUrl);
+    }
+
+    // 해당 채팅으로 이동
+    if (chatId) {
+      router.push(`/chat?chatId=${chatId}`);
+    } else {
+      router.push("/chat");
+    }
   };
 
   // 진행률 계산
@@ -495,56 +522,73 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
                 )}
 
                 <p className="text-muted-foreground">
-                  문제를 풀 시간을 선택하세요. 시간이 경과할수록 힌트가 하나씩
+                  문제를 풀 시간을 설정하세요. 시간이 경과할수록 힌트가 하나씩
                   해금됩니다.
-                  {recommendedTime && (
-                    <span className="block mt-1 text-sm text-primary">
-                      레이팅 차이에 따라 {TIME_OPTIONS.find(o => o.value === recommendedTime)?.label}이 추천됩니다.
-                    </span>
-                  )}
                 </p>
 
-                <div className="grid grid-cols-3 gap-3">
-                  {TIME_OPTIONS.map((option) => {
-                    const isRecommended = option.value === recommendedTime;
-                    return (
-                      <Button
-                        key={option.value}
-                        variant={selectedTime === option.value ? "default" : "outline"}
-                        onClick={() => setSelectedTime(option.value)}
-                        className={cn(
-                          "h-16 text-lg relative",
-                          isRecommended && selectedTime !== option.value && "ring-2 ring-primary/50"
-                        )}
-                      >
-                        {option.label}
-                        {isRecommended && (
-                          <span className="absolute -top-2 -right-2 px-1.5 py-0.5 text-[10px] font-semibold bg-primary text-primary-foreground rounded-full">
-                            추천
-                          </span>
-                        )}
-                      </Button>
-                    );
-                  })}
-                </div>
+                {/* 시간 조절 UI */}
+                <div className="flex items-center justify-center gap-4">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-12 w-12"
+                    onClick={() => setSelectedTime(Math.max(MIN_TIME, selectedTime - 5))}
+                    disabled={selectedTime <= MIN_TIME}
+                  >
+                    <Minus className="h-5 w-5" />
+                  </Button>
 
-                <div className="pt-4 border-t">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-                    <Lightbulb className="h-4 w-4" />
-                    <span>
-                      {isLoadingHints
-                        ? "힌트 로딩 중..."
-                        : hints.length > 0
-                          ? `${Math.min(5, hints.length)}개의 힌트가 준비되었습니다`
-                          : "힌트를 불러올 수 없습니다"}
-                    </span>
+                  <div className="flex flex-col items-center">
+                    <div className="flex items-baseline gap-1">
+                      <input
+                        type="number"
+                        value={selectedTime}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value) || MIN_TIME;
+                          setSelectedTime(Math.max(MIN_TIME, value));
+                        }}
+                        className="w-20 text-4xl font-bold tabular-nums text-center bg-transparent border-b-2 border-transparent hover:border-muted focus:border-primary focus:outline-none"
+                        min={MIN_TIME}
+                      />
+                      <span className="text-2xl font-bold text-muted-foreground">분</span>
+                    </div>
+                    {recommendedTime && (
+                      <span className="text-xs text-muted-foreground mt-1">
+                        추천: {recommendedTime}분
+                      </span>
+                    )}
                   </div>
 
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-12 w-12"
+                    onClick={() => setSelectedTime(selectedTime + 5)}
+                  >
+                    <Plus className="h-5 w-5" />
+                  </Button>
+                </div>
+
+                {/* 추천 시간으로 리셋 버튼 */}
+                {recommendedTime && selectedTime !== recommendedTime && (
+                  <div className="flex justify-center">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedTime(recommendedTime)}
+                      className="text-xs"
+                    >
+                      {recommendedTime}분으로 설정
+                    </Button>
+                  </div>
+                )}
+
+                <div className="pt-4 border-t">
                   <Button
                     size="lg"
                     className="w-full"
                     onClick={handleStart}
-                    disabled={isLoadingHints || !!otherOngoingSession}
+                    disabled={!!otherOngoingSession}
                   >
                     <Play className="h-5 w-5 mr-2" />
                     연습 시작
@@ -609,12 +653,10 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
                         <Button
                           size="sm"
                           className="mt-3 bg-blue-600 hover:bg-blue-700"
-                          asChild
+                          onClick={handleAskQuestion}
                         >
-                          <Link href={`/chat?problemId=${problemId}`}>
-                            <MessageSquare className="h-4 w-4 mr-2" />
-                            이 문제에 대해 질문하기
-                          </Link>
+                          <MessageSquare className="h-4 w-4 mr-2" />
+                          이 문제에 대해 질문하기
                         </Button>
                       </div>
                     </div>
@@ -701,28 +743,62 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
                       <div className="space-y-2">
                         {hints.slice(0, 5).map((hint, index) => {
                           const isUnlocked = index < unlockedHints;
-                          const unlockProgress =
-                            (index + 1) * 20; // 20%, 40%, 60%, 80%, 100%
+                          const unlockProgress = (index + 1) * 15; // 15%, 30%, 45%, 60%, 75%
+                          const isExpanded = expandedHints.has(index);
+
+                          const toggleExpand = () => {
+                            setExpandedHints(prev => {
+                              const next = new Set(prev);
+                              if (next.has(index)) {
+                                next.delete(index);
+                              } else {
+                                next.add(index);
+                              }
+                              return next;
+                            });
+                          };
 
                           return (
                             <div
                               key={hint.step}
                               className={cn(
-                                "p-3 rounded-lg border text-sm",
+                                "rounded-lg border text-sm",
                                 isUnlocked
                                   ? "bg-background"
                                   : "bg-muted/50 text-muted-foreground"
                               )}
                             >
-                              <div className="font-medium mb-1">
-                                힌트 {index + 1}
-                              </div>
-                              {isUnlocked ? (
-                                <p>{hint.content}</p>
-                              ) : (
-                                <p className="text-xs">
-                                  {unlockProgress}% 경과 시 해금
-                                </p>
+                              <button
+                                onClick={isUnlocked ? toggleExpand : undefined}
+                                disabled={!isUnlocked}
+                                className={cn(
+                                  "w-full p-3 flex items-center justify-between",
+                                  isUnlocked && "hover:bg-muted/30 cursor-pointer"
+                                )}
+                              >
+                                <span className="font-medium">힌트 {index + 1}</span>
+                                {isUnlocked ? (
+                                  isExpanded ? (
+                                    <ChevronUp className="h-4 w-4" />
+                                  ) : (
+                                    <ChevronDown className="h-4 w-4" />
+                                  )
+                                ) : (
+                                  <div className="flex items-center gap-1 text-xs">
+                                    <Lock className="h-3 w-3" />
+                                    <span>{unlockProgress}%</span>
+                                  </div>
+                                )}
+                              </button>
+                              {isUnlocked && isExpanded && (
+                                <div className="px-3 pb-3 prose prose-sm dark:prose-invert max-w-none">
+                                  <ReactMarkdown
+                                    remarkPlugins={[remarkMath]}
+                                    rehypePlugins={[rehypeKatex]}
+                                  >
+                                    {hint.content}
+                                  </ReactMarkdown>
+                                </div>
                               )}
                             </div>
                           );

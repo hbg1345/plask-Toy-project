@@ -11,11 +11,7 @@ const navItems = [
   { href: "/chat", label: "Chat", icon: MessageSquare },
 ];
 
-interface DesktopNavProps {
-  isScrolled?: boolean;
-}
-
-export function DesktopNav({ isScrolled = false }: DesktopNavProps) {
+export function DesktopNav() {
   const pathname = usePathname();
 
   return (
@@ -27,19 +23,13 @@ export function DesktopNav({ isScrolled = false }: DesktopNavProps) {
             key={item.href}
             href={item.href}
             className={cn(
-              "flex items-center gap-2 text-sm font-medium rounded-md transition-all duration-300",
-              isScrolled ? "px-2 py-1" : "px-3 py-2",
+              "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md",
               isActive
                 ? "bg-primary/10 text-primary"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted"
             )}
           >
-            <item.icon
-              className={cn(
-                "transition-all duration-300",
-                isScrolled ? "h-3.5 w-3.5" : "h-4 w-4"
-              )}
-            />
+            <item.icon className="h-4 w-4" />
             {item.label}
           </Link>
         );

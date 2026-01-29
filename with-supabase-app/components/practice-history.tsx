@@ -10,9 +10,9 @@ import {
   ChevronDown,
   ChevronUp,
   MessageSquare,
-  RotateCcw,
   Target,
   TrendingUp,
+  Circle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -182,139 +182,84 @@ export function PracticeHistory({ sessions, stats }: PracticeHistoryProps) {
           </div>
         </div>
 
-        {/* 세션 목록 */}
-        <div className="space-y-3">
+        {/* 세션 목록 - 그리드 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {displayedSessions.map((session) => {
             const timeUsagePercent = Math.round(
               (session.elapsed_time / session.time_limit) * 100
             );
-            const isOverTime = session.elapsed_time >= session.time_limit;
 
             return (
-              <div
+              <Link
                 key={session.id}
+                href={`/practice/${session.problem_id}`}
                 className={cn(
-                  "p-4 border rounded-lg transition-colors",
+                  "block p-4 border rounded-lg transition-colors hover:shadow-md",
                   session.solved
-                    ? "bg-green-50/50 dark:bg-green-950/20 border-green-200 dark:border-green-800"
-                    : "bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-800"
+                    ? "bg-green-50/50 dark:bg-green-950/20 border-green-200 dark:border-green-800 hover:border-green-400"
+                    : "bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-800 hover:border-red-400"
                 )}
               >
-                <div className="flex items-start justify-between gap-4">
-                  {/* 왼쪽: 문제 정보 */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      {session.solved ? (
-                        <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
-                      ) : (
-                        <XCircle className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0" />
-                      )}
-                      {/* 난이도 바 */}
-                      <div
+                {/* 상단: 결과 아이콘 + 제목 */}
+                <div className="flex items-center gap-2 mb-2">
+                  {session.solved ? (
+                    <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0" />
+                  )}
+                  <span
+                    className={cn(
+                      "font-semibold text-sm truncate flex-1",
+                      getDifficultyColor(session.difficulty)
+                    )}
+                    title={session.problem_title || session.problem_id}
+                  >
+                    {session.problem_title || session.problem_id}
+                  </span>
+                </div>
+
+                {/* 난이도 + 날짜 */}
+                <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
+                  {session.difficulty && (
+                    <Badge variant="outline" className={cn(
+                      "text-xs",
+                      getDifficultyColor(session.difficulty)
+                    )}>
+                      {session.difficulty}
+                    </Badge>
+                  )}
+                  <span title={formatFullDate(session.created_at)}>
+                    {formatDate(session.created_at)}
+                  </span>
+                </div>
+
+                {/* 시간 정보 */}
+                <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
+                  <Clock className="h-3 w-3" />
+                  <span className="font-mono">
+                    {formatTime(session.elapsed_time)}
+                  </span>
+                  <span>/ {formatTime(session.time_limit)}</span>
+                </div>
+
+                {/* 힌트 사용 - 동그라미 5개 */}
+                <div className="flex items-center gap-1">
+                  <Lightbulb className="h-3 w-3 text-amber-500" />
+                  <div className="flex gap-0.5">
+                    {[0, 1, 2, 3, 4].map((i) => (
+                      <Circle
+                        key={i}
                         className={cn(
-                          "w-1.5 h-5 rounded-full flex-shrink-0",
-                          getDifficultyBgColor(session.difficulty)
+                          "h-3 w-3",
+                          i < session.hints_used
+                            ? "fill-amber-500 text-amber-500"
+                            : "text-muted-foreground/30"
                         )}
                       />
-                      <span
-                        className={cn(
-                          "font-semibold truncate",
-                          getDifficultyColor(session.difficulty)
-                        )}
-                        title={session.problem_title || session.problem_id}
-                      >
-                        {session.problem_title || session.problem_id}
-                      </span>
-                      {session.difficulty && (
-                        <Badge variant="outline" className={cn(
-                          "text-xs flex-shrink-0",
-                          getDifficultyColor(session.difficulty)
-                        )}>
-                          {session.difficulty}
-                        </Badge>
-                      )}
-                    </div>
-
-                    {/* 상세 정보 */}
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mt-2">
-                      {/* 시간 */}
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5" />
-                        <span className="font-mono">
-                          {formatTime(session.elapsed_time)}
-                        </span>
-                        <span className="text-xs">
-                          / {formatTime(session.time_limit)}
-                        </span>
-                        <span
-                          className={cn(
-                            "text-xs font-medium",
-                            isOverTime
-                              ? "text-red-600 dark:text-red-400"
-                              : timeUsagePercent > 80
-                                ? "text-amber-600 dark:text-amber-400"
-                                : "text-green-600 dark:text-green-400"
-                          )}
-                        >
-                          ({timeUsagePercent}%)
-                        </span>
-                      </div>
-
-                      {/* 힌트 */}
-                      <div className="flex items-center gap-1">
-                        <Lightbulb className="h-3.5 w-3.5" />
-                        <span>힌트 {session.hints_used}개</span>
-                      </div>
-
-                      {/* 날짜 */}
-                      <span
-                        className="text-xs"
-                        title={formatFullDate(session.created_at)}
-                      >
-                        {formatDate(session.created_at)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* 오른쪽: 액션 버튼 */}
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    {!session.solved && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        asChild
-                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-100 dark:text-blue-400 dark:hover:bg-blue-900/30"
-                      >
-                        <Link href={`/chat?problemId=${session.problem_id}`}>
-                          <MessageSquare className="h-4 w-4" />
-                          <span className="hidden sm:inline ml-1">질문</span>
-                        </Link>
-                      </Button>
-                    )}
-                    <Button variant="ghost" size="sm" asChild>
-                      <Link href={`/practice/${session.problem_id}`}>
-                        <RotateCcw className="h-4 w-4" />
-                        <span className="hidden sm:inline ml-1">다시</span>
-                      </Link>
-                    </Button>
+                    ))}
                   </div>
                 </div>
-
-                {/* 시간 진행바 */}
-                <div className="mt-3 h-1.5 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className={cn(
-                      "h-full transition-all",
-                      session.solved
-                        ? "bg-green-500"
-                        : isOverTime
-                          ? "bg-red-500"
-                          : "bg-amber-500"
-                    )}
-                    style={{ width: `${Math.min(timeUsagePercent, 100)}%` }}
-                  />
-                </div>
-              </div>
+              </Link>
             );
           })}
         </div>

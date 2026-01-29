@@ -206,6 +206,9 @@ async function PracticeContent() {
       {/* 진행 중인 연습 세션 */}
       <OngoingSessionCard />
 
+      {/* 연습 기록 */}
+      <PracticeHistory sessions={practiceSessions} stats={practiceStats} />
+
       {/* Recommended Problems Grid */}
       <Card className="w-full">
         <CardHeader>
@@ -254,6 +257,7 @@ async function PracticeContent() {
                               contestId={problem.contest_id}
                               difficulty={problem.difficulty}
                               className="group"
+                              mode="practice"
                             >
                               <div
                                 className={cn(
@@ -293,9 +297,6 @@ async function PracticeContent() {
           </div>
         </CardContent>
       </Card>
-
-      {/* 연습 기록 */}
-      <PracticeHistory sessions={practiceSessions} stats={practiceStats} />
     </>
   );
 }

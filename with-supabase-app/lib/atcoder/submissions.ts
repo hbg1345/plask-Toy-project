@@ -27,10 +27,13 @@ export async function getUserSubmissions(
   fromSecond: number
 ): Promise<Submission[]> {
   try {
-    const url = `https://kenkoooo.com/atcoder/atcoder-api/v3/user/submissions?user=${userId}&from_second=${fromSecond}`;
-    const response = await fetch(url, {
-      next: { revalidate: 3600 }, // 1시간마다 재검증
-    });
+    // 클라이언트에서는 로컬 API 라우트를 통해 프록시, 서버에서는 직접 호출
+    const isClient = typeof window !== "undefined";
+    const url = isClient
+      ? `/api/atcoder/submissions?user=${encodeURIComponent(userId)}&from_second=${fromSecond}`
+      : `https://kenkoooo.com/atcoder/atcoder-api/v3/user/submissions?user=${userId}&from_second=${fromSecond}`;
+
+    const response = await fetch(url, isClient ? {} : { next: { revalidate: 3600 } });
 
     if (!response.ok) {
       throw new Error(`Failed to fetch submissions: ${response.statusText}`);

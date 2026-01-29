@@ -150,15 +150,36 @@ export async function getSolvedProblems(atcoderHandle: string): Promise<SolvedPr
 
     const userId = claims.sub as string;
 
-    // DB에서 캐시된 풀이 목록 조회
-    const { data: cachedProblems, error: cacheError } = await supabase
-      .from("user_solved_problems")
-      .select("problem_id, contest_id")
-      .eq("user_id", userId);
+    // DB에서 캐시된 풀이 목록 조회 (Supabase 기본 limit이 1000이므로 페이지네이션 사용)
+    const allCachedProblems: { problem_id: string; contest_id: string }[] = [];
+    const pageSize = 1000;
+    let page = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const from = page * pageSize;
+      const to = from + pageSize - 1;
+
+      const { data: pageData, error: pageError } = await supabase
+        .from("user_solved_problems")
+        .select("problem_id, contest_id")
+        .eq("user_id", userId)
+        .range(from, to);
+
+      if (pageError || !pageData || pageData.length === 0) {
+        hasMore = false;
+      } else {
+        allCachedProblems.push(...pageData);
+        hasMore = pageData.length === pageSize;
+        page++;
+      }
+    }
+
+    console.log("[getSolvedProblems] Total fetched:", allCachedProblems.length);
 
     // 캐시가 있으면 사용
-    if (!cacheError && cachedProblems && cachedProblems.length > 0) {
-      return enrichProblemsWithInfo(cachedProblems, supabase);
+    if (allCachedProblems.length > 0) {
+      return enrichProblemsWithInfo(allCachedProblems, supabase);
     }
 
     // 캐시가 없으면 API에서 가져와 저장
@@ -182,6 +203,8 @@ async function fetchAndEnrichProblems(atcoderHandle: string, userId: string | nu
 
   // userId가 있으면 DB에 저장
   if (userId) {
+    console.log("[fetchAndEnrichProblems] Saving", apiProblems.length, "problems to DB");
+
     // 기존 데이터 삭제 후 새로 삽입
     await supabase
       .from("user_solved_problems")
@@ -198,7 +221,10 @@ async function fetchAndEnrichProblems(atcoderHandle: string, userId: string | nu
         solved_at: p.solved_at?.toISOString() || null,
       }));
 
-      await supabase.from("user_solved_problems").insert(batch);
+      const { error } = await supabase.from("user_solved_problems").insert(batch);
+      if (error) {
+        console.error("[fetchAndEnrichProblems] Insert error at batch", i, error);
+      }
     }
 
     // 동기화 시간 업데이트

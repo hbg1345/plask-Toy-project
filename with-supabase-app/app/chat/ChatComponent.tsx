@@ -20,14 +20,8 @@ import {
   PromptInputAttachment,
   PromptInputAttachments,
   PromptInputBody,
-  PromptInputButton,
   PromptInputHeader,
   type PromptInputMessage,
-  PromptInputSelect,
-  PromptInputSelectContent,
-  PromptInputSelectItem,
-  PromptInputSelectTrigger,
-  PromptInputSelectValue,
   PromptInputSubmit,
   PromptInputTextarea,
   PromptInputFooter,
@@ -35,7 +29,7 @@ import {
 } from "@/components/ai-elements/prompt-input";
 import { useState, useEffect, useRef } from "react";
 import { useChat } from "@ai-sdk/react";
-import { CopyIcon, GlobeIcon, RefreshCcwIcon } from "lucide-react";
+import { CopyIcon, RefreshCcwIcon } from "lucide-react";
 import {
   saveChatHistory,
   getChatHistory,
@@ -56,16 +50,7 @@ import {
 } from "@/components/ai-elements/reasoning";
 import { Loader } from "@/components/ai-elements/loader";
 import { HintsCard, parseHintsFromMessage } from "@/components/hints-card";
-const models = [
-  {
-    name: "GPT 4o",
-    value: "openai/gpt-4o",
-  },
-  {
-    name: "Deepseek R1",
-    value: "deepseek/deepseek-r1",
-  },
-];
+
 interface ChatBotDemoProps {
   chatId?: string | null;
   onChatIdChange?: (chatId: string | null) => void;
@@ -74,8 +59,6 @@ interface ChatBotDemoProps {
 
 const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoProps) => {
   const [input, setInput] = useState("");
-  const [model, setModel] = useState<string>(models[0].value);
-  const [webSearch, setWebSearch] = useState(false);
   const [isLoadingChat, setIsLoadingChat] = useState(false);
   const [problemUrl, setProblemUrl] = useState<string | null>(null);
   const [chatTitle, setChatTitle] = useState<string | null>(null);
@@ -203,13 +186,6 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
       isSavingRef.current = true;
       lastSavedMessageCountRef.current = messages.length;
 
-      console.log("Saving chat history...", {
-        messagesCount: messages.length,
-        chatId,
-        status,
-        lastMessageRole: lastMessage?.role,
-      });
-
       const saveHistory = async () => {
         try {
           // 문제 링크로 생성된 채팅인 경우 제목을 업데이트하지 않음
@@ -253,25 +229,30 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
                 .join("") || "",
           }));
 
-          // 마지막 assistant 메시지에서 hints 추출
-          let newHints: Hint[] | null = null;
-          const lastAssistantMessage = messagesToSave.filter(m => m.role === "assistant").pop();
-          if (lastAssistantMessage) {
-            const parsed = parseHintsFromMessage(lastAssistantMessage.content);
-            if (parsed.hints) {
-              // 기존 hints와 새 hints 병합 (새 hints로 대체)
-              newHints = parsed.hints;
-              setHints(newHints);
+          // 모든 assistant 메시지에서 hints 추출하여 누적
+          let allHints: Hint[] = [];
+          for (const msg of messagesToSave) {
+            if (msg.role === "assistant") {
+              const parsed = parseHintsFromMessage(msg.content);
+              if (parsed.hints) {
+                for (const hint of parsed.hints) {
+                  // 같은 step이 있으면 대체, 없으면 추가
+                  const existingIndex = allHints.findIndex(h => h.step === hint.step);
+                  if (existingIndex >= 0) {
+                    allHints[existingIndex] = hint;
+                  } else {
+                    allHints.push(hint);
+                  }
+                }
+              }
             }
           }
-
-          console.log("Calling saveChatHistory...", {
-            chatId,
-            title,
-            shouldUpdateTitle,
-            messagesCount: messagesToSave.length,
-            hintsCount: newHints?.length || hints?.length,
-          });
+          // step 순으로 정렬
+          allHints.sort((a, b) => a.step - b.step);
+          const newHints = allHints.length > 0 ? allHints : null;
+          if (newHints) {
+            setHints(newHints);
+          }
 
           // problemUrl이 있으면 제목을 업데이트하지 않음
           const savedChatId = await saveChatHistory(
@@ -282,7 +263,6 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
             shouldUpdateTitle, // 제목 업데이트 여부
             newHints ?? hints // 새 hints 또는 기존 hints
           );
-          console.log("saveChatHistory result:", savedChatId);
 
           // 제목이 실제로 변경되었는지 확인
           const titleChanged = shouldUpdateTitle && title !== chatTitle;
@@ -326,8 +306,6 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
       },
       {
         body: {
-          model: model,
-          webSearch: webSearch,
           chatId: chatId || undefined,
           problemUrl: problemUrl || undefined,
         },
@@ -353,7 +331,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
           )}
           {/* 힌트 패널 - hints가 있을 때만 표시 */}
           {hints && hints.length > 0 && (
-            <div className="flex-shrink-0 px-4 py-2 border-b bg-muted/30">
+            <div className="flex-shrink-0 px-4 py-1.5 border-b bg-muted/30 relative">
               <HintsCard hints={hints} />
             </div>
           )}
@@ -389,7 +367,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
                     switch (part.type) {
                       case "text":
                         // hints 블록 파싱
-                        const { hints, textWithoutHints } = parseHintsFromMessage(part.text);
+                        const { hints: parsedHints, textWithoutHints } = parseHintsFromMessage(part.text);
 
                         return (
                           <Message
@@ -397,8 +375,12 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
                             from={message.role}
                           >
                             <MessageContent>
-                              {/* 힌트 카드 표시 */}
-                              {hints && <HintsCard hints={hints} />}
+                              {/* 힌트는 content만 텍스트로 표시 */}
+                              {parsedHints && parsedHints.map((hint) => (
+                                <MessageResponse key={hint.step}>
+                                  {`**힌트 ${hint.step}**: ${hint.content}`}
+                                </MessageResponse>
+                              ))}
                               {/* 나머지 텍스트 표시 */}
                               {textWithoutHints && (
                                 <MessageResponse>{textWithoutHints}</MessageResponse>
@@ -473,33 +455,6 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
                   <PromptInputActionAddAttachments />
                 </PromptInputActionMenuContent>
               </PromptInputActionMenu>
-              <PromptInputButton
-                variant={webSearch ? "default" : "ghost"}
-                onClick={() => setWebSearch(!webSearch)}
-              >
-                <GlobeIcon size={16} />
-                <span>Search</span>
-              </PromptInputButton>
-              <PromptInputSelect
-                onValueChange={(value) => {
-                  setModel(value);
-                }}
-                value={model}
-              >
-                <PromptInputSelectTrigger>
-                  <PromptInputSelectValue />
-                </PromptInputSelectTrigger>
-                <PromptInputSelectContent>
-                  {models.map((model) => (
-                    <PromptInputSelectItem
-                      key={model.value}
-                      value={model.value}
-                    >
-                      {model.name}
-                    </PromptInputSelectItem>
-                  ))}
-                </PromptInputSelectContent>
-              </PromptInputSelect>
             </PromptInputTools>
             <PromptInputSubmit disabled={!input && !status} status={status} />
           </PromptInputFooter>

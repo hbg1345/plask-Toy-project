@@ -23,6 +23,8 @@ export async function GET(request: NextRequest) {
   }
 
   const problemId = request.nextUrl.searchParams.get("problemId");
+  const generate = request.nextUrl.searchParams.get("generate") !== "false"; // 기본값 true
+
   if (!problemId) {
     return NextResponse.json({ error: "problemId required" }, { status: 400 });
   }
@@ -41,6 +43,15 @@ export async function GET(request: NextRequest) {
         hints: problemData.hints,
         problemTitle: problemData.title,
         difficulty: problemData.difficulty,
+      });
+    }
+
+    // generate=false면 DB에 없어도 AI 생성 안 함
+    if (!generate) {
+      return NextResponse.json({
+        hints: [],
+        problemTitle: problemData?.title,
+        difficulty: problemData?.difficulty,
       });
     }
 

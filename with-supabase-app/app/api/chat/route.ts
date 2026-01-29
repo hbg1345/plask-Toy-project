@@ -213,6 +213,7 @@ export async function POST(req: Request) {
 
       // editorial 체크 및 lazy loading
       const problemId = detectedProblemUrl.match(/\/tasks\/([^\/]+)$/)?.[1];
+
       if (problemId) {
         const { data: problemData } = await supabase
           .from("problems")
@@ -226,6 +227,7 @@ export async function POST(req: Request) {
         } else {
           // 없으면 가져와서 저장
           const fetchedEditorial = await getEditorial(detectedProblemUrl);
+
           if (typeof fetchedEditorial === 'string' && !fetchedEditorial.startsWith('에러') && !fetchedEditorial.startsWith('오류')) {
             editorial = fetchedEditorial;
             // DB에 저장
@@ -241,9 +243,14 @@ export async function POST(req: Request) {
     }
   }
 
-  let systemMessage = `You are a HINT assistant for AtCoder problems. Answer ONLY what the user asks. Be CONCISE and BRIEF.
+  let systemMessage = `You are an assistant for AtCoder problems. Answer ONLY what the user asks. Be CONCISE and BRIEF.
 
-CRITICAL: Keep responses SHORT. Answer only the user's question directly. Do not add unnecessary explanations, introductions, or lengthy context unless specifically asked.
+CRITICAL: Keep responses SHORT. Answer the user's question directly in NORMAL conversation format.
+
+RESPONSE FORMAT:
+- For GENERAL questions: Answer normally WITHOUT any special format
+- For HINT requests (user explicitly asks "힌트", "hint", "도움", "어떻게 풀어"): Use hint format (explained below)
+- DO NOT use hint format for questions like "이게 뭐야?", "설명해줘", "이 부분 이해가 안돼"
 
 TOOL USAGE - VERY IMPORTANT:
 When user mentions a problem WITHOUT a URL, you MUST use tools to find it:
@@ -263,7 +270,6 @@ NEVER say "URL이 없어서 못 찾겠어요" - ALWAYS use searchProblems tool f
 IMPORTANT - Be CONSERVATIVE and MINIMAL:
 - Give the MINIMUM information needed to answer the question
 - Users may want to think for themselves, so don't over-explain
-- After giving a brief answer, ask if they want to know more (e.g., "Want more details?" or "Need more hints?")
 - Let users guide the conversation - don't dump all information at once
 - Stop after answering and wait for user's next question
 
@@ -278,9 +284,9 @@ CRITICAL RULES FOR PROBLEM QUESTIONS:
 - When user just asks about the problem, give ONLY a brief problem summary
 
 Rules:
-- Provide hints, NOT solutions or complete code
+- Provide hints, NOT solutions or complete code when helping with problem solving
 - Answer in User's language
-- Use LaTeX for math: $...$ for inline, $$...$$ for block
+- Use LaTeX for math: $...$ for inline, $$...$$ for block (use double backslash for LaTeX commands: \\times, \\frac, etc.)
 - Be brief, direct, and to the point
 - No long explanations unless the user explicitly asks for them`;
 
@@ -310,24 +316,19 @@ ${samples && samples.length > 0 ? samples.map((sample, idx) =>
 ).join('\n\n') : 'Not available'}
 
 ${editorial ? `
-Editorial (USE THIS FOR HINTS - DO NOT SHOW DIRECTLY):
-${editorial}
+Editorial (Reference for helping user - DO NOT SHOW DIRECTLY):
+${editorial.replace(/\\/g, '\\\\')}
 
-HINT FORMAT - VERY IMPORTANT:
-When user asks for hints (e.g., "힌트 줘", "어떻게 풀어?", "도와줘"), respond with structured hints in this EXACT JSON format:
+HINT FORMAT (ONLY when user EXPLICITLY asks for hints/도움/어떻게 풀어):
+When user asks for hints, use this JSON format:
+{"step": 1, "content": "힌트 내용"}
 
-\`\`\`hints
-{"hints":[{"step":1,"content":"첫 번째 논리적 단계"},{"step":2,"content":"두 번째 논리적 단계"},{"step":3,"content":"세 번째 논리적 단계"}]}
-\`\`\`
+- step: 힌트 번호 (1, 2, 3...)
+- content: 힌트 텍스트 (LaTeX 가능: $x^2$, use \\\\times for ×)
+- 한 번에 하나의 힌트만
+- 힌트 후 "다음 힌트가 필요하면 말씀해주세요!" 추가
 
-Rules for hints:
-- Each step should be a MINIMAL, independent logical insight
-- Steps should NOT overlap - each reveals new information
-- Order by logical problem-solving flow (observation → approach → implementation)
-- 3-5 steps is ideal
-- Use user's language (Korean if they speak Korean)
-- DO NOT reveal the full solution - each hint should be a small nudge
-- After the JSON block, you can add a brief message like "힌트를 클릭해서 확인하세요!"
+IMPORTANT: Do NOT use hint format for general questions! Only use it when user explicitly asks for hints.
 ` : 'Editorial: Not available'}
 
 You already have the problem information, so you don't need to ask the user for the URL.
@@ -342,10 +343,12 @@ REMEMBER: Answer BRIEFLY and CONCISELY. Provide hints only, not solutions. Answe
   const dynamicTools = createDynamicTools(supabase, chatId);
   const allTools: ToolSet = { ...tools, ...dynamicTools };
 
+  const convertedMessages = await convertToModelMessages(messages);
+
   const result = streamText({
     model: google(MODEL_NAME),
     system: systemMessage,
-    messages: await convertToModelMessages(messages),
+    messages: convertedMessages,
     tools: allTools,
     stopWhen: stepCountIs(10),
     onFinish: async ({ usage }) => {

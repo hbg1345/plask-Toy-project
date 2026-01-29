@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { saveChatHistory, getChatByProblemUrl } from "@/app/actions";
 import { cn } from "@/lib/utils";
 
 interface ProblemLinkProps {
@@ -11,6 +13,7 @@ interface ProblemLinkProps {
   difficulty: number | null;
   className?: string;
   children?: React.ReactNode;
+  mode?: "chat" | "practice"; // 어디로 이동할지
 }
 
 export function ProblemLink({
@@ -21,14 +24,40 @@ export function ProblemLink({
   difficulty,
   className,
   children,
+  mode = "chat",
 }: ProblemLinkProps) {
+  const router = useRouter();
+
+  const handleClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+
+    if (mode === "practice") {
+      // 연습 모드로 이동
+      router.push(`/practice/${problemId}`);
+      return;
+    }
+
+    // 기존 채팅이 있는지 확인
+    let chatId = await getChatByProblemUrl(problemUrl);
+
+    if (!chatId) {
+      // 기존 채팅이 없으면 새로 생성
+      const title = `${problemId}: ${problemTitle}`;
+      chatId = await saveChatHistory(null, [], title, problemUrl);
+    }
+
+    // 해당 채팅으로 이동
+    if (chatId) {
+      router.push(`/chat?chatId=${chatId}`);
+    } else {
+      router.push("/chat");
+    }
+  };
+
   const colors = getDifficultyColor(difficulty);
 
-  // 연습 페이지로 이동
-  const practiceUrl = `/practice/${problemId}`;
-
   return (
-    <Link href={practiceUrl} className={className}>
+    <Link href="/chat" onClick={handleClick} className={className}>
       {children || (
         <div
           className={cn(

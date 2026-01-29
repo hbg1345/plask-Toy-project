@@ -11,10 +11,17 @@ function ChatPageContent() {
   const router = useRouter();
   const [initialProblemId, setInitialProblemId] = useState<string | null>(null);
 
-  // URL에서 problemId 파라미터 확인
+  // URL에서 chatId 또는 problemId 파라미터 확인
   useEffect(() => {
+    const chatIdParam = searchParams.get("chatId");
     const problemId = searchParams.get("problemId");
-    if (problemId) {
+
+    if (chatIdParam) {
+      // chatId가 있으면 해당 채팅 선택
+      setSelectedChatId(chatIdParam);
+      // URL에서 쿼리 파라미터 제거
+      router.replace("/chat", { scroll: false });
+    } else if (problemId) {
       // 새 채팅 시작을 위해 selectedChatId를 null로 설정
       setSelectedChatId(null);
       setInitialProblemId(problemId);
