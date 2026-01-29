@@ -97,7 +97,8 @@ async function getProblemsInRange(
   minRating: number,
   maxRating: number,
   count: number,
-  isLastRange: boolean = false
+  isLastRange: boolean = false,
+  solvedProblemIds: Set<string> = new Set()
 ): Promise<RecommendedProblem[]> {
   const supabase = await createClient();
 
@@ -120,8 +121,15 @@ async function getProblemsInRange(
     return [];
   }
 
+  // 이미 푼 문제 제외
+  const unsolvedProblems = problems.filter((p) => !solvedProblemIds.has(p.id));
+
+  if (unsolvedProblems.length === 0) {
+    return [];
+  }
+
   // 랜덤으로 count개 선택
-  const shuffled = [...problems].sort(() => Math.random() - 0.5);
+  const shuffled = [...unsolvedProblems].sort(() => Math.random() - 0.5);
   const selected = shuffled.slice(0, Math.min(count, shuffled.length));
   
   // 난이도 순서로 오름차순 정렬
@@ -173,9 +181,37 @@ async function getProblemsInRange(
 }
 
 /**
+ * 사용자가 푼 문제 ID 목록을 가져옵니다.
+ */
+async function getSolvedProblemIds(): Promise<Set<string>> {
+  const supabase = await createClient();
+
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const claims = claimsData?.claims;
+
+  if (!claims) {
+    return new Set();
+  }
+
+  const userId = claims.sub as string;
+
+  const { data: solvedProblems, error } = await supabase
+    .from("user_solved_problems")
+    .select("problem_id")
+    .eq("user_id", userId);
+
+  if (error || !solvedProblems) {
+    return new Set();
+  }
+
+  return new Set(solvedProblems.map((p) => p.problem_id));
+}
+
+/**
  * 사용자 레이팅을 기반으로 문제를 추천합니다.
  * 레이팅 ±500 범위를 250 단위로 나눠서 4개의 열로 구성합니다.
  * 각 범위에서 약 7-8개씩 랜덤으로 선택합니다.
+ * 이미 푼 문제는 제외됩니다.
  *
  * @param userRating - 사용자의 AtCoder 레이팅
  * @param problemsPerRange - 각 범위당 문제 개수 (기본값: 8)
@@ -188,6 +224,9 @@ export async function getRecommendedProblemsByRange(
   const ranges = getRatingRanges(userRating);
   const result = new Map<string, { range: RatingRange; problems: RecommendedProblem[] }>();
 
+  // 사용자가 푼 문제 목록 가져오기
+  const solvedProblemIds = await getSolvedProblemIds();
+
   // 각 범위별로 병렬로 문제 가져오기
   const promises = ranges.map(async (range, index) => {
     const isLastRange = index === ranges.length - 1;
@@ -195,7 +234,8 @@ export async function getRecommendedProblemsByRange(
       range.min,
       range.max,
       problemsPerRange,
-      isLastRange
+      isLastRange,
+      solvedProblemIds
     );
     return { range, problems };
   });

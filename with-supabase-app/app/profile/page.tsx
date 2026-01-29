@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Suspense } from "react";
 import { ProfileWithGrass } from "@/components/profile-form";
 import { UserInfoRow } from "@/types/supabase";
-import { getSolvedProblems } from "@/app/actions";
+import { getSolvedProblems, getPracticeSessions, getPracticeStats } from "@/app/actions";
 
 async function UserDetails() {
   const supabase = await createClient();
@@ -42,12 +42,20 @@ async function UserDetails() {
     ? await getSolvedProblems(userData.atcoder_handle)
     : [];
 
+  // 연습 세션 기록 가져오기
+  const [practiceSessions, practiceStats] = await Promise.all([
+    getPracticeSessions(20),
+    getPracticeStats(),
+  ]);
+
   return (
     <ProfileWithGrass
       rating={userData.rating}
       atcoder_handle={userData.atcoder_handle}
       avatar_url={userData.avatar_url}
       solvedProblems={solvedProblems}
+      practiceSessions={practiceSessions}
+      practiceStats={practiceStats}
     />
   );
 }

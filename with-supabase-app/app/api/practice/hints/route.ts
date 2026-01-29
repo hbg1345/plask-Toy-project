@@ -28,16 +28,20 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // 1. DB에서 기존 힌트 확인
+    // 1. DB에서 기존 힌트 및 문제 정보 확인
     const { data: problemData } = await supabase
       .from("problems")
-      .select("editorial, hints")
+      .select("editorial, hints, title, difficulty")
       .eq("id", problemId)
       .single();
 
     // 이미 힌트가 있으면 반환
     if (problemData?.hints && Array.isArray(problemData.hints) && problemData.hints.length > 0) {
-      return NextResponse.json({ hints: problemData.hints });
+      return NextResponse.json({
+        hints: problemData.hints,
+        problemTitle: problemData.title,
+        difficulty: problemData.difficulty,
+      });
     }
 
     // 2. Editorial 가져오기 (없으면 크롤링)
@@ -97,7 +101,11 @@ Generate exactly 5 hints.`;
       .update({ hints })
       .eq("id", problemId);
 
-    return NextResponse.json({ hints });
+    return NextResponse.json({
+      hints,
+      problemTitle: metadata.title,
+      difficulty: problemData?.difficulty,
+    });
   } catch (error) {
     console.error("Failed to generate hints:", error);
     return NextResponse.json({ hints: [], error: "Failed to generate hints" });

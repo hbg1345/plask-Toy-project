@@ -18,7 +18,8 @@ import { DifficultyDistribution } from "./difficulty-distribution";
 import { AvatarUpload } from "./avatar-upload";
 import { TokenUsageCard } from "./token-usage";
 import { RatingGraph } from "./rating-graph";
-import { SolvedProblem, refreshAtcoderRating, getSolvedProblems, refreshSolvedProblems } from "@/app/actions";
+import { SolvedProblem, PracticeSession, PracticeStats, refreshAtcoderRating, getSolvedProblems, refreshSolvedProblems } from "@/app/actions";
+import { PracticeHistory } from "./practice-history";
 import { getRatingColor } from "@/lib/atcoder/rating-history";
 import { RefreshCw, Pencil, Check, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -84,9 +85,18 @@ export function ProfileForm({ rating, atcoder_handle }: UserInfoRow) {
 
 interface ProfileWithGrassProps extends UserInfoRow {
   solvedProblems?: SolvedProblem[];
+  practiceSessions?: PracticeSession[];
+  practiceStats?: PracticeStats;
 }
 
-export function ProfileWithGrass({ rating: initialRating, atcoder_handle, avatar_url: initialAvatarUrl, solvedProblems: initialSolvedProblems = [] }: ProfileWithGrassProps) {
+export function ProfileWithGrass({
+  rating: initialRating,
+  atcoder_handle,
+  avatar_url: initialAvatarUrl,
+  solvedProblems: initialSolvedProblems = [],
+  practiceSessions = [],
+  practiceStats = { totalSessions: 0, solvedCount: 0, avgElapsedTime: 0, avgHintsUsed: 0 },
+}: ProfileWithGrassProps) {
   const [modify, setModify] = useState(false);
   const [editHandle, setEditHandle] = useState(atcoder_handle || "");
   const [isUpdating, setIsUpdating] = useState(false);
@@ -287,6 +297,9 @@ export function ProfileWithGrass({ rating: initialRating, atcoder_handle, avatar
         </div>
 
         {atcoder_handle && <RatingGraph key={refreshKey} atcoderHandle={atcoder_handle} />}
+
+        {/* 연습 기록 */}
+        <PracticeHistory sessions={practiceSessions} stats={practiceStats} />
 
       {atcoder_handle && (
         <Card className="w-full">

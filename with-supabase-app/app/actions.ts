@@ -1093,3 +1093,115 @@ export async function collectAllUserRatings(): Promise<{
     errors,
   };
 }
+
+/**
+ * 연습 세션 관련 타입 및 함수
+ */
+export interface PracticeSession {
+  id: string;
+  problem_id: string;
+  problem_title: string | null;
+  difficulty: number | null;
+  time_limit: number;
+  elapsed_time: number;
+  hints_used: number;
+  solved: boolean;
+  created_at: string;
+}
+
+/**
+ * 사용자의 연습 세션 기록을 가져옵니다.
+ */
+export async function getPracticeSessions(limit: number = 20): Promise<PracticeSession[]> {
+  const supabase = await createClient();
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const claims = claimsData?.claims;
+
+  if (!claims) {
+    return [];
+  }
+
+  const userId = claims.sub as string;
+
+  try {
+    const { data, error } = await supabase
+      .from("practice_sessions")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error("Failed to get practice sessions:", error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error("Failed to get practice sessions:", error);
+    return [];
+  }
+}
+
+/**
+ * 연습 세션 통계를 가져옵니다.
+ */
+export interface PracticeStats {
+  totalSessions: number;
+  solvedCount: number;
+  avgElapsedTime: number;
+  avgHintsUsed: number;
+}
+
+export async function getPracticeStats(): Promise<PracticeStats> {
+  const supabase = await createClient();
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const claims = claimsData?.claims;
+
+  if (!claims) {
+    return {
+      totalSessions: 0,
+      solvedCount: 0,
+      avgElapsedTime: 0,
+      avgHintsUsed: 0,
+    };
+  }
+
+  const userId = claims.sub as string;
+
+  try {
+    const { data, error } = await supabase
+      .from("practice_sessions")
+      .select("elapsed_time, hints_used, solved")
+      .eq("user_id", userId);
+
+    if (error || !data || data.length === 0) {
+      return {
+        totalSessions: 0,
+        solvedCount: 0,
+        avgElapsedTime: 0,
+        avgHintsUsed: 0,
+      };
+    }
+
+    const totalSessions = data.length;
+    const solvedCount = data.filter((s) => s.solved).length;
+    const avgElapsedTime = data.reduce((acc, s) => acc + s.elapsed_time, 0) / totalSessions;
+    const avgHintsUsed = data.reduce((acc, s) => acc + s.hints_used, 0) / totalSessions;
+
+    return {
+      totalSessions,
+      solvedCount,
+      avgElapsedTime,
+      avgHintsUsed,
+    };
+  } catch (error) {
+    console.error("Failed to get practice stats:", error);
+    return {
+      totalSessions: 0,
+      solvedCount: 0,
+      avgElapsedTime: 0,
+      avgHintsUsed: 0,
+    };
+  }
+}
