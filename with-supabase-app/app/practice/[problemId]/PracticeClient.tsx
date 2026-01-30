@@ -20,7 +20,6 @@ import {
   Plus,
   ChevronDown,
   ChevronUp,
-  Lock,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
@@ -242,25 +241,12 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
     return () => clearInterval(interval);
   }, [status]);
 
-  // 힌트 unlock 로직 (시간 경과에 따라) - 15% 단위
+  // 힌트가 로드되면 모두 해금 상태로 설정
   useEffect(() => {
-    if (status !== "running" || hints.length === 0) return;
-
-    const totalTime = selectedTime * 60;
-    const hintIntervals = [0.15, 0.30, 0.45, 0.60, 0.75]; // 15%, 30%, 45%, 60%, 75%
-    const progress = elapsedTime / totalTime;
-
-    let newUnlocked = 0;
-    for (let i = 0; i < Math.min(5, hints.length); i++) {
-      if (progress >= hintIntervals[i]) {
-        newUnlocked = i + 1;
-      }
+    if (hints.length > 0) {
+      setUnlockedHints(Math.min(5, hints.length));
     }
-
-    if (newUnlocked > unlockedHints) {
-      setUnlockedHints(newUnlocked);
-    }
-  }, [elapsedTime, selectedTime, hints.length, status, unlockedHints]);
+  }, [hints.length]);
 
   // Submission 체크
   const checkSubmission = useCallback(async () => {
@@ -305,7 +291,7 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
   const handleStart = async () => {
     setRemainingTime(selectedTime * 60);
     setElapsedTime(0);
-    setUnlockedHints(0);
+    // 힌트는 처음부터 모두 해금 상태 (useEffect에서 설정됨)
     setIsSolved(null);
     setStatus("running");
 
@@ -347,7 +333,7 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
     setStatus("setup");
     setRemainingTime(0);
     setElapsedTime(0);
-    setUnlockedHints(0);
+    // 힌트는 계속 해금 상태 유지
     setIsSolved(null);
     setSessionSaved(false);
   };
@@ -731,7 +717,7 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm flex items-center gap-2">
                       <Lightbulb className="h-4 w-4" />
-                      힌트 ({unlockedHints}/{Math.min(5, hints.length)})
+                      힌트 ({Math.min(5, hints.length)}개)
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -742,8 +728,6 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
                     ) : (
                       <div className="space-y-2">
                         {hints.slice(0, 5).map((hint, index) => {
-                          const isUnlocked = index < unlockedHints;
-                          const unlockProgress = (index + 1) * 15; // 15%, 30%, 45%, 60%, 75%
                           const isExpanded = expandedHints.has(index);
 
                           const toggleExpand = () => {
@@ -761,36 +745,20 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
                           return (
                             <div
                               key={hint.step}
-                              className={cn(
-                                "rounded-lg border text-sm",
-                                isUnlocked
-                                  ? "bg-background"
-                                  : "bg-muted/50 text-muted-foreground"
-                              )}
+                              className="rounded-lg border text-sm bg-background"
                             >
                               <button
-                                onClick={isUnlocked ? toggleExpand : undefined}
-                                disabled={!isUnlocked}
-                                className={cn(
-                                  "w-full p-3 flex items-center justify-between",
-                                  isUnlocked && "hover:bg-muted/30 cursor-pointer"
-                                )}
+                                onClick={toggleExpand}
+                                className="w-full p-3 flex items-center justify-between hover:bg-muted/30 cursor-pointer"
                               >
                                 <span className="font-medium">힌트 {index + 1}</span>
-                                {isUnlocked ? (
-                                  isExpanded ? (
-                                    <ChevronUp className="h-4 w-4" />
-                                  ) : (
-                                    <ChevronDown className="h-4 w-4" />
-                                  )
+                                {isExpanded ? (
+                                  <ChevronUp className="h-4 w-4" />
                                 ) : (
-                                  <div className="flex items-center gap-1 text-xs">
-                                    <Lock className="h-3 w-3" />
-                                    <span>{unlockProgress}%</span>
-                                  </div>
+                                  <ChevronDown className="h-4 w-4" />
                                 )}
                               </button>
-                              {isUnlocked && isExpanded && (
+                              {isExpanded && (
                                 <div className="px-3 pb-3 prose prose-sm dark:prose-invert max-w-none">
                                   <ReactMarkdown
                                     remarkPlugins={[remarkMath]}

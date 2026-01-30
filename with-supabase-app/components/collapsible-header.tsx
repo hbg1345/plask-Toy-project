@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { DesktopNav } from "./desktop-nav";
 import { MobileNav } from "./mobile-nav";
 import { ThemeSwitcher } from "./theme-switcher";
@@ -18,7 +19,9 @@ export function CollapsibleHeader({ authButton, mobileAuthButton }: CollapsibleH
         </Link>
 
         {/* Desktop Navigation */}
-        <DesktopNav />
+        <Suspense fallback={<nav className="hidden md:flex flex-1" />}>
+          <DesktopNav />
+        </Suspense>
 
         {/* Desktop Auth & Theme */}
         <div className="hidden md:flex items-center gap-2">
@@ -29,9 +32,11 @@ export function CollapsibleHeader({ authButton, mobileAuthButton }: CollapsibleH
         {/* Mobile Menu */}
         <div className="flex flex-1 items-center justify-end md:hidden gap-2">
           <ThemeSwitcher />
-          <MobileNav>
-            {mobileAuthButton}
-          </MobileNav>
+          <Suspense fallback={<div className="h-9 w-9" />}>
+            <MobileNav>
+              {mobileAuthButton}
+            </MobileNav>
+          </Suspense>
         </div>
       </div>
     </header>

@@ -1,21 +1,16 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import {
   CheckCircle,
   XCircle,
   Clock,
   Lightbulb,
-  ChevronDown,
-  ChevronUp,
-  MessageSquare,
   Target,
   TrendingUp,
   Circle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { PracticeSession, PracticeStats } from "@/app/actions";
@@ -106,8 +101,6 @@ function formatFullDate(dateString: string): string {
 }
 
 export function PracticeHistory({ sessions, stats }: PracticeHistoryProps) {
-  const [showAll, setShowAll] = useState(false);
-  const displayedSessions = showAll ? sessions : sessions.slice(0, 5);
 
   if (sessions.length === 0) {
     return (
@@ -182,25 +175,21 @@ export function PracticeHistory({ sessions, stats }: PracticeHistoryProps) {
           </div>
         </div>
 
-        {/* 세션 목록 - 그리드 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {displayedSessions.map((session) => {
-            const timeUsagePercent = Math.round(
-              (session.elapsed_time / session.time_limit) * 100
-            );
-
-            return (
+        {/* 세션 목록 - 그리드 (최대 3행, 내부 스크롤) */}
+        <div className="max-h-[420px] overflow-y-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pr-1">
+            {sessions.map((session) => (
               <Link
                 key={session.id}
                 href={`/practice/${session.problem_id}`}
                 className={cn(
-                  "block p-4 border rounded-lg transition-colors hover:shadow-md",
+                  "block p-3 border rounded-lg transition-colors hover:shadow-md",
                   session.solved
                     ? "bg-green-50/50 dark:bg-green-950/20 border-green-200 dark:border-green-800 hover:border-green-400"
                     : "bg-red-50/50 dark:bg-red-950/20 border-red-200 dark:border-red-800 hover:border-red-400"
                 )}
               >
-                {/* 상단: 결과 아이콘 + 제목 */}
+                {/* 상단: 결과 아이콘 + 제목 + 난이도 */}
                 <div className="flex items-center gap-2 mb-2">
                   {session.solved ? (
                     <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
@@ -216,73 +205,59 @@ export function PracticeHistory({ sessions, stats }: PracticeHistoryProps) {
                   >
                     {session.problem_title || session.problem_id}
                   </span>
-                </div>
-
-                {/* 난이도 + 날짜 */}
-                <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
                   {session.difficulty && (
                     <Badge variant="outline" className={cn(
-                      "text-xs",
+                      "text-xs flex-shrink-0",
                       getDifficultyColor(session.difficulty)
                     )}>
                       {session.difficulty}
                     </Badge>
                   )}
+                </div>
+
+                {/* 하단: 시간 + 힌트 + 날짜 */}
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <div className="flex items-center gap-3">
+                    {/* 시간 정보 */}
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      <span className="font-mono">
+                        {formatTime(session.elapsed_time)}
+                      </span>
+                    </div>
+
+                    {/* 힌트 사용 - 동그라미 5개 */}
+                    <div className="flex items-center gap-0.5">
+                      <Lightbulb className="h-3 w-3 text-amber-500" />
+                      {[0, 1, 2, 3, 4].map((i) => (
+                        <Circle
+                          key={i}
+                          className={cn(
+                            "h-2.5 w-2.5",
+                            i < session.hints_used
+                              ? "fill-amber-500 text-amber-500"
+                              : "text-muted-foreground/30"
+                          )}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 날짜 */}
                   <span title={formatFullDate(session.created_at)}>
                     {formatDate(session.created_at)}
                   </span>
                 </div>
-
-                {/* 시간 정보 */}
-                <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
-                  <Clock className="h-3 w-3" />
-                  <span className="font-mono">
-                    {formatTime(session.elapsed_time)}
-                  </span>
-                  <span>/ {formatTime(session.time_limit)}</span>
-                </div>
-
-                {/* 힌트 사용 - 동그라미 5개 */}
-                <div className="flex items-center gap-1">
-                  <Lightbulb className="h-3 w-3 text-amber-500" />
-                  <div className="flex gap-0.5">
-                    {[0, 1, 2, 3, 4].map((i) => (
-                      <Circle
-                        key={i}
-                        className={cn(
-                          "h-3 w-3",
-                          i < session.hints_used
-                            ? "fill-amber-500 text-amber-500"
-                            : "text-muted-foreground/30"
-                        )}
-                      />
-                    ))}
-                  </div>
-                </div>
               </Link>
-            );
-          })}
+            ))}
+          </div>
         </div>
 
-        {/* 더보기/접기 버튼 */}
-        {sessions.length > 5 && (
-          <Button
-            variant="ghost"
-            className="w-full"
-            onClick={() => setShowAll(!showAll)}
-          >
-            {showAll ? (
-              <>
-                <ChevronUp className="h-4 w-4 mr-2" />
-                접기
-              </>
-            ) : (
-              <>
-                <ChevronDown className="h-4 w-4 mr-2" />
-                더보기 ({sessions.length - 5}개 더)
-              </>
-            )}
-          </Button>
+        {/* 스크롤 안내 (9개 이상일 때만) */}
+        {sessions.length > 9 && (
+          <p className="text-xs text-center text-muted-foreground">
+            ↕ 스크롤하여 더 보기 ({sessions.length}개 기록)
+          </p>
         )}
       </CardContent>
     </Card>
