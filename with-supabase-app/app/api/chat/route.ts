@@ -30,6 +30,7 @@ const tools: ToolSet = {
     example: fetchRecentContests({})`,
     inputSchema: z.object({}),
     execute: async () => {
+      console.log("=== fetchRecentContests called ===");
       return await getRecentContests();
     },
   }),
@@ -126,20 +127,30 @@ Example: linkProblemToChat({problemId: "abc314_a"})`,
         problemId: z.string().describe("The problem ID (e.g., 'abc314_a')"),
       }),
       execute: async ({ problemId }) => {
+        console.log("=== linkProblemToChat called ===");
+        console.log("chatId in closure:", chatId);
+        console.log("problemId:", problemId);
+
         const contestId = extractContestId(problemId);
         const problemUrl = `https://atcoder.jp/contests/${contestId}/tasks/${problemId}`;
 
         // chatId가 있으면 DB에 problem_url 저장
         if (chatId) {
-          const { error } = await supabase
+          console.log("Attempting DB update:", { chatId, problemUrl });
+          const { data, error, count } = await supabase
             .from("chat_history")
             .update({ problem_url: problemUrl })
-            .eq("id", chatId);
+            .eq("id", chatId)
+            .select();
+
+          console.log("DB update result:", { data, error, count });
 
           if (error) {
             console.error("Failed to link problem to chat:", error);
             return { success: false, error: error.message };
           }
+        } else {
+          console.log("chatId is falsy, skipping DB update");
         }
 
         // 문제 메타데이터 가져와서 반환
@@ -180,6 +191,11 @@ export async function POST(req: Request) {
     chatId,
   }: { messages: UIMessage[]; problemUrl?: string; chatId?: string } =
     await req.json();
+
+  console.log("=== API chat route called ===");
+  console.log("chatId:", chatId);
+  console.log("problemUrl:", problemUrl);
+  console.log("messagesCount:", messages?.length);
 
   // problemUrl이 request body에 있으면 사용, 없으면 chatId로 DB에서 조회
   let detectedProblemUrl: string | null = null;
@@ -258,6 +274,8 @@ When user mentions a problem WITHOUT a URL, you MUST use tools to find it:
 2. Show results and ask user to confirm which problem
 3. Once confirmed, use linkProblemToChat to link it
 4. Then use fetchTaskMetadata to get full problem details
+
+CRITICAL: After calling ANY tool, you MUST respond to the user with the results. Never end your turn with just a tool call - always provide a text response explaining what you found or did.
 
 Examples when to use searchProblems:
 - "ABC 314 A번 문제" → searchProblems({query: "abc314_a"})
@@ -347,11 +365,24 @@ REMEMBER: Answer BRIEFLY and CONCISELY. Provide hints only, not solutions. Answe
 
   const result = streamText({
     model: google(MODEL_NAME),
+    temperature: 0, // 도구 호출 안정성 향상
     system: systemMessage,
     messages: convertedMessages,
     tools: allTools,
     stopWhen: stepCountIs(10),
-    onFinish: async ({ usage }) => {
+    onFinish: async ({ usage, text, steps }) => {
+      console.log("=== streamText onFinish ===");
+      console.log("text length:", text?.length || 0);
+      console.log("steps count:", steps?.length || 0);
+      if (steps && steps.length > 0) {
+        console.log("step 0 finishReason:", steps[0].finishReason);
+        console.log("step 0 toolCalls:", steps[0].toolCalls?.length || 0);
+        console.log("step 0 text length:", steps[0].text?.length || 0);
+        if (steps[0].finishReason === "error") {
+          console.log("step 0 error:", steps[0]);
+        }
+      }
+
       // 토큰 사용량 저장
       if (usage) {
         try {
@@ -371,5 +402,18 @@ REMEMBER: Answer BRIEFLY and CONCISELY. Provide hints only, not solutions. Answe
   return result.toUIMessageStreamResponse({
     sendSources: true,
     sendReasoning: true,
+    messageMetadata: ({ part }) => {
+      // linkProblemToChat 도구가 성공했을 때 클라이언트에 problemUrl 전달
+      if (part.type === "tool-result" && part.toolName === "linkProblemToChat") {
+        const output = part.output as { success?: boolean; problemUrl?: string };
+        console.log("=== messageMetadata for linkProblemToChat ===");
+        console.log("output:", output);
+        if (output?.success && output?.problemUrl) {
+          console.log("Returning metadata with linkedProblemUrl:", output.problemUrl);
+          return { linkedProblemUrl: output.problemUrl };
+        }
+      }
+      return undefined;
+    },
   });
 }

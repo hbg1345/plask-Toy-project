@@ -64,7 +64,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
   const [chatTitle, setChatTitle] = useState<string | null>(null);
   const [hints, setHints] = useState<Hint[] | null>(null);
   const { messages, setMessages, sendMessage, status, regenerate } = useChat();
-  const { setRefreshTrigger } = useChatLayout();
+  const { setRefreshTrigger, setProblemUrl: setContextProblemUrl } = useChatLayout();
   const prevChatIdRef = useRef<string | null>(null);
   const lastSavedMessageCountRef = useRef<number>(0);
   const isSavingRef = useRef<boolean>(false);
@@ -165,6 +165,35 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
 
   // chatId 변경 시 부모에게 알림은 저장 완료 후에만 수행 (saveHistory 함수 내에서)
 
+  // 메시지에서 linkProblemToChat tool output 감지 (실시간)
+  useEffect(() => {
+    if (messages.length === 0) return;
+
+    for (const message of messages) {
+      if (message.role !== "assistant") continue;
+
+      for (const part of message.parts) {
+        // tool-linkProblemToChat part에서 output.problemUrl 확인
+        if (part.type === "tool-linkProblemToChat") {
+          const toolPart = part as {
+            type: string;
+            output?: { success?: boolean; problemUrl?: string };
+          };
+          if (toolPart.output?.success && toolPart.output?.problemUrl) {
+            const detectedUrl = toolPart.output.problemUrl;
+            if (detectedUrl !== problemUrl) {
+              console.log("Detected problemUrl from tool output:", detectedUrl);
+              setProblemUrl(detectedUrl);
+              setContextProblemUrl(detectedUrl);
+              setRefreshTrigger((prev) => prev + 1);
+            }
+            return;
+          }
+        }
+      }
+    }
+  }, [messages, problemUrl, setRefreshTrigger, setContextProblemUrl]);
+
   // 메시지가 추가되고 status가 ready일 때 저장
   useEffect(() => {
     // 저장 중이면 무시
@@ -180,6 +209,16 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
       messages.length > 0 &&
       hasNewMessages &&
       lastMessage?.role === "assistant";
+
+    // 디버그: 저장 조건 확인
+    console.log("=== Save check ===", {
+      status,
+      messagesLength: messages.length,
+      lastSavedCount: lastSavedMessageCountRef.current,
+      hasNewMessages,
+      lastMessageRole: lastMessage?.role,
+      shouldSave,
+    });
 
     if (shouldSave) {
       // 저장 시작 전에 플래그 설정 및 카운트 업데이트
@@ -231,6 +270,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
 
           // 모든 assistant 메시지에서 hints 추출하여 누적
           let allHints: Hint[] = [];
+          let detectedProblemUrl: string | null = null;
           for (const msg of messagesToSave) {
             if (msg.role === "assistant") {
               const parsed = parseHintsFromMessage(msg.content);
@@ -247,6 +287,8 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
               }
             }
           }
+
+
           // step 순으로 정렬
           allHints.sort((a, b) => a.step - b.step);
           const newHints = allHints.length > 0 ? allHints : null;
@@ -254,12 +296,17 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
             setHints(newHints);
           }
 
+          // linkProblemToChat에서 problemUrl이 감지되면 state 업데이트
+          if (detectedProblemUrl && detectedProblemUrl !== problemUrl) {
+            setProblemUrl(detectedProblemUrl);
+          }
+
           // problemUrl이 있으면 제목을 업데이트하지 않음
           const savedChatId = await saveChatHistory(
             chatId ?? null,
             messagesToSave,
             title,
-            problemUrl ?? null,
+            problemUrl || undefined, // null이면 undefined로 전달해서 DB 덮어쓰기 방지
             shouldUpdateTitle, // 제목 업데이트 여부
             newHints ?? hints // 새 hints 또는 기존 hints
           );
@@ -277,8 +324,8 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
             onChatIdChange(savedChatId);
           }
 
-          // 사이드바 새로고침 (제목이 변경되었을 때만)
-          if (titleChanged) {
+          // 사이드바 새로고침 (제목 변경 또는 problemUrl 감지 시)
+          if (titleChanged || detectedProblemUrl) {
             setRefreshTrigger((prev) => prev + 1);
           }
         } catch (error) {

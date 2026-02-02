@@ -403,7 +403,6 @@ export async function saveChatHistory(
       const updateData: {
         messages: string;
         title?: string;
-        problem_url?: string | null;
         hints?: Hint[] | null;
       } = {
         messages: messagesJson,
@@ -412,9 +411,7 @@ export async function saveChatHistory(
       if (updateTitle) {
         updateData.title = title;
       }
-      if (problemUrl !== undefined) {
-        updateData.problem_url = problemUrl;
-      }
+      // problem_url은 linkProblemToChat 도구에서만 설정하므로 여기서는 건드리지 않음
       if (hints !== undefined) {
         updateData.hints = hints;
       }
