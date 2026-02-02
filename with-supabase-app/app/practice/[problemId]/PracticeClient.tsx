@@ -3,6 +3,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ProblemPanel } from "@/components/problem-panel";
 import { HintsCard } from "@/components/hints-card";
 import {
@@ -18,8 +24,7 @@ import {
   MessageSquare,
   Minus,
   Plus,
-  ChevronDown,
-  ChevronUp,
+  Eye,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
@@ -102,7 +107,7 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
   const [sessionSaved, setSessionSaved] = useState(false);
   const [otherOngoingSession, setOtherOngoingSession] = useState<OngoingSession | null>(null);
   const [recommendedTime, setRecommendedTime] = useState<number | null>(null);
-  const [expandedHints, setExpandedHints] = useState<Set<number>>(new Set());
+  const [selectedHintIndex, setSelectedHintIndex] = useState<number | null>(null);
   const router = useRouter();
 
   // 문제 URL 생성
@@ -727,54 +732,45 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
                       </p>
                     ) : (
                       <div className="space-y-2">
-                        {hints.slice(0, 5).map((hint, index) => {
-                          const isExpanded = expandedHints.has(index);
-
-                          const toggleExpand = () => {
-                            setExpandedHints(prev => {
-                              const next = new Set(prev);
-                              if (next.has(index)) {
-                                next.delete(index);
-                              } else {
-                                next.add(index);
-                              }
-                              return next;
-                            });
-                          };
-
-                          return (
-                            <div
-                              key={hint.step}
-                              className="rounded-lg border text-sm bg-background"
-                            >
-                              <button
-                                onClick={toggleExpand}
-                                className="w-full p-3 flex items-center justify-between hover:bg-muted/30 cursor-pointer"
-                              >
-                                <span className="font-medium">힌트 {index + 1}</span>
-                                {isExpanded ? (
-                                  <ChevronUp className="h-4 w-4" />
-                                ) : (
-                                  <ChevronDown className="h-4 w-4" />
-                                )}
-                              </button>
-                              {isExpanded && (
-                                <div className="px-3 pb-3 prose prose-sm dark:prose-invert max-w-none">
-                                  <ReactMarkdown
-                                    remarkPlugins={[remarkMath]}
-                                    rehypePlugins={[rehypeKatex]}
-                                  >
-                                    {hint.content}
-                                  </ReactMarkdown>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
+                        {hints.slice(0, 5).map((hint, index) => (
+                          <button
+                            key={hint.step}
+                            onClick={() => setSelectedHintIndex(index)}
+                            className="w-full p-3 rounded-lg border text-sm bg-background hover:bg-muted/50 transition-colors flex items-center justify-between"
+                          >
+                            <span className="font-medium">힌트 {index + 1}</span>
+                            <Eye className="h-4 w-4 text-muted-foreground" />
+                          </button>
+                        ))}
                       </div>
                     )}
                   </CardContent>
                 </Card>
+
+                {/* 힌트 모달 */}
+                <Dialog
+                  open={selectedHintIndex !== null}
+                  onOpenChange={(open) => !open && setSelectedHintIndex(null)}
+                >
+                  <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2">
+                        <Lightbulb className="h-5 w-5 text-amber-500" />
+                        힌트 {selectedHintIndex !== null ? selectedHintIndex + 1 : ""}
+                      </DialogTitle>
+                    </DialogHeader>
+                    {selectedHintIndex !== null && hints[selectedHintIndex] && (
+                      <div className="prose prose-sm dark:prose-invert max-w-none">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkMath]}
+                          rehypePlugins={[rehypeKatex]}
+                        >
+                          {hints[selectedHintIndex].content}
+                        </ReactMarkdown>
+                      </div>
+                    )}
+                  </DialogContent>
+                </Dialog>
 
                 {/* 포기 버튼 */}
                 <Button

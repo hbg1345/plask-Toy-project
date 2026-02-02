@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, ChevronDown, Lightbulb } from "lucide-react";
+import { ChevronLeft, ChevronRight, Lightbulb } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
@@ -38,10 +38,17 @@ export function HintsCard({ hints }: HintsCardProps) {
 
   return (
     <div className="flex items-center gap-2 text-xs relative">
-      <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+      {/* 아이콘 클릭으로 힌트 토글 */}
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className={cn(
+          "flex items-center gap-1 text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition-colors",
+          isExpanded && "text-amber-700 dark:text-amber-300"
+        )}
+      >
         <Lightbulb className="h-3 w-3" />
         <span className="font-medium">힌트</span>
-      </div>
+      </button>
 
       {/* 이전 버튼 */}
       <button
@@ -55,24 +62,8 @@ export function HintsCard({ hints }: HintsCardProps) {
         <ChevronLeft className="h-3 w-3" />
       </button>
 
-      {/* 현재 힌트 버튼 */}
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className={cn(
-          "flex items-center gap-1 px-2 py-0.5 rounded border text-xs transition-colors",
-          isExpanded
-            ? "bg-amber-100 dark:bg-amber-900/30 border-amber-300 dark:border-amber-700"
-            : "bg-muted/50 border-border hover:bg-muted"
-        )}
-      >
-        <span>{currentStep + 1}/{hints.length}</span>
-        <ChevronDown
-          className={cn(
-            "h-3 w-3 transition-transform",
-            isExpanded && "rotate-180"
-          )}
-        />
-      </button>
+      {/* 현재 힌트 번호 */}
+      <span className="px-2 py-0.5 text-xs">{currentStep + 1}/{hints.length}</span>
 
       {/* 다음 버튼 */}
       <button
@@ -101,7 +92,9 @@ export function HintsCard({ hints }: HintsCardProps) {
   );
 }
 
-// 메시지에서 hint/hints 블록 파싱
+// 메시지에서 JSON 응답 파싱
+// 힌트: {"hint": N, "content": "..."}
+// 일반 응답: {"type": "response", "content": "..."}
 export function parseHintsFromMessage(text: string): {
   hints: Hint[] | null;
   textWithoutHints: string;
@@ -109,58 +102,40 @@ export function parseHintsFromMessage(text: string): {
   let resultText = text;
   const allHints: Hint[] = [];
 
-  // 복수 힌트 형식: ```hints {"hints":[...]}```
-  const hintsRegex = /```hints\n([\s\S]*?)\n```/g;
-  let hintsMatch;
-  while ((hintsMatch = hintsRegex.exec(text)) !== null) {
-    try {
-      const hintsJson = JSON.parse(hintsMatch[1]);
-      if (hintsJson.hints && Array.isArray(hintsJson.hints)) {
-        allHints.push(...hintsJson.hints);
-      }
-    } catch (e) {
-      console.error("Failed to parse hints JSON:", e);
-    }
-    resultText = resultText.replace(hintsMatch[0], "").trim();
-  }
-
-  // 단일 힌트 형식: ```hint {"step":1,"content":"..."}```
-  const hintRegex = /```hint\n([\s\S]*?)\n```/g;
+  // 힌트 형식: {"hint": N, "content": "..."}
+  const hintRegex = /\{"hint"\s*:\s*(\d+)\s*,\s*"content"\s*:\s*"((?:[^"\\]|\\.)*)"\}/g;
   let hintMatch;
   while ((hintMatch = hintRegex.exec(text)) !== null) {
     try {
-      const hintJson = JSON.parse(hintMatch[1]);
-      if (hintJson.step && hintJson.content) {
-        allHints.push(hintJson);
+      const parsed = JSON.parse(hintMatch[0]);
+      if (parsed.hint && parsed.content) {
+        allHints.push({ step: parsed.hint, content: parsed.content });
+        resultText = resultText.replace(hintMatch[0], "").trim();
       }
     } catch (e) {
-      console.error("Failed to parse hint JSON:", e);
+      // 파싱 실패하면 무시
     }
-    resultText = resultText.replace(hintMatch[0], "").trim();
   }
 
-  // Fallback: 코드 블록 없이 JSON만 있는 경우 {"step":...,"content":"..."}
-  if (allHints.length === 0) {
-    const rawJsonRegex = /\{"step"\s*:\s*(\d+)\s*,\s*"content"\s*:\s*"((?:[^"\\]|\\.)*)"\}/g;
-    let rawMatch;
-    while ((rawMatch = rawJsonRegex.exec(text)) !== null) {
-      try {
-        const hintJson = JSON.parse(rawMatch[0]);
-        if (hintJson.step && hintJson.content) {
-          allHints.push(hintJson);
-          resultText = resultText.replace(rawMatch[0], "").trim();
-        }
-      } catch (e) {
-        // 파싱 실패하면 무시
+  // 일반 응답 형식: {"type": "response", "content": "..."} → content만 텍스트로 표시
+  const responseRegex = /\{"type"\s*:\s*"response"\s*,\s*"content"\s*:\s*"((?:[^"\\]|\\.)*)"\}/g;
+  let responseMatch;
+  while ((responseMatch = responseRegex.exec(text)) !== null) {
+    try {
+      const parsed = JSON.parse(responseMatch[0]);
+      if (parsed.type === "response" && parsed.content) {
+        // JSON을 content 텍스트로 대체
+        resultText = resultText.replace(responseMatch[0], parsed.content).trim();
       }
+    } catch (e) {
+      // 파싱 실패하면 무시
     }
   }
 
   if (allHints.length > 0) {
-    // step 순으로 정렬
     allHints.sort((a, b) => a.step - b.step);
     return { hints: allHints, textWithoutHints: resultText };
   }
 
-  return { hints: null, textWithoutHints: text };
+  return { hints: null, textWithoutHints: resultText };
 }

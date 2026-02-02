@@ -50,6 +50,10 @@ import {
 } from "@/components/ai-elements/reasoning";
 import { Loader } from "@/components/ai-elements/loader";
 import { HintsCard, parseHintsFromMessage } from "@/components/hints-card";
+import {
+  ProblemSelectCard,
+  parseSearchResultsFromPart,
+} from "@/components/problem-select-card";
 
 interface ChatBotDemoProps {
   chatId?: string | null;
@@ -69,6 +73,38 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
   const lastSavedMessageCountRef = useRef<number>(0);
   const isSavingRef = useRef<boolean>(false);
   const [initialMessage, setInitialMessage] = useState<string | null>(null);
+  const [selectedProblemId, setSelectedProblemId] = useState<string | null>(null);
+
+  // 문제 선택 핸들러
+  const handleProblemSelect = async (problemId: string) => {
+    if (!chatId) {
+      console.error("Cannot link problem: chatId is not set");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/link-problem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chatId, problemId }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to link problem");
+      }
+
+      const data = await response.json();
+
+      // 상태 업데이트
+      setSelectedProblemId(problemId);
+      setProblemUrl(data.problemUrl);
+      setChatTitle(data.title);
+      setContextProblemUrl(data.problemUrl);
+      setRefreshTrigger((prev) => prev + 1);
+    } catch (error) {
+      console.error("Failed to select problem:", error);
+    }
+  };
 
   // initialProblemId가 있으면 문제 정보 가져와서 컨텍스트 설정
   useEffect(() => {
@@ -144,6 +180,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
           setProblemUrl(chatData.problemUrl || null);
           setChatTitle(chatData.title || null);
           setHints(chatData.hints || null);
+          setSelectedProblemId(null); // 새 채팅 로드 시 선택 초기화
         } else {
           console.error("Failed to load chat data");
         }
@@ -157,6 +194,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
       setProblemUrl(null);
       setChatTitle(null);
       setHints(null);
+      setSelectedProblemId(null);
     }
     
     prevChatIdRef.current = chatId || null;
@@ -411,6 +449,20 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
                       </Sources>
                     )}
                   {message.parts.map((part, i) => {
+                    // searchProblems 도구 결과 파싱 (null이 아니면 렌더링 - 빈 배열도 포함)
+                    const searchResults = parseSearchResultsFromPart(part);
+                    if (searchResults !== null) {
+                      return (
+                        <div key={`${message.id}-${i}`} className="my-2">
+                          <ProblemSelectCard
+                            problems={searchResults}
+                            onSelect={handleProblemSelect}
+                            selectedProblemId={selectedProblemId}
+                          />
+                        </div>
+                      );
+                    }
+
                     switch (part.type) {
                       case "text":
                         // hints 블록 파싱

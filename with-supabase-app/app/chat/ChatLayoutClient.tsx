@@ -59,7 +59,7 @@ export function ChatLayoutClient({ children }: ChatLayoutClientProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // 마운트 시에만 실행
 
-  // 선택된 채팅이 변경되면 problemUrl 업데이트
+  // 선택된 채팅이 변경되거나 채팅이 업데이트되면 problemUrl 업데이트
   useEffect(() => {
     const loadProblemUrl = async () => {
       if (selectedChatId) {
@@ -74,7 +74,7 @@ export function ChatLayoutClient({ children }: ChatLayoutClientProps) {
       }
     };
     loadProblemUrl();
-  }, [selectedChatId, setProblemUrl]);
+  }, [selectedChatId, setProblemUrl, refreshTrigger]);
 
   const handleChatIdChange = useCallback(
     (chatId: string | null) => {

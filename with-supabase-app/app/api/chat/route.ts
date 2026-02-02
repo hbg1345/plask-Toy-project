@@ -219,142 +219,152 @@ export async function POST(req: Request) {
     }
   }
 
-  // 문제 URL이 있으면 문제 정보를 미리 가져와서 시스템 메시지에 포함
-  let problemMetadata: Awaited<ReturnType<typeof getTaskMetadata>> | null = null;
+  // 문제 URL이 있으면 문제 정보를 DB에서 먼저 확인, 없으면 fetch해서 저장
+  let problemMetadata: {
+    title: string;
+    problem_statement: string | null;
+    constraint: string | null;
+    input: string | null;
+    output: string | null;
+    samples: Array<{ input: string; output: string }> | null;
+  } | null = null;
   let editorial: string | null = null;
 
   if (detectedProblemUrl) {
-    try {
-      problemMetadata = await getTaskMetadata(detectedProblemUrl);
+    const problemId = detectedProblemUrl.match(/\/tasks\/([^\/]+)$/)?.[1];
 
-      // editorial 체크 및 lazy loading
-      const problemId = detectedProblemUrl.match(/\/tasks\/([^\/]+)$/)?.[1];
-
-      if (problemId) {
+    if (problemId) {
+      try {
+        // 1. DB에서 먼저 확인
         const { data: problemData } = await supabase
           .from("problems")
-          .select("editorial")
+          .select("title, problem_statement, constraint_text, input_format, output_format, samples, editorial")
           .eq("id", problemId)
           .single();
 
-        if (problemData?.editorial) {
-          // DB에 있으면 사용
+        if (problemData?.problem_statement) {
+          // DB에 메타데이터가 있으면 사용
+          console.log("Using cached metadata from DB for:", problemId);
+          problemMetadata = {
+            title: problemData.title,
+            problem_statement: problemData.problem_statement,
+            constraint: problemData.constraint_text,
+            input: problemData.input_format,
+            output: problemData.output_format,
+            samples: problemData.samples as Array<{ input: string; output: string }> | null,
+          };
           editorial = problemData.editorial;
         } else {
-          // 없으면 가져와서 저장
-          const fetchedEditorial = await getEditorial(detectedProblemUrl);
+          // 2. DB에 없으면 fetch해서 저장
+          console.log("Fetching metadata from AtCoder for:", problemId);
+          const fetchedMetadata = await getTaskMetadata(detectedProblemUrl);
 
-          if (typeof fetchedEditorial === 'string' && !fetchedEditorial.startsWith('에러') && !fetchedEditorial.startsWith('오류')) {
-            editorial = fetchedEditorial;
-            // DB에 저장
+          if (typeof fetchedMetadata === 'object' && 'title' in fetchedMetadata) {
+            problemMetadata = {
+              title: fetchedMetadata.title,
+              problem_statement: fetchedMetadata.problem_statement,
+              constraint: fetchedMetadata.constraint,
+              input: fetchedMetadata.input,
+              output: fetchedMetadata.output,
+              samples: fetchedMetadata.samples,
+            };
+
+            // DB에 메타데이터 저장
             await supabase
               .from("problems")
-              .update({ editorial: fetchedEditorial })
+              .update({
+                problem_statement: fetchedMetadata.problem_statement,
+                constraint_text: fetchedMetadata.constraint,
+                input_format: fetchedMetadata.input,
+                output_format: fetchedMetadata.output,
+                samples: fetchedMetadata.samples,
+              })
               .eq("id", problemId);
+            console.log("Saved metadata to DB for:", problemId);
+          }
+
+          // editorial도 없으면 가져오기
+          if (!problemData?.editorial) {
+            const fetchedEditorial = await getEditorial(detectedProblemUrl);
+            if (typeof fetchedEditorial === 'string' && !fetchedEditorial.startsWith('에러') && !fetchedEditorial.startsWith('오류')) {
+              editorial = fetchedEditorial;
+              await supabase
+                .from("problems")
+                .update({ editorial: fetchedEditorial })
+                .eq("id", problemId);
+            }
+          } else {
+            editorial = problemData.editorial;
           }
         }
+      } catch (error) {
+        console.error("Failed to fetch problem metadata:", error);
       }
-    } catch (error) {
-      console.error("Failed to fetch problem metadata:", error);
     }
   }
 
-  let systemMessage = `You are an assistant for AtCoder problems. Answer ONLY what the user asks. Be CONCISE and BRIEF.
+  // 문제 정보가 있으면 TOOL USAGE 섹션을 포함하지 않음
+  const hasProblemContext = detectedProblemUrl && problemMetadata && typeof problemMetadata === 'object' && 'title' in problemMetadata;
 
-CRITICAL: Keep responses SHORT. Answer the user's question directly in NORMAL conversation format.
+  // 문제 제목을 먼저 추출
+  const problemTitle = hasProblemContext && problemMetadata ? (problemMetadata as { title?: string }).title : null;
 
-RESPONSE FORMAT:
-- For GENERAL questions: Answer normally WITHOUT any special format
-- For HINT requests (user explicitly asks "힌트", "hint", "도움", "어떻게 풀어"): Use hint format (explained below)
-- DO NOT use hint format for questions like "이게 뭐야?", "설명해줘", "이 부분 이해가 안돼"
+  let systemMessage = `당신은 AtCoder 문제 도우미입니다.
 
-TOOL USAGE - VERY IMPORTANT:
-When user mentions a problem WITHOUT a URL, you MUST use tools to find it:
-1. Use searchProblems to search the database first
-2. Show results and ask user to confirm which problem
-3. Once confirmed, use linkProblemToChat to link it
-4. Then use fetchTaskMetadata to get full problem details
+${problemTitle ? `현재 문제: "${problemTitle}"
+- 이 문제에 대해 답변하세요
+- "어떤 문제?", "문제 이름?" 질문 금지` : `문제가 연결되지 않음.
+- 사용자가 문제 언급시 searchProblems 도구 사용
+- 검색 결과가 나오면 사용자가 UI에서 직접 선택함
+- 검색 결과가 없으면 "검색 결과가 없습니다. 다른 키워드로 검색해주세요." 응답
+- linkProblemToChat 호출하지 마세요 (UI가 처리함)`}
 
-CRITICAL: After calling ANY tool, you MUST respond to the user with the results. Never end your turn with just a tool call - always provide a text response explaining what you found or did.
+응답 형식 (반드시 JSON):
+- 새 힌트: {"hint": N, "content": "1-2문장 힌트"}
+- 일반 응답: {"type": "response", "content": "내용"}
 
-Examples when to use searchProblems:
-- "ABC 314 A번 문제" → searchProblems({query: "abc314_a"})
-- "이 문제 어려워" (no URL context) → Ask what problem, then search
-- "저번에 푼 Two Sum 같은 문제" → searchProblems({query: "sum"})
-- "난이도 1000쯤 되는 문제" → searchProblems({query: "", minDifficulty: 900, maxDifficulty: 1100})
+힌트 vs 일반 응답 판단 기준:
+- 힌트 (hint: N): 이전 힌트들과 완전히 다른 새로운 접근법/관점을 제시할 때만
+- 일반 응답 (type: response): 아래 모든 경우
+  * 이전 힌트에 대한 부연 설명, 추가 설명
+  * 사용자 질문에 대한 답변
+  * 이전 힌트를 다르게 표현
+  * 격려, 칭찬, 일반 대화
 
-NEVER say "URL이 없어서 못 찾겠어요" - ALWAYS use searchProblems tool first!
+길이 규칙:
+- 힌트: 40자 이내
+- 일반 응답: 100자 이내
 
-IMPORTANT - Be CONSERVATIVE and MINIMAL:
-- Give the MINIMUM information needed to answer the question
-- Users may want to think for themselves, so don't over-explain
-- Let users guide the conversation - don't dump all information at once
-- Stop after answering and wait for user's next question
+힌트 규칙:
+- 정답, 풀이법, 알고리즘 이름 금지
+- N은 진짜 새로운 힌트일 때만 증가
+- 예시: {"hint": 1, "content": "상태를 어떻게 정의할지 생각해보세요."}
 
-CRITICAL RULES FOR PROBLEM QUESTIONS:
-- If user asks "what is this problem?" or "이 문제요" (just showing the problem), ONLY summarize what the problem is asking. Do NOT provide:
-  * Equation solving steps
-  * Mathematical derivations
-  * Solution approaches
-  * How to solve it
-  * Any hints about the solution method
-- Only provide hints when user EXPLICITLY asks for hints or help solving
-- When user just asks about the problem, give ONLY a brief problem summary
+사용자 언어로 답변하세요.`;
 
-Rules:
-- Provide hints, NOT solutions or complete code when helping with problem solving
-- Answer in User's language
-- Use LaTeX for math: $...$ for inline, $$...$$ for block (use double backslash for LaTeX commands: \\times, \\frac, etc.)
-- Be brief, direct, and to the point
-- No long explanations unless the user explicitly asks for them`;
+  console.log("Checking problemMetadata condition:", {
+    hasDetectedProblemUrl: !!detectedProblemUrl,
+    hasProblemMetadata: !!problemMetadata,
+    isObject: typeof problemMetadata === 'object',
+    hasTitle: problemMetadata && 'title' in problemMetadata,
+  });
 
   if (detectedProblemUrl && problemMetadata && typeof problemMetadata === 'object' && 'title' in problemMetadata) {
-    // 문제 정보가 성공적으로 가져와진 경우, 시스템 메시지에 포함
-    const { title, problem_statement, constraint, input, output, samples } = problemMetadata;
-    systemMessage += `\n\nThe user is asking about a specific AtCoder problem. Here is the problem information:
+    console.log("Adding problem info to system message");
+    const { title, problem_statement, constraint, samples } = problemMetadata;
 
-Problem Title: ${title}
-Problem URL: ${detectedProblemUrl}
+    const problemInfo = {
+      title,
+      url: detectedProblemUrl,
+      statement: problem_statement || '',
+      constraints: constraint || '',
+      samples: samples || [],
+      editorial: editorial || null
+    };
 
-Problem Statement:
-${problem_statement || 'Not available'}
-
-Constraints:
-${constraint || 'Not available'}
-
-Input Format:
-${input || 'Not available'}
-
-Output Format:
-${output || 'Not available'}
-
-Sample Cases:
-${samples && samples.length > 0 ? samples.map((sample, idx) =>
-  `Sample ${idx + 1}:\nInput:\n${sample.input}\nOutput:\n${sample.output}`
-).join('\n\n') : 'Not available'}
-
-${editorial ? `
-Editorial (Reference for helping user - DO NOT SHOW DIRECTLY):
-${editorial.replace(/\\/g, '\\\\')}
-
-HINT FORMAT (ONLY when user EXPLICITLY asks for hints/도움/어떻게 풀어):
-When user asks for hints, use this JSON format:
-{"step": 1, "content": "힌트 내용"}
-
-- step: 힌트 번호 (1, 2, 3...)
-- content: 힌트 텍스트 (LaTeX 가능: $x^2$, use \\\\times for ×)
-- 한 번에 하나의 힌트만
-- 힌트 후 "다음 힌트가 필요하면 말씀해주세요!" 추가
-
-IMPORTANT: Do NOT use hint format for general questions! Only use it when user explicitly asks for hints.
-` : 'Editorial: Not available'}
-
-You already have the problem information, so you don't need to ask the user for the URL.
-
-REMEMBER: Answer BRIEFLY and CONCISELY. Provide hints only, not solutions. Answer only what the user asks. Be MINIMAL - give the least information needed, then ask if they want more details.`;
+    systemMessage += `\n\n문제 정보:\n${JSON.stringify(problemInfo, null, 2)}`;
   } else if (detectedProblemUrl) {
-    // 문제 정보를 가져오지 못한 경우, 도구 사용을 안내
-    systemMessage += `\n\nThe user is asking about a specific problem at "${detectedProblemUrl}". Use the fetchTaskMetadata tool with the taskUrl "${detectedProblemUrl}" to get the problem metadata first, then provide brief HINTS (not solutions).`;
+    systemMessage += `\n\n문제 URL: ${detectedProblemUrl}\nfetchTaskMetadata 도구로 문제 정보를 가져오세요.`;
   }
 
   // 동적 tool 생성 (chatId 캡처)
@@ -362,6 +372,9 @@ REMEMBER: Answer BRIEFLY and CONCISELY. Provide hints only, not solutions. Answe
   const allTools: ToolSet = { ...tools, ...dynamicTools };
 
   const convertedMessages = await convertToModelMessages(messages);
+
+  console.log("=== systemMessage ===");
+  console.log(systemMessage);
 
   const result = streamText({
     model: google(MODEL_NAME),
@@ -373,13 +386,25 @@ REMEMBER: Answer BRIEFLY and CONCISELY. Provide hints only, not solutions. Answe
     onFinish: async ({ usage, text, steps }) => {
       console.log("=== streamText onFinish ===");
       console.log("text length:", text?.length || 0);
+      console.log("text content:", text);
       console.log("steps count:", steps?.length || 0);
-      if (steps && steps.length > 0) {
-        console.log("step 0 finishReason:", steps[0].finishReason);
-        console.log("step 0 toolCalls:", steps[0].toolCalls?.length || 0);
-        console.log("step 0 text length:", steps[0].text?.length || 0);
-        if (steps[0].finishReason === "error") {
-          console.log("step 0 error:", steps[0]);
+      // 모든 step 로깅
+      if (steps) {
+        for (let i = 0; i < steps.length; i++) {
+          console.log(`step ${i} finishReason:`, steps[i].finishReason);
+          console.log(`step ${i} toolCalls:`, steps[i].toolCalls?.length || 0);
+          if (steps[i].toolCalls?.length) {
+            console.log(`step ${i} toolCall names:`, steps[i].toolCalls.map(t => t.toolName));
+          }
+          console.log(`step ${i} text length:`, steps[i].text?.length || 0);
+          if (steps[i].text) {
+            console.log(`step ${i} text:`, steps[i].text.substring(0, 200));
+          }
+          // @ts-expect-error - rawFinishReason might exist
+          if (steps[i].rawFinishReason) {
+            // @ts-expect-error
+            console.log(`step ${i} rawFinishReason:`, steps[i].rawFinishReason);
+          }
         }
       }
 
