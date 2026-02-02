@@ -400,11 +400,6 @@ ${problemTitle ? `현재 문제: "${problemTitle}"
           if (steps[i].text) {
             console.log(`step ${i} text:`, steps[i].text.substring(0, 200));
           }
-          // @ts-expect-error - rawFinishReason might exist
-          if (steps[i].rawFinishReason) {
-            // @ts-expect-error
-            console.log(`step ${i} rawFinishReason:`, steps[i].rawFinishReason);
-          }
         }
       }
 
