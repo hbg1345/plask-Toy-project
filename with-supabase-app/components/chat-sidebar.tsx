@@ -2,9 +2,17 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { PanelLeftClose, PanelLeftOpen, Plus, MessageSquare, Trash2 } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, Plus, MessageSquare, Trash2, PanelLeft, PanelRight, Columns2 } from "lucide-react";
 import { getChatHistoryList, deleteChatHistory, saveChatHistory, type ChatHistoryItem } from "@/app/actions";
 import { cn } from "@/lib/utils";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+type LayoutMode = "problem-only" | "chat-only" | "both";
 
 interface ChatSidebarProps {
     isOpen: boolean;
@@ -12,9 +20,21 @@ interface ChatSidebarProps {
     onSelectChat: (chatId: string | null) => void;
     selectedChatId: string | null;
     refreshTrigger?: number;
+    layoutMode?: LayoutMode;
+    onLayoutChange?: (mode: LayoutMode) => void;
+    showLayoutControls?: boolean;
 }
 
-export function ChatSidebar({ isOpen, onToggle, onSelectChat, selectedChatId, refreshTrigger }: ChatSidebarProps) {
+export function ChatSidebar({
+    isOpen,
+    onToggle,
+    onSelectChat,
+    selectedChatId,
+    refreshTrigger,
+    layoutMode,
+    onLayoutChange,
+    showLayoutControls,
+}: ChatSidebarProps) {
     const [chatList, setChatList] = useState<ChatHistoryItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -151,6 +171,117 @@ export function ChatSidebar({ isOpen, onToggle, onSelectChat, selectedChatId, re
                                 </div>
                             ))}
                         </div>
+                    )}
+                </div>
+            )}
+
+            {/* 레이아웃 컨트롤 */}
+            {showLayoutControls && onLayoutChange && (
+                <div className={cn("border-t p-2", isOpen ? "" : "flex flex-col items-center")}>
+                    {isOpen ? (
+                        <div className="flex items-center justify-center gap-1">
+                            <TooltipProvider delayDuration={0}>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant={layoutMode === "problem-only" ? "secondary" : "ghost"}
+                                            size="sm"
+                                            onClick={() => onLayoutChange("problem-only")}
+                                            className="h-8 px-2"
+                                        >
+                                            <PanelLeft className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">
+                                        <p>문제만 보기</p>
+                                    </TooltipContent>
+                                </Tooltip>
+
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant={layoutMode === "both" ? "secondary" : "ghost"}
+                                            size="sm"
+                                            onClick={() => onLayoutChange("both")}
+                                            className="h-8 px-2"
+                                        >
+                                            <Columns2 className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">
+                                        <p>둘 다 보기</p>
+                                    </TooltipContent>
+                                </Tooltip>
+
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant={layoutMode === "chat-only" ? "secondary" : "ghost"}
+                                            size="sm"
+                                            onClick={() => onLayoutChange("chat-only")}
+                                            className="h-8 px-2"
+                                        >
+                                            <PanelRight className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">
+                                        <p>채팅만 보기</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </div>
+                    ) : (
+                        <TooltipProvider delayDuration={0}>
+                            <div className="flex flex-col gap-1">
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant={layoutMode === "problem-only" ? "secondary" : "ghost"}
+                                            size="icon"
+                                            onClick={() => onLayoutChange("problem-only")}
+                                            className="h-8 w-8"
+                                        >
+                                            <PanelLeft className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right">
+                                        <p>문제만 보기</p>
+                                    </TooltipContent>
+                                </Tooltip>
+
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant={layoutMode === "both" ? "secondary" : "ghost"}
+                                            size="icon"
+                                            onClick={() => onLayoutChange("both")}
+                                            className="h-8 w-8"
+                                        >
+                                            <Columns2 className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right">
+                                        <p>둘 다 보기</p>
+                                    </TooltipContent>
+                                </Tooltip>
+
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            variant={layoutMode === "chat-only" ? "secondary" : "ghost"}
+                                            size="icon"
+                                            onClick={() => onLayoutChange("chat-only")}
+                                            className="h-8 w-8"
+                                        >
+                                            <PanelRight className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right">
+                                        <p>채팅만 보기</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </div>
+                        </TooltipProvider>
                     )}
                 </div>
             )}

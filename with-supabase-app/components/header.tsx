@@ -31,7 +31,7 @@ export function Header() {
       <div className="container flex h-14 max-w-5xl items-center mx-auto px-4">
         {/* Logo */}
         <Link href="/" className="mr-6 flex items-center space-x-2">
-          <span className="font-bold text-lg">앳코더 도우미</span>
+          <span className="font-bold text-lg">Solve Helper</span>
         </Link>
 
         {/* Desktop Navigation */}
@@ -78,7 +78,7 @@ export function Header() {
             </SheetTrigger>
             <SheetContent side="right" className="w-[280px] sm:w-[320px]">
               <SheetHeader>
-                <SheetTitle>앳코더 도우미</SheetTitle>
+                <SheetTitle>Solve Helper</SheetTitle>
               </SheetHeader>
               <nav className="flex flex-col gap-2 mt-6">
                 {navItems.map((item) => {

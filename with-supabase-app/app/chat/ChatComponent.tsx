@@ -406,14 +406,6 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
         </div>
       ) : (
         <>
-          {/* 채팅 제목 표시 */}
-          {chatTitle && (
-            <div className="flex-shrink-0 px-4 py-3 border-b text-center">
-              <h2 className="text-lg font-semibold text-foreground truncate">
-                {chatTitle}
-              </h2>
-            </div>
-          )}
           {/* 힌트 패널 - hints가 있을 때만 표시 */}
           {hints && hints.length > 0 && (
             <div className="flex-shrink-0 px-4 py-1.5 border-b bg-muted/30 relative">

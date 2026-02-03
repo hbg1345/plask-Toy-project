@@ -10,8 +10,8 @@ const defaultUrl = process.env.VERCEL_URL
 
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
-  title: "Atcoder Supporter",
-  description: "The fastest way to improve your algorithm skills",
+  title: "Solve Helper",
+  description: "공식 해설 기반 AI와 함께 알고리즘 문제를 풀어보세요",
 };
 
 const geistSans = Geist({

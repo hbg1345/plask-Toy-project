@@ -38,7 +38,7 @@ export function MobileNav({ children }: MobileNavProps) {
       </SheetTrigger>
       <SheetContent side="right" className="w-[280px] sm:w-[320px]">
         <SheetHeader>
-          <SheetTitle>앳코더 도우미</SheetTitle>
+          <SheetTitle>Solve Helper</SheetTitle>
         </SheetHeader>
         <nav className="flex flex-col gap-2 mt-6">
           {navItems.map((item) => {

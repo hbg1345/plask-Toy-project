@@ -10,14 +10,7 @@ import {
   Group,
   Separator,
 } from "react-resizable-panels";
-import { GripVertical, PanelLeft, PanelRight, Columns2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { GripVertical } from "lucide-react";
 
 interface ChatLayoutClientProps {
   children: React.ReactNode;
@@ -97,61 +90,6 @@ export function ChatLayoutClient({ children }: ChatLayoutClientProps) {
 
   return (
     <div className={`relative w-full h-full flex flex-col overflow-hidden transition-all duration-300 ${sidebarOpen ? 'pl-64' : 'pl-12'}`}>
-      {/* 레이아웃 컨트롤 버튼 */}
-      {showLayoutControls && (
-        <div className="flex-shrink-0 px-4 py-2 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex items-center justify-end gap-1">
-          <TooltipProvider delayDuration={0}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={layoutMode === "problem-only" ? "secondary" : "ghost"}
-                  size="sm"
-                  onClick={() => handleLayoutChange("problem-only")}
-                  className="h-8 px-2"
-                >
-                  <PanelLeft className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>문제만 보기</p>
-              </TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={layoutMode === "both" ? "secondary" : "ghost"}
-                  size="sm"
-                  onClick={() => handleLayoutChange("both")}
-                  className="h-8 px-2"
-                >
-                  <Columns2 className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>둘 다 보기</p>
-              </TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={layoutMode === "chat-only" ? "secondary" : "ghost"}
-                  size="sm"
-                  onClick={() => handleLayoutChange("chat-only")}
-                  className="h-8 px-2"
-                >
-                  <PanelRight className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>채팅만 보기</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-      )}
-
       {/* 메인 콘텐츠 영역 */}
       <div className="flex-1 min-h-0">
         {problemUrl && layoutMode !== "chat-only" ? (
@@ -176,13 +114,16 @@ export function ChatLayoutClient({ children }: ChatLayoutClientProps) {
       </div>
 
       {/* 사이드바 (전체 화면에 걸쳐 띄움) */}
-      <div className="fixed left-0 top-16 bottom-0 z-10">
+      <div className="fixed left-0 top-14 bottom-0 z-10">
         <ChatSidebar
           isOpen={sidebarOpen}
           onToggle={handleSidebarToggle}
           onSelectChat={handleChatIdChange}
           selectedChatId={selectedChatId}
           refreshTrigger={refreshTrigger}
+          layoutMode={layoutMode}
+          onLayoutChange={handleLayoutChange}
+          showLayoutControls={showLayoutControls}
         />
       </div>
     </div>
