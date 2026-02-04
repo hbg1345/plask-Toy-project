@@ -313,11 +313,11 @@ export async function POST(req: Request) {
 
 ${problemTitle ? `현재 문제: "${problemTitle}"
 - 이 문제에 대해 답변하세요
-- "어떤 문제?", "문제 이름?" 질문 금지` : `문제가 연결되지 않음.
-- 사용자가 문제 언급시 searchProblems 도구 사용
+- "어떤 문제?", "문제 이름?" 질문 금지` : `문제가 연결되지 않음.`}
+
+- 사용자가 다른 문제를 언급하면 searchProblems 도구 사용
 - 검색 결과가 나오면 사용자가 UI에서 직접 선택함
-- 검색 결과가 없으면 "검색 결과가 없습니다. 다른 키워드로 검색해주세요." 응답
-- linkProblemToChat 호출하지 마세요 (UI가 처리함)`}
+- linkProblemToChat 호출하지 마세요 (UI가 처리함)
 
 응답 형식 (반드시 JSON):
 - 새 힌트: {"hint": N, "content": "1-2문장 힌트"}

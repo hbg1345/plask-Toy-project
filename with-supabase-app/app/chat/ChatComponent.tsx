@@ -169,10 +169,13 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
       getChatHistory(chatId).then((chatData) => {
         if (chatData) {
           // Message 타입을 useChat이 사용하는 형식으로 변환
+          // parts가 있으면 그대로 사용, 없으면 content를 text로 변환
           const convertedMessages = chatData.messages.map((msg) => ({
             id: msg.id,
             role: msg.role,
-            parts: [{ type: "text" as const, text: msg.content }],
+            parts: msg.parts && msg.parts.length > 0
+              ? msg.parts
+              : [{ type: "text" as const, text: msg.content }],
           }));
           setMessages(convertedMessages);
           lastSavedMessageCountRef.current = convertedMessages.length;
@@ -304,6 +307,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
                   return "";
                 })
                 .join("") || "",
+            parts: msg.parts as ChatMessage["parts"],
           }));
 
           // 모든 assistant 메시지에서 hints 추출하여 누적

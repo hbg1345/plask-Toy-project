@@ -2,10 +2,17 @@
 import { createClient } from "@/lib/supabase/server";
 import { fetchUserInfo } from "@qatadaazzeh/atcoder-api";
 
+export type MessagePart = {
+  type: string;
+  text?: string;
+  [key: string]: unknown;
+};
+
 export type Message = {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
+  parts?: MessagePart[];
 };
 
 export type Hint = {
