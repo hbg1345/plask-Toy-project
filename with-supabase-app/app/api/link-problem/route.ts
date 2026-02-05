@@ -30,12 +30,13 @@ export async function POST(req: Request) {
     .eq("id", problemId)
     .single();
 
-  // chat_history 업데이트
+  // chat_history 업데이트 (문제 전환 시 이전 힌트 삭제)
   const { error: updateError } = await supabase
     .from("chat_history")
     .update({
       problem_url: problemUrl,
       title: problemData?.title || problemId,
+      hints: null,
     })
     .eq("id", chatId)
     .eq("user_id", user.id); // 보안: 본인 채팅만 수정 가능

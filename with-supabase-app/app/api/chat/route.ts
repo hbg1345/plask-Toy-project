@@ -320,11 +320,11 @@ ${problemTitle ? `현재 문제: "${problemTitle}"
 - linkProblemToChat 호출하지 마세요 (UI가 처리함)
 
 응답 형식 (반드시 JSON):
-- 새 힌트: {"hint": N, "content": "1-2문장 힌트"}
+- 새 힌트: {"type": "hint", "content": "1-2문장 힌트"}
 - 일반 응답: {"type": "response", "content": "내용"}
 
 힌트 vs 일반 응답 판단 기준:
-- 힌트 (hint: N): 이전 힌트들과 완전히 다른 새로운 접근법/관점을 제시할 때만
+- 힌트 (type: hint): 이전 힌트들과 완전히 다른 새로운 접근법/관점을 제시할 때만
 - 일반 응답 (type: response): 아래 모든 경우
   * 이전 힌트에 대한 부연 설명, 추가 설명
   * 사용자 질문에 대한 답변
@@ -337,8 +337,8 @@ ${problemTitle ? `현재 문제: "${problemTitle}"
 
 힌트 규칙:
 - 정답, 풀이법, 알고리즘 이름 금지
-- N은 진짜 새로운 힌트일 때만 증가
-- 예시: {"hint": 1, "content": "상태를 어떻게 정의할지 생각해보세요."}
+- 힌트 번호는 시스템이 자동 부여 (번호 포함하지 마세요)
+- 예시: {"type": "hint", "content": "상태를 어떻게 정의할지 생각해보세요."}
 
 사용자 언어로 답변하세요.`;
 
@@ -392,6 +392,10 @@ ${problemTitle ? `현재 문제: "${problemTitle}"
       if (steps) {
         for (let i = 0; i < steps.length; i++) {
           console.log(`step ${i} finishReason:`, steps[i].finishReason);
+          // 에러 상세 로깅
+          if (steps[i].finishReason === 'error') {
+            console.error(`step ${i} error:`, JSON.stringify(steps[i], null, 2));
+          }
           console.log(`step ${i} toolCalls:`, steps[i].toolCalls?.length || 0);
           if (steps[i].toolCalls?.length) {
             console.log(`step ${i} toolCall names:`, steps[i].toolCalls.map(t => t.toolName));

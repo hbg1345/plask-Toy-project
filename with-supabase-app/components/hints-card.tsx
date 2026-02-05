@@ -93,23 +93,23 @@ export function HintsCard({ hints }: HintsCardProps) {
 }
 
 // 메시지에서 JSON 응답 파싱
-// 힌트: {"hint": N, "content": "..."}
+// 힌트: {"type": "hint", "content": "..."}
 // 일반 응답: {"type": "response", "content": "..."}
 export function parseHintsFromMessage(text: string): {
-  hints: Hint[] | null;
+  hintContents: string[] | null;  // 힌트 content만 반환 (번호는 시스템에서 부여)
   textWithoutHints: string;
 } {
   let resultText = text;
-  const allHints: Hint[] = [];
+  const hintContents: string[] = [];
 
-  // 힌트 형식: {"hint": N, "content": "..."}
-  const hintRegex = /\{"hint"\s*:\s*(\d+)\s*,\s*"content"\s*:\s*"((?:[^"\\]|\\.)*)"\}/g;
+  // 힌트 형식: {"type": "hint", "content": "..."}
+  const hintRegex = /\{"type"\s*:\s*"hint"\s*,\s*"content"\s*:\s*"((?:[^"\\]|\\.)*)"\}/g;
   let hintMatch;
   while ((hintMatch = hintRegex.exec(text)) !== null) {
     try {
       const parsed = JSON.parse(hintMatch[0]);
-      if (parsed.hint && parsed.content) {
-        allHints.push({ step: parsed.hint, content: parsed.content });
+      if (parsed.type === "hint" && parsed.content) {
+        hintContents.push(parsed.content);
         resultText = resultText.replace(hintMatch[0], "").trim();
       }
     } catch (e) {
@@ -132,10 +132,9 @@ export function parseHintsFromMessage(text: string): {
     }
   }
 
-  if (allHints.length > 0) {
-    allHints.sort((a, b) => a.step - b.step);
-    return { hints: allHints, textWithoutHints: resultText };
+  if (hintContents.length > 0) {
+    return { hintContents, textWithoutHints: resultText };
   }
 
-  return { hints: null, textWithoutHints: resultText };
+  return { hintContents: null, textWithoutHints: resultText };
 }

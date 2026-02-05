@@ -82,6 +82,11 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
       return;
     }
 
+    // 같은 문제면 아무 작업도 하지 않음
+    if (selectedProblemId === problemId) {
+      return;
+    }
+
     try {
       const response = await fetch("/api/link-problem", {
         method: "POST",
@@ -95,11 +100,12 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
 
       const data = await response.json();
 
-      // 상태 업데이트
+      // 상태 업데이트 (문제 전환 시 이전 힌트 초기화)
       setSelectedProblemId(problemId);
       setProblemUrl(data.problemUrl);
       setChatTitle(data.title);
       setContextProblemUrl(data.problemUrl);
+      setHints(null);
       setRefreshTrigger((prev) => prev + 1);
     } catch (error) {
       console.error("Failed to select problem:", error);
@@ -311,28 +317,23 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
           }));
 
           // 모든 assistant 메시지에서 hints 추출하여 누적
+          // 시스템에서 step 번호를 순차적으로 부여
           let allHints: Hint[] = [];
           let detectedProblemUrl: string | null = null;
           for (const msg of messagesToSave) {
             if (msg.role === "assistant") {
               const parsed = parseHintsFromMessage(msg.content);
-              if (parsed.hints) {
-                for (const hint of parsed.hints) {
-                  // 같은 step이 있으면 대체, 없으면 추가
-                  const existingIndex = allHints.findIndex(h => h.step === hint.step);
-                  if (existingIndex >= 0) {
-                    allHints[existingIndex] = hint;
-                  } else {
-                    allHints.push(hint);
-                  }
+              if (parsed.hintContents) {
+                for (const content of parsed.hintContents) {
+                  // 새 힌트에 순차적 step 부여
+                  allHints.push({
+                    step: allHints.length + 1,
+                    content
+                  });
                 }
               }
             }
           }
-
-
-          // step 순으로 정렬
-          allHints.sort((a, b) => a.step - b.step);
           const newHints = allHints.length > 0 ? allHints : null;
           if (newHints) {
             setHints(newHints);
@@ -462,7 +463,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
                     switch (part.type) {
                       case "text":
                         // hints 블록 파싱
-                        const { hints: parsedHints, textWithoutHints } = parseHintsFromMessage(part.text);
+                        const { hintContents: parsedHints, textWithoutHints } = parseHintsFromMessage(part.text);
 
                         return (
                           <Message
@@ -470,10 +471,10 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
                             from={message.role}
                           >
                             <MessageContent>
-                              {/* 힌트는 content만 텍스트로 표시 */}
-                              {parsedHints && parsedHints.map((hint) => (
-                                <MessageResponse key={hint.step}>
-                                  {`**힌트 ${hint.step}**: ${hint.content}`}
+                              {/* 힌트는 content만 텍스트로 표시 (번호는 HintsCard에서 표시) */}
+                              {parsedHints && parsedHints.map((content, idx) => (
+                                <MessageResponse key={idx}>
+                                  {`**힌트**: ${content}`}
                                 </MessageResponse>
                               ))}
                               {/* 나머지 텍스트 표시 */}
