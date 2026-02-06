@@ -72,25 +72,21 @@ export function ChatSidebar({
 
     const handleDeleteChat = async (e: React.MouseEvent, chatId: string) => {
         e.stopPropagation(); // 버튼 클릭 시 채팅 선택 방지
-        if (confirm("이 채팅을 삭제하시겠습니까?")) {
-            const success = await deleteChatHistory(chatId);
-            if (success) {
-                // 삭제된 채팅이 현재 선택된 채팅이면 새 채팅으로 변경
-                if (selectedChatId === chatId) {
-                    onSelectChat(null);
-                }
-                // 목록 새로고침
-                const list = await getChatHistoryList();
-                // 최근 업데이트 순으로 정렬 (updated_at 기준 내림차순)
-                const sortedList = [...list].sort((a, b) => {
-                    const dateA = a.updated_at ? new Date(a.updated_at).getTime() : 0;
-                    const dateB = b.updated_at ? new Date(b.updated_at).getTime() : 0;
-                    return dateB - dateA; // 내림차순 (최신이 위로)
-                });
-                setChatList(sortedList);
-            } else {
-                alert("채팅 삭제에 실패했습니다. 콘솔을 확인해주세요.");
+        const success = await deleteChatHistory(chatId);
+        if (success) {
+            // 삭제된 채팅이 현재 선택된 채팅이면 새 채팅으로 변경
+            if (selectedChatId === chatId) {
+                onSelectChat(null);
             }
+            // 목록 새로고침
+            const list = await getChatHistoryList();
+            // 최근 업데이트 순으로 정렬 (updated_at 기준 내림차순)
+            const sortedList = [...list].sort((a, b) => {
+                const dateA = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+                const dateB = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+                return dateB - dateA; // 내림차순 (최신이 위로)
+            });
+            setChatList(sortedList);
         }
     };
 
