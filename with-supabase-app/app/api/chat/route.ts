@@ -185,6 +185,38 @@ export async function POST(req: Request) {
     return new Response("Unauthorized", { status: 401 });
   }
 
+  // 일일 토큰 제한 체크
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const [{ data: userInfo }, { data: todayUsage }] = await Promise.all([
+    supabase
+      .from("user_info")
+      .select("daily_token_limit")
+      .eq("id", user.id)
+      .single(),
+    supabase
+      .from("token_usage")
+      .select("total_tokens")
+      .eq("user_id", user.id)
+      .gte("created_at", today.toISOString()),
+  ]);
+
+  const dailyLimit = userInfo?.daily_token_limit ?? 100000;
+  const usedTokens = todayUsage?.reduce((sum, row) => sum + (row.total_tokens || 0), 0) ?? 0;
+
+  if (usedTokens >= dailyLimit) {
+    return Response.json(
+      {
+        error: "DAILY_LIMIT_EXCEEDED",
+        message: "일일 토큰 사용량을 초과했습니다.",
+        usedTokens,
+        dailyLimit,
+      },
+      { status: 429 }
+    );
+  }
+
   const {
     messages,
     problemUrl,

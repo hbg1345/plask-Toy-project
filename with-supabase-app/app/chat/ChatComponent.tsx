@@ -28,8 +28,8 @@ import {
   PromptInputTools,
 } from "@/components/ai-elements/prompt-input";
 import { useState, useEffect, useRef } from "react";
-import { useChat } from "@ai-sdk/react";
-import { CopyIcon, RefreshCcwIcon } from "lucide-react";
+import { useChat, type UIMessage } from "@ai-sdk/react";
+import { CopyIcon, RefreshCcwIcon, AlertCircleIcon } from "lucide-react";
 import {
   saveChatHistory,
   getChatHistory,
@@ -67,7 +67,15 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
   const [problemUrl, setProblemUrl] = useState<string | null>(null);
   const [chatTitle, setChatTitle] = useState<string | null>(null);
   const [hints, setHints] = useState<Hint[] | null>(null);
-  const { messages, setMessages, sendMessage, status, regenerate } = useChat();
+  const [tokenLimitExceeded, setTokenLimitExceeded] = useState(false);
+  const { messages, setMessages, sendMessage, status, regenerate } = useChat({
+    onError: (err) => {
+      // 429 에러 (토큰 제한 초과) 감지
+      if (err.message?.includes("429") || err.message?.includes("DAILY_LIMIT_EXCEEDED")) {
+        setTokenLimitExceeded(true);
+      }
+    },
+  });
   const { setRefreshTrigger, setProblemUrl: setContextProblemUrl } = useChatLayout();
   const prevChatIdRef = useRef<string | null>(null);
   const lastSavedMessageCountRef = useRef<number>(0);
@@ -182,7 +190,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
             parts: msg.parts && msg.parts.length > 0
               ? msg.parts
               : [{ type: "text" as const, text: msg.content }],
-          }));
+          })) as UIMessage[];
           setMessages(convertedMessages);
           lastSavedMessageCountRef.current = convertedMessages.length;
           // problemUrl, title, hints 저장
@@ -531,6 +539,12 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
         </>
       )}
       <div className="flex-shrink-0 p-4">
+        {tokenLimitExceeded && (
+          <div className="mb-3 p-3 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-2 text-destructive text-sm">
+            <AlertCircleIcon className="size-4 flex-shrink-0" />
+            <span>일일 토큰 사용량을 초과했습니다. 내일 다시 시도해주세요.</span>
+          </div>
+        )}
         <PromptInput onSubmit={handleSubmit} globalDrop={true} multiple={true}>
           <PromptInputHeader>
             <PromptInputAttachments>
@@ -541,6 +555,8 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
             <PromptInputTextarea
               onChange={(e) => setInput(e.target.value)}
               value={input}
+              disabled={tokenLimitExceeded}
+              placeholder={tokenLimitExceeded ? "일일 토큰 제한 초과" : undefined}
             />
           </PromptInputBody>
           <PromptInputFooter>
@@ -552,7 +568,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
                 </PromptInputActionMenuContent>
               </PromptInputActionMenu>
             </PromptInputTools>
-            <PromptInputSubmit disabled={!input && !status} status={status} />
+            <PromptInputSubmit disabled={tokenLimitExceeded || (!input && !status)} status={status} />
           </PromptInputFooter>
         </PromptInput>
       </div>
