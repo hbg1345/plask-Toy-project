@@ -530,7 +530,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
           </Conversation>
         </>
       )}
-      <div className="flex-shrink-0 p-4 border-t">
+      <div className="flex-shrink-0 p-4">
         <PromptInput onSubmit={handleSubmit} globalDrop={true} multiple={true}>
           <PromptInputHeader>
             <PromptInputAttachments>
