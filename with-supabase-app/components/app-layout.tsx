@@ -18,7 +18,7 @@ export function AppLayout({
   const authButton = !hasEnvVars ? (
     <EnvVarWarning />
   ) : (
-    <Suspense fallback={<div className="h-8 w-20 bg-muted animate-pulse rounded" />}>
+    <Suspense fallback={<div className="h-6 w-16 bg-pixel-navy animate-pulse" />}>
       <AuthButton />
     </Suspense>
   );
@@ -26,7 +26,7 @@ export function AppLayout({
   const mobileAuthButton = !hasEnvVars ? (
     <EnvVarWarning />
   ) : (
-    <Suspense fallback={<div className="h-8 w-full bg-muted animate-pulse rounded" />}>
+    <Suspense fallback={<div className="h-8 w-full bg-pixel-navy animate-pulse" />}>
       <AuthButton />
     </Suspense>
   );

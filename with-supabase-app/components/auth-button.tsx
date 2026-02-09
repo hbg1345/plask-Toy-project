@@ -11,12 +11,18 @@ export async function AuthButton() {
   if (!user) {
     return (
       <div className="flex gap-2">
-        <Button asChild size="sm" variant={"outline"}>
-          <Link href="/auth/login">Sign in</Link>
-        </Button>
-        <Button asChild size="sm" variant={"default"}>
-          <Link href="/auth/sign-up">Sign up</Link>
-        </Button>
+        <Link
+          href="/auth/login"
+          className="font-game text-xs font-medium px-3 py-2 text-pixel-white/80 hover:text-pixel-cyan transition-colors tracking-wide"
+        >
+          LOG IN
+        </Link>
+        <Link
+          href="/auth/sign-up"
+          className="font-game text-xs font-medium px-3 py-2 bg-pixel-navy text-pixel-yellow hover:bg-pixel-blue transition-colors tracking-wide"
+        >
+          SIGN UP
+        </Link>
       </div>
     );
   }
