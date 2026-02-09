@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -67,4 +69,79 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Pixel Art Utilities */
+@layer utilities {
+  .pixel-border {
+    box-shadow:
+      -4px 0 0 0 currentColor,
+      4px 0 0 0 currentColor,
+      0 -4px 0 0 currentColor,
+      0 4px 0 0 currentColor;
+  }
+
+  .pixel-box {
+    background: #1a1c2c;
+    border: 4px solid #f4f4f4;
+    box-shadow:
+      8px 8px 0 0 #333c57,
+      inset 0 0 0 4px #29366f;
+  }
+
+  .pixel-box-light {
+    background: #f4f4f4;
+    border: 4px solid #1a1c2c;
+    box-shadow:
+      8px 8px 0 0 #566c86;
+  }
+
+  .pixel-cursor {
+    animation: blink 0.8s step-end infinite;
+  }
+
+  .pixel-text-shadow {
+    text-shadow:
+      2px 2px 0 #1a1c2c,
+      4px 4px 0 #333c57;
+  }
+
+  .retro-scanlines {
+    position: relative;
+  }
+
+  .retro-scanlines::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.1) 2px,
+      rgba(0, 0, 0, 0.1) 4px
+    );
+    pointer-events: none;
+  }
+
+  .pixelated-bg {
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+  }
+}
+
+/* Dot pattern overlay for pixelation effect */
+.dot-overlay {
+  position: relative;
+}
+
+.dot-overlay::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle, rgba(0,0,0,0.15) 1px, transparent 1px);
+  background-size: 4px 4px;
+  pointer-events: none;
 }

@@ -11,13 +11,14 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Menu, MessageSquare, Archive, Lightbulb } from "lucide-react";
+import { Menu, MessageSquare, Archive, Sword, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/problems", label: "Problems", icon: Archive },
-  { href: "/practice", label: "Practice", icon: Lightbulb },
-  { href: "/chat", label: "Chat", icon: MessageSquare },
+  { href: "/practice", label: "추천", icon: Sword },
+  { href: "/problems", label: "문제", icon: Archive },
+  { href: "/chat", label: "AI채팅", icon: MessageSquare },
+  { href: "/profile", label: "프로필", icon: User },
 ];
 
 interface MobileNavProps {
@@ -31,16 +32,25 @@ export function MobileNav({ children }: MobileNavProps) {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-9 w-9">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 text-pixel-white/80 hover:text-pixel-cyan hover:bg-pixel-navy"
+        >
           <Menu className="h-5 w-5" />
           <span className="sr-only">메뉴 열기</span>
         </Button>
       </SheetTrigger>
-      <SheetContent side="right" className="w-[280px] sm:w-[320px]">
+      <SheetContent
+        side="right"
+        className="w-[280px] sm:w-[320px] bg-pixel-dark border-l-4 border-pixel-navy"
+      >
         <SheetHeader>
-          <SheetTitle>Solve Helper</SheetTitle>
+          <SheetTitle className="font-game text-lg font-bold text-pixel-yellow tracking-wider">
+            MENU
+          </SheetTitle>
         </SheetHeader>
-        <nav className="flex flex-col gap-2 mt-6">
+        <nav className="flex flex-col gap-1 mt-6">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
             return (
@@ -49,10 +59,10 @@ export function MobileNav({ children }: MobileNavProps) {
                 href={item.href}
                 onClick={() => setOpen(false)}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-3 text-sm font-medium rounded-lg transition-colors",
+                  "flex items-center gap-3 px-3 py-3 font-game text-sm font-medium tracking-wide transition-colors",
                   isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    ? "text-pixel-yellow bg-pixel-navy"
+                    : "text-pixel-white/80 hover:text-pixel-cyan hover:bg-pixel-navy/50"
                 )}
               >
                 <item.icon className="h-5 w-5" />
@@ -61,7 +71,7 @@ export function MobileNav({ children }: MobileNavProps) {
             );
           })}
         </nav>
-        <div className="mt-6 pt-6 border-t">
+        <div className="mt-6 pt-6 border-t-2 border-pixel-navy">
           {children}
         </div>
       </SheetContent>

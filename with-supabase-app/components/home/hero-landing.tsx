@@ -1,113 +1,240 @@
 "use client";
 
-import { useRef } from "react";
-import { motion, useInView } from "framer-motion";
+import { useState, useEffect, useCallback } from "react";
+import { motion } from "framer-motion";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
-
-const sections = [
-  {
-    title: "막히면 물어보세요",
-    description: "AI가 정답을 알려주지 않아요. 대신 어디서 막혔는지 파악하고, 다음 단계로 나아갈 수 있는 힌트를 제공합니다. 스스로 문제를 해결하는 능력을 키워보세요.",
-    image: "/images/feature-chat.png",
-  },
-  {
-    title: "딱 맞는 난이도",
-    description: "너무 쉬우면 지루하고, 너무 어려우면 포기하게 돼요. 현재 레이팅을 기반으로 적절한 난이도의 문제를 추천받아 효율적으로 실력을 키우세요.",
-    image: "/images/feature-recommend.png",
-  },
-  {
-    title: "꾸준히 기록하세요",
-    description: "매일 푼 문제, 걸린 시간, 성공률까지. 풀이 기록이 쌓이면 나만의 학습 패턴이 보이고, 어느새 실력이 성장해 있을 거예요.",
-    image: "/images/feature-stats.png",
-  },
-];
+import { Sword, MessageSquare, Archive, User, ChevronRight } from "lucide-react";
 
 interface HeroLandingProps {
   isLoggedIn: boolean;
 }
 
+const menuItems = [
+  {
+    id: "practice",
+    label: "문제 추천",
+    subLabel: "PRACTICE",
+    href: "/practice",
+    icon: Sword,
+    description: "레이팅 기반 맞춤 문제 추천",
+  },
+  {
+    id: "chat",
+    label: "AI 채팅",
+    subLabel: "AI CHAT",
+    href: "/chat",
+    icon: MessageSquare,
+    description: "AI와 함께 문제 풀이",
+  },
+  {
+    id: "problems",
+    label: "문제 목록",
+    subLabel: "PROBLEMS",
+    href: "/problems",
+    icon: Archive,
+    description: "AtCoder 문제 아카이브",
+  },
+  {
+    id: "profile",
+    label: "프로필",
+    subLabel: "PROFILE",
+    href: "/profile",
+    icon: User,
+    description: "내 정보 및 풀이 기록",
+  },
+];
+
 export function HeroLanding({ isLoggedIn }: HeroLandingProps) {
-  return (
-    <div className="w-full">
-      {/* 히어로 섹션 */}
-      <div className="max-w-5xl mx-auto px-4 py-20 text-center">
-        <p className="text-sm tracking-widest text-muted-foreground mb-3">
-          SOLVE HELPER
-        </p>
-        <h1 className="text-3xl md:text-5xl font-bold leading-tight mb-4">
-          혼자 고민하지 마세요
-        </h1>
-        <p className="text-muted-foreground text-lg mb-8 max-w-2xl mx-auto">
-          공식 해설을 기반으로 답변하는 AI가 막힌 부분을 함께 해결해드려요.
-        </p>
-        <Button asChild size="lg" className="rounded-full">
-          <Link href={isLoggedIn ? "/practice" : "/auth/sign-up"}>
-            {isLoggedIn ? "연습 시작" : "시작하기"}
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Link>
-        </Button>
-      </div>
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [showCursor, setShowCursor] = useState(true);
 
-      {/* 기능 섹션들 - 좌우 번갈아가며 */}
-      <div className="flex flex-col">
-        {sections.map((section, index) => (
-          <FeatureSection key={section.title} section={section} index={index} />
-        ))}
-      </div>
-    </div>
+  // Cursor blink effect
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setShowCursor((prev) => !prev);
+    }, 530);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Keyboard navigation
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev + 1) % menuItems.length);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev - 1 + menuItems.length) % menuItems.length);
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        const item = menuItems[selectedIndex];
+        if (item) {
+          window.location.href = item.href;
+        }
+      }
+    },
+    [selectedIndex]
   );
-}
 
-function FeatureSection({
-  section,
-  index,
-}: {
-  section: (typeof sections)[number];
-  index: number;
-}) {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleKeyDown]);
 
   return (
-    <section ref={ref} className="py-16 md:py-24 overflow-hidden">
-      <div className="max-w-6xl mx-auto px-4">
-        <div
-          className={`flex flex-col md:flex-row items-center gap-8 md:gap-16 ${
-            index % 2 === 1 ? "md:flex-row-reverse" : ""
-          }`}
-        >
-          {/* 이미지 */}
-          <motion.div
-            className="flex-1 w-full"
-            initial={{ opacity: 0, x: index % 2 === 0 ? -50 : 50 }}
-            animate={isInView ? { opacity: 1, x: 0 } : {}}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-          >
-            <div className="aspect-video rounded-xl bg-muted border overflow-hidden shadow-lg">
-              <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                Screenshot
-              </div>
-            </div>
-          </motion.div>
+    <div className="min-h-[calc(100vh-56px)] w-full relative flex flex-col items-center justify-center p-4 overflow-hidden">
+      {/* Pixelated background image */}
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat pixelated-bg"
+        style={{
+          backgroundImage: "url('/hero-bg.jpg')",
+          filter: "contrast(1.1) saturate(1.2)",
+        }}
+      />
+      {/* Dot pattern overlay for pixel art effect */}
+      <div className="absolute inset-0 dot-overlay" />
+      {/* Dark overlay for better text readability */}
+      <div className="absolute inset-0 bg-black/20" />
 
-          {/* 텍스트 */}
-          <motion.div
-            className="flex-1"
-            initial={{ opacity: 0, x: index % 2 === 0 ? 50 : -50 }}
-            animate={isInView ? { opacity: 1, x: 0 } : {}}
-            transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
-          >
-            <h2 className="text-2xl md:text-3xl font-bold mb-4">
-              {section.title}
-            </h2>
-            <p className="text-muted-foreground text-lg leading-relaxed">
-              {section.description}
+      {/* Title */}
+      <motion.div
+        className="text-center mb-12 relative z-20"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+      >
+        <h1
+          className="font-game text-3xl md:text-5xl font-black mb-4 tracking-widest"
+          style={{
+            color: "#fff",
+            textShadow: "3px 3px 0 #2E7D32, 6px 6px 0 rgba(0,0,0,0.3)",
+          }}
+        >
+          SOLVE HELPER
+        </h1>
+        <p
+          className="font-game text-sm md:text-base font-medium tracking-wide"
+          style={{
+            color: "#E0F4FF",
+            textShadow: "2px 2px 0 #1565C0",
+          }}
+        >
+          AI와 함께하는 알고리즘 학습
+        </p>
+      </motion.div>
+
+      {/* Menu Box */}
+      <motion.div
+        className="relative z-20 w-full max-w-md"
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.4, delay: 0.2 }}
+      >
+        <div
+          className="p-6 md:p-8 rounded-lg"
+          style={{
+            background: "rgba(255, 255, 255, 0.95)",
+            border: "4px solid #5D4037",
+            boxShadow: "8px 8px 0 0 rgba(0,0,0,0.2), inset 0 0 0 4px #8D6E63",
+          }}
+        >
+          {/* Menu Items */}
+          <nav className="space-y-2">
+            {menuItems.map((item, index) => {
+              const isSelected = selectedIndex === index;
+              const Icon = item.icon;
+
+              return (
+                <Link
+                  key={item.id}
+                  href={item.href}
+                  className={`
+                    group flex items-center gap-3 p-3 rounded transition-all duration-100
+                    ${isSelected ? "bg-green-100" : "hover:bg-amber-50"}
+                  `}
+                  onMouseEnter={() => setSelectedIndex(index)}
+                >
+                  {/* Selection cursor */}
+                  <span
+                    className={`
+                      font-game text-green-600 text-sm transition-opacity
+                      ${isSelected && showCursor ? "opacity-100" : "opacity-0"}
+                    `}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </span>
+
+                  {/* Icon */}
+                  <Icon
+                    className={`
+                      w-5 h-5 transition-colors
+                      ${isSelected ? "text-green-600" : "text-amber-700"}
+                    `}
+                  />
+
+                  {/* Text */}
+                  <div className="flex-1">
+                    <span
+                      className={`
+                        font-game text-sm md:text-base font-semibold block tracking-wide
+                        ${isSelected ? "text-green-700" : "text-amber-900"}
+                      `}
+                    >
+                      {item.label}
+                    </span>
+                    <span className="font-game text-xs text-amber-600">
+                      {item.subLabel}
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* Description Box */}
+          <div className="mt-6 pt-4 border-t-2 border-amber-200">
+            <p className="font-game text-sm text-green-700 leading-relaxed">
+              {menuItems[selectedIndex]?.description}
             </p>
-          </motion.div>
+          </div>
         </div>
-      </div>
-    </section>
+      </motion.div>
+
+      {/* Controls hint */}
+      <motion.div
+        className="mt-8 relative z-20"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.5 }}
+      >
+        <p
+          className="font-game text-xs text-center tracking-wider"
+          style={{
+            color: "#fff",
+            textShadow: "1px 1px 0 rgba(0,0,0,0.5)",
+          }}
+        >
+          [↑][↓] SELECT &nbsp;&nbsp; [ENTER] CONFIRM
+        </p>
+      </motion.div>
+
+      {/* Version text */}
+      <motion.div
+        className="absolute bottom-4 right-4 z-20"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.7 }}
+      >
+        <p
+          className="font-game text-xs"
+          style={{
+            color: "#fff",
+            textShadow: "1px 1px 0 rgba(0,0,0,0.5)",
+          }}
+        >
+          v1.0.0
+        </p>
+      </motion.div>
+    </div>
   );
 }

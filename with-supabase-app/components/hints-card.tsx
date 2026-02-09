@@ -102,33 +102,41 @@ export function parseHintsFromMessage(text: string): {
   let resultText = text;
   const hintContents: string[] = [];
 
-  // 힌트 형식: {"type": "hint", "content": "..."}
-  const hintRegex = /\{"type"\s*:\s*"hint"\s*,\s*"content"\s*:\s*"((?:[^"\\]|\\.)*)"\}/g;
+  // JSON 파싱 헬퍼 - 멀티라인 허용
+  const tryParseJson = (jsonStr: string) => {
+    try {
+      // 먼저 그대로 파싱 시도
+      return JSON.parse(jsonStr);
+    } catch {
+      try {
+        // 실패하면 줄바꿈을 \n으로 이스케이프하고 다시 시도
+        const fixed = jsonStr.replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+        return JSON.parse(fixed);
+      } catch {
+        return null;
+      }
+    }
+  };
+
+  // 힌트 형식: {"type": "hint", "content": "..."} - 멀티라인 지원
+  const hintRegex = /\{"type"\s*:\s*"hint"\s*,\s*"content"\s*:\s*"([\s\S]*?)"\s*\}/g;
   let hintMatch;
   while ((hintMatch = hintRegex.exec(text)) !== null) {
-    try {
-      const parsed = JSON.parse(hintMatch[0]);
-      if (parsed.type === "hint" && parsed.content) {
-        hintContents.push(parsed.content);
-        resultText = resultText.replace(hintMatch[0], "").trim();
-      }
-    } catch (e) {
-      // 파싱 실패하면 무시
+    const parsed = tryParseJson(hintMatch[0]);
+    if (parsed?.type === "hint" && parsed?.content) {
+      hintContents.push(parsed.content);
+      resultText = resultText.replace(hintMatch[0], "").trim();
     }
   }
 
-  // 일반 응답 형식: {"type": "response", "content": "..."} → content만 텍스트로 표시
-  const responseRegex = /\{"type"\s*:\s*"response"\s*,\s*"content"\s*:\s*"((?:[^"\\]|\\.)*)"\}/g;
+  // 일반 응답 형식: {"type": "response", "content": "..."} - 멀티라인 지원
+  const responseRegex = /\{"type"\s*:\s*"response"\s*,\s*"content"\s*:\s*"([\s\S]*?)"\s*\}/g;
   let responseMatch;
   while ((responseMatch = responseRegex.exec(text)) !== null) {
-    try {
-      const parsed = JSON.parse(responseMatch[0]);
-      if (parsed.type === "response" && parsed.content) {
-        // JSON을 content 텍스트로 대체
-        resultText = resultText.replace(responseMatch[0], parsed.content).trim();
-      }
-    } catch (e) {
-      // 파싱 실패하면 무시
+    const parsed = tryParseJson(responseMatch[0]);
+    if (parsed?.type === "response" && parsed?.content) {
+      // JSON을 content 텍스트로 대체
+      resultText = resultText.replace(responseMatch[0], parsed.content).trim();
     }
   }
 

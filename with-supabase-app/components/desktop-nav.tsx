@@ -2,20 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MessageSquare, Archive, Lightbulb } from "lucide-react";
+import { MessageSquare, Archive, Sword, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/problems", label: "Problems", icon: Archive },
-  { href: "/practice", label: "Practice", icon: Lightbulb },
-  { href: "/chat", label: "Chat", icon: MessageSquare },
+  { href: "/practice", label: "추천", icon: Sword },
+  { href: "/problems", label: "문제", icon: Archive },
+  { href: "/chat", label: "AI채팅", icon: MessageSquare },
+  { href: "/profile", label: "프로필", icon: User },
 ];
 
 export function DesktopNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="hidden md:flex flex-1 items-center space-x-1">
+    <nav className="hidden md:flex flex-1 items-center gap-1">
       {navItems.map((item) => {
         const isActive = pathname === item.href;
         return (
@@ -23,10 +24,10 @@ export function DesktopNav() {
             key={item.href}
             href={item.href}
             className={cn(
-              "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md",
+              "flex items-center gap-2 px-3 py-2 font-game text-xs font-medium tracking-wide transition-colors",
               isActive
-                ? "bg-primary/10 text-primary"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                ? "text-pixel-yellow bg-pixel-navy"
+                : "text-pixel-white/80 hover:text-pixel-cyan hover:bg-pixel-navy/50"
             )}
           >
             <item.icon className="h-4 w-4" />

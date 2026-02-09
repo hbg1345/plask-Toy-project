@@ -532,7 +532,16 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
                   })}
                 </div>
               ))}
-              {status === "submitted" && <Loader />}
+              {status === "submitted" && (
+                <div className="flex items-center gap-1 py-4 text-muted-foreground">
+                  <span className="text-sm">생각 중</span>
+                  <span className="flex gap-0.5">
+                    <span className="w-1.5 h-1.5 bg-current rounded-full animate-pulse" />
+                    <span className="w-1.5 h-1.5 bg-current rounded-full animate-pulse [animation-delay:0.2s]" />
+                    <span className="w-1.5 h-1.5 bg-current rounded-full animate-pulse [animation-delay:0.4s]" />
+                  </span>
+                </div>
+              )}
             </ConversationContent>
             <ConversationScrollButton />
           </Conversation>

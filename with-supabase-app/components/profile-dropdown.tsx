@@ -47,17 +47,18 @@ export function ProfileDropdown({ avatarUrl, handle, email }: ProfileDropdownPro
       {/* 프로필 이미지 - 클릭 시 프로필 페이지로 이동 */}
       <Link
         href="/profile"
-        className="block w-9 h-9 rounded-full overflow-hidden bg-muted border-2 border-border hover:border-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+        className="block w-8 h-8 rounded-full overflow-hidden bg-pixel-navy hover:ring-2 hover:ring-pixel-yellow transition-all"
       >
         {avatarUrl ? (
           <img
             src={avatarUrl}
             alt="Profile"
             className="w-full h-full object-cover"
+            style={{ imageRendering: "pixelated" }}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-muted-foreground bg-muted">
-            <User className="w-5 h-5" />
+          <div className="w-full h-full flex items-center justify-center text-pixel-gray bg-pixel-navy">
+            <User className="w-4 h-4" />
           </div>
         )}
       </Link>
@@ -67,24 +68,24 @@ export function ProfileDropdown({ avatarUrl, handle, email }: ProfileDropdownPro
         <>
           {/* 호버 영역 연결용 투명 브릿지 */}
           <div className="absolute right-0 top-full h-2 w-48" />
-          <div className="absolute right-0 top-full mt-2 w-48 bg-popover border rounded-lg shadow-lg py-1 z-50">
+          <div className="absolute right-0 top-full mt-2 w-48 bg-pixel-dark border-4 border-pixel-white shadow-[4px_4px_0_0_#333c57] py-1 z-50">
             {/* 유저 정보 */}
-            <div className="px-3 py-2 border-b">
+            <div className="px-3 py-2 border-b-2 border-pixel-navy">
               {handle && (
-                <p className="font-medium text-sm truncate">{handle}</p>
+                <p className="font-game text-sm font-bold text-pixel-yellow truncate">{handle}</p>
               )}
               {email && (
-                <p className="text-xs text-muted-foreground truncate">{email}</p>
+                <p className="font-game text-xs text-pixel-gray truncate mt-1">{email}</p>
               )}
             </div>
 
             {/* 로그아웃 버튼 */}
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-destructive hover:bg-muted transition-colors"
+              className="flex items-center gap-2 w-full px-3 py-2 font-game text-xs font-medium text-pixel-red hover:bg-pixel-navy transition-colors"
             >
               <LogOut className="w-4 h-4" />
-              로그아웃
+              LOG OUT
             </button>
           </div>
         </>
