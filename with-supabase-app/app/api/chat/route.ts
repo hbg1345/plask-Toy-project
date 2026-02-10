@@ -1,6 +1,4 @@
 import { createAgent, tool, toolStrategy } from "langchain";
-import { toBaseMessages, toUIMessageStream } from "@ai-sdk/langchain";
-import { createUIMessageStreamResponse, UIMessage } from "ai";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { SupabaseSaver } from "@skroyc/langgraph-supabase-checkpointer";
 import { z } from "zod";
@@ -25,8 +23,11 @@ export const maxDuration = 30;
 
 // 응답 스키마 정의
 const responseSchema = z.object({
-  type: z.enum(["hint", "response"]).describe("hint: 새로운 힌트, response: 일반 응답"),
-  content: z.string().describe("응답 내용 (hint는 40자 이내, response는 100자 이내)"),
+  type: z.enum(["hint", "response"]).describe(
+    "hint: 새로운 힌트를 제공할 때 (40자 이내, 새로운 접근법/관점 제시, 정답/풀이법/알고리즘 이름 금지). " +
+    "response: 질문에 답변하거나 격려할 때 (100자 이내)"
+  ),
+  content: z.string().describe("응답 내용. type이 hint면 40자 이내, response면 100자 이내"),
 });
 
 // Checkpointer는 user.id가 필요해서 POST 함수 안에서 생성
@@ -236,15 +237,24 @@ export async function POST(req: Request) {
     );
   }
 
+  // 새 메시지만 받음 (checkpointer가 히스토리 관리)
   const {
-    messages,
+    message,
     problemUrl,
     chatId,
-  }: { messages: UIMessage[]; problemUrl?: string; chatId?: string } =
+  }: { message: string; problemUrl?: string; chatId: string } =
     await req.json();
 
+  // chatId는 필수 (클라이언트에서 항상 생성)
+  if (!chatId) {
+    return Response.json(
+      { error: "MISSING_CHAT_ID", message: "chatId is required" },
+      { status: 400 }
+    );
+  }
+
   console.log("=== API chat route called ===");
-  console.log("chatId:", chatId, "problemUrl:", problemUrl);
+  console.log("chatId:", chatId, "problemUrl:", problemUrl, "message:", message);
 
   // problemUrl 감지
   let detectedProblemUrl: string | null = problemUrl || null;
@@ -349,9 +359,6 @@ ${problemTitle ? `현재 문제: "${problemTitle}"` : `문제가 연결되지 �
 
 ## 규칙
 - 수학 표기: $A_i$, $10^k$ 형식으로 $ 감싸기
-- hint: 40자 이내, 새로운 접근법/관점 제시
-- response: 100자 이내, 질문 답변/부연 설명/격려
-- 힌트에 정답, 풀이법, 알고리즘 이름 금지
 - 사용자가 다른 문제 언급하면 searchProblems 도구 사용
 - 사용자 언어로 답변`;
 
@@ -393,19 +400,18 @@ ${problemTitle ? `현재 문제: "${problemTitle}"` : `문제가 연결되지 �
     checkpointer,
   });
 
-  // 메시지 변환
-  console.log("[AGENT] Converting messages:", messages.length);
-  const langchainMessages = await toBaseMessages(messages);
-  console.log("[AGENT] Converted:", langchainMessages.length);
+  // 새 메시지를 HumanMessage로 변환 (checkpointer가 이전 히스토리 관리)
+  console.log("[AGENT] New user message:", message);
+  const { HumanMessage } = await import("@langchain/core/messages");
+  const newMessage = new HumanMessage(message);
 
   // Agent 실행 (invoke 사용)
-  // threadId는 UUID여야 함 (SupabaseSaver 요구사항)
-  const threadId = chatId || crypto.randomUUID();
-  console.log("[AGENT] Starting invoke, threadId:", threadId);
+  // threadId는 chatId를 사용 (UUID 형식)
+  console.log("[AGENT] Starting invoke, threadId:", chatId);
 
   const result = await agent.invoke(
-    { messages: langchainMessages },
-    { configurable: { thread_id: threadId } }
+    { messages: [newMessage] },
+    { configurable: { thread_id: chatId } }
   );
 
   console.log("[AGENT] Result structuredResponse:", result.structuredResponse);
