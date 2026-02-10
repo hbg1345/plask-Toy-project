@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Lightbulb } from "lucide-react";
+import { Lightbulb, ChevronRight, ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
@@ -17,75 +17,126 @@ interface HintsCardProps {
 }
 
 export function HintsCard({ hints }: HintsCardProps) {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  const goToNext = () => {
-    if (currentStep < hints.length - 1) {
-      setCurrentStep(currentStep + 1);
-      setIsExpanded(false);
-    }
-  };
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isExpanded, setIsExpanded] = useState(true);
 
   const goToPrev = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
-      setIsExpanded(false);
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
     }
   };
 
-  const currentHint = hints[currentStep];
+  const goToNext = () => {
+    if (currentIndex < hints.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+    }
+  };
+
+  const currentHint = hints[currentIndex];
 
   return (
-    <div className="flex items-center gap-2 text-xs relative">
-      {/* 아이콘 클릭으로 힌트 토글 */}
+    <div className="w-full">
+      {/* 헤더 - 클릭으로 토글 */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className={cn(
-          "flex items-center gap-1 text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition-colors",
-          isExpanded && "text-amber-700 dark:text-amber-300"
-        )}
+        className="flex items-center gap-2 text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition-colors w-full"
       >
-        <Lightbulb className="h-3 w-3" />
-        <span className="font-medium">힌트</span>
+        <Lightbulb className="h-4 w-4" />
+        <span className="font-medium text-sm">힌트</span>
+        <ChevronRight
+          className={cn(
+            "h-4 w-4 transition-transform duration-200",
+            isExpanded && "rotate-90"
+          )}
+        />
       </button>
 
-      {/* 이전 버튼 */}
-      <button
-        onClick={goToPrev}
-        disabled={currentStep === 0}
-        className={cn(
-          "p-0.5 rounded hover:bg-muted transition-colors",
-          currentStep === 0 && "opacity-30 cursor-not-allowed"
-        )}
-      >
-        <ChevronLeft className="h-3 w-3" />
-      </button>
+      {/* 펼쳐진 내용 */}
+      {isExpanded && (
+        <div className="mt-3 space-y-3">
+          {/* 스텝 인디케이터 + 좌우 화살표 */}
+          <div className="flex items-center gap-2">
+            {/* 왼쪽 화살표 */}
+            <button
+              onClick={goToPrev}
+              disabled={currentIndex === 0}
+              className={cn(
+                "p-1 rounded-md hover:bg-muted transition-colors",
+                currentIndex === 0 && "opacity-30 cursor-not-allowed"
+              )}
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
 
-      {/* 현재 힌트 번호 */}
-      <span className="px-2 py-0.5 text-xs">{currentStep + 1}/{hints.length}</span>
+            {/* 스텝 인디케이터 - 최대 5개만 표시 */}
+            <div className="flex items-center gap-1">
+              {(() => {
+                const maxVisible = 5;
+                let start = Math.max(0, currentIndex - Math.floor(maxVisible / 2));
+                let end = start + maxVisible;
 
-      {/* 다음 버튼 */}
-      <button
-        onClick={goToNext}
-        disabled={currentStep >= hints.length - 1}
-        className={cn(
-          "p-0.5 rounded hover:bg-muted transition-colors",
-          currentStep >= hints.length - 1 && "opacity-30 cursor-not-allowed"
-        )}
-      >
-        <ChevronRight className="h-3 w-3" />
-      </button>
+                if (end > hints.length) {
+                  end = hints.length;
+                  start = Math.max(0, end - maxVisible);
+                }
 
-      {/* 힌트 내용 (펼쳤을 때) */}
-      {isExpanded && currentHint && (
-        <div className="absolute top-full left-0 right-0 mt-1 p-2 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded text-sm text-foreground z-10 prose prose-sm dark:prose-invert max-w-none">
-          <ReactMarkdown
-            remarkPlugins={[remarkMath]}
-            rehypePlugins={[rehypeKatex]}
-          >
-            {currentHint.content}
-          </ReactMarkdown>
+                return hints.slice(start, end).map((_, idx) => {
+                  const index = start + idx;
+                  const isCurrent = index === currentIndex;
+
+                  return (
+                    <div key={index} className="flex items-center">
+                      {/* 스텝 원 - 클릭 가능 */}
+                      <button
+                        onClick={() => setCurrentIndex(index)}
+                        className={cn(
+                          "w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium transition-all",
+                          isCurrent
+                            ? "bg-amber-500 text-white"
+                            : "bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-800"
+                        )}
+                      >
+                        {index + 1}
+                      </button>
+                      {/* 연결선 */}
+                      {idx < Math.min(maxVisible, hints.length - start) - 1 && (
+                        <div className="w-4 h-0.5 mx-0.5 bg-amber-200 dark:bg-amber-800" />
+                      )}
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+
+            {/* 오른쪽 화살표 */}
+            <button
+              onClick={goToNext}
+              disabled={currentIndex === hints.length - 1}
+              className={cn(
+                "p-1 rounded-md hover:bg-muted transition-colors",
+                currentIndex === hints.length - 1 && "opacity-30 cursor-not-allowed"
+              )}
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* 현재 힌트 내용 */}
+          {currentHint && (
+            <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-lg">
+              <div className="text-xs text-amber-600 dark:text-amber-400 font-medium mb-2">
+                힌트 {currentIndex + 1}
+              </div>
+              <div className="prose prose-sm dark:prose-invert max-w-none text-sm">
+                <ReactMarkdown
+                  remarkPlugins={[remarkMath]}
+                  rehypePlugins={[rehypeKatex]}
+                >
+                  {currentHint.content}
+                </ReactMarkdown>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -102,41 +153,61 @@ export function parseHintsFromMessage(text: string): {
   let resultText = text;
   const hintContents: string[] = [];
 
-  // JSON 파싱 헬퍼 - 멀티라인 허용
-  const tryParseJson = (jsonStr: string) => {
-    try {
-      // 먼저 그대로 파싱 시도
-      return JSON.parse(jsonStr);
-    } catch {
-      try {
-        // 실패하면 줄바꿈을 \n으로 이스케이프하고 다시 시도
-        const fixed = jsonStr.replace(/\n/g, '\\n').replace(/\r/g, '\\r');
-        return JSON.parse(fixed);
-      } catch {
-        return null;
+  // JSON 블록 추출 함수 - 중괄호 매칭으로 완전한 JSON 찾기
+  const extractJsonBlocks = (str: string): string[] => {
+    const blocks: string[] = [];
+    let i = 0;
+
+    while (i < str.length) {
+      if (str[i] === '{') {
+        let depth = 1;
+        let j = i + 1;
+        let inString = false;
+        let escape = false;
+
+        while (j < str.length && depth > 0) {
+          const char = str[j];
+
+          if (escape) {
+            escape = false;
+          } else if (char === '\\' && inString) {
+            escape = true;
+          } else if (char === '"' && !escape) {
+            inString = !inString;
+          } else if (!inString) {
+            if (char === '{') depth++;
+            else if (char === '}') depth--;
+          }
+          j++;
+        }
+
+        if (depth === 0) {
+          blocks.push(str.slice(i, j));
+        }
+        i = j;
+      } else {
+        i++;
       }
     }
+
+    return blocks;
   };
 
-  // 힌트 형식: {"type": "hint", "content": "..."} - 멀티라인 지원
-  const hintRegex = /\{"type"\s*:\s*"hint"\s*,\s*"content"\s*:\s*"([\s\S]*?)"\s*\}/g;
-  let hintMatch;
-  while ((hintMatch = hintRegex.exec(text)) !== null) {
-    const parsed = tryParseJson(hintMatch[0]);
-    if (parsed?.type === "hint" && parsed?.content) {
-      hintContents.push(parsed.content);
-      resultText = resultText.replace(hintMatch[0], "").trim();
-    }
-  }
+  // JSON 블록들 추출 및 파싱
+  const jsonBlocks = extractJsonBlocks(text);
 
-  // 일반 응답 형식: {"type": "response", "content": "..."} - 멀티라인 지원
-  const responseRegex = /\{"type"\s*:\s*"response"\s*,\s*"content"\s*:\s*"([\s\S]*?)"\s*\}/g;
-  let responseMatch;
-  while ((responseMatch = responseRegex.exec(text)) !== null) {
-    const parsed = tryParseJson(responseMatch[0]);
-    if (parsed?.type === "response" && parsed?.content) {
-      // JSON을 content 텍스트로 대체
-      resultText = resultText.replace(responseMatch[0], parsed.content).trim();
+  for (const block of jsonBlocks) {
+    try {
+      const parsed = JSON.parse(block);
+
+      if (parsed?.type === "hint" && parsed?.content) {
+        hintContents.push(parsed.content);
+        resultText = resultText.replace(block, "").trim();
+      } else if (parsed?.type === "response" && parsed?.content) {
+        resultText = resultText.replace(block, parsed.content).trim();
+      }
+    } catch {
+      // JSON 파싱 실패 - 무시
     }
   }
 

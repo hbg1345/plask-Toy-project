@@ -232,7 +232,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
         if (part.type === "tool-linkProblemToChat") {
           const toolPart = part as {
             type: string;
-            output?: { success?: boolean; problemUrl?: string };
+            output?: { success?: boolean; problemUrl?: string; title?: string };
           };
           if (toolPart.output?.success && toolPart.output?.problemUrl) {
             const detectedUrl = toolPart.output.problemUrl;
@@ -240,6 +240,8 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
               console.log("Detected problemUrl from tool output:", detectedUrl);
               setProblemUrl(detectedUrl);
               setContextProblemUrl(detectedUrl);
+              setChatTitle(toolPart.output.title || null);
+              setHints(null); // 문제 변경 시 힌트 초기화
               setRefreshTrigger((prev) => prev + 1);
             }
             return;
@@ -421,8 +423,8 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
         <>
           {/* 힌트 패널 - hints가 있을 때만 표시 */}
           {hints && hints.length > 0 && (
-            <div className="flex-shrink-0 px-4 py-1.5 border-b bg-muted/30 relative">
-              <HintsCard hints={hints} />
+            <div className="flex-shrink-0 px-4 py-3 border-b bg-muted/20">
+              <HintsCard key={problemUrl ?? chatId} hints={hints} />
             </div>
           )}
           <Conversation className="flex-1 min-h-0">

@@ -134,12 +134,26 @@ Example: linkProblemToChat({problemId: "abc314_a"})`,
         const contestId = extractContestId(problemId);
         const problemUrl = `https://atcoder.jp/contests/${contestId}/tasks/${problemId}`;
 
-        // chatId가 있으면 DB에 problem_url 저장
+        // 문제 제목 가져오기
+        const { data: problemData } = await supabase
+          .from("problems")
+          .select("title")
+          .eq("id", problemId)
+          .single();
+
+        const title = problemData?.title || problemId;
+
+        // chatId가 있으면 DB에 problem_url, title, hints 업데이트
         if (chatId) {
-          console.log("Attempting DB update:", { chatId, problemUrl });
+          console.log("Attempting DB update:", { chatId, problemUrl, title });
+
           const { data, error, count } = await supabase
             .from("chat_history")
-            .update({ problem_url: problemUrl })
+            .update({
+              problem_url: problemUrl,
+              title,
+              hints: null, // 문제 변경 시 힌트 초기화
+            })
             .eq("id", chatId)
             .select();
 
@@ -160,6 +174,7 @@ Example: linkProblemToChat({problemId: "abc314_a"})`,
             success: true,
             problemUrl,
             problemId,
+            title,
             metadata,
           };
         } catch {
@@ -167,6 +182,7 @@ Example: linkProblemToChat({problemId: "abc314_a"})`,
             success: true,
             problemUrl,
             problemId,
+            title,
             metadata: null,
             note: "Problem linked but metadata fetch failed. You can still discuss this problem.",
           };
