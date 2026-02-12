@@ -27,8 +27,8 @@ import {
   PromptInputFooter,
   PromptInputTools,
 } from "@/components/ai-elements/prompt-input";
-import { useState, useEffect, useRef, useCallback } from "react";
-import { nanoid } from "nanoid";
+import { useState, useEffect, useRef } from "react";
+import { useChat, type UIMessage } from "@ai-sdk/react";
 import { CopyIcon, RefreshCcwIcon, AlertCircleIcon } from "lucide-react";
 import {
   saveChatHistory,
@@ -55,22 +55,6 @@ import {
   parseSearchResultsFromPart,
 } from "@/components/problem-select-card";
 
-// UIMessage 타입 정의 (useChat 제거로 직접 정의)
-interface MessagePart {
-  type: string;
-  text?: string;
-  url?: string;
-  [key: string]: unknown;
-}
-
-interface UIMessage {
-  id: string;
-  role: "user" | "assistant";
-  parts: MessagePart[];
-}
-
-type ChatStatus = "ready" | "submitted" | "error";
-
 interface ChatBotDemoProps {
   chatId?: string | null;
   onChatIdChange?: (chatId: string | null) => void;
@@ -84,11 +68,14 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
   const [chatTitle, setChatTitle] = useState<string | null>(null);
   const [hints, setHints] = useState<Hint[] | null>(null);
   const [tokenLimitExceeded, setTokenLimitExceeded] = useState(false);
-
-  // useChat 대신 직접 상태 관리
-  const [messages, setMessages] = useState<UIMessage[]>([]);
-  const [status, setStatus] = useState<ChatStatus>("ready");
-
+  const { messages, setMessages, sendMessage, status, regenerate } = useChat({
+    onError: (err) => {
+      // 429 에러 (토큰 제한 초과) 감지
+      if (err.message?.includes("429") || err.message?.includes("DAILY_LIMIT_EXCEEDED")) {
+        setTokenLimitExceeded(true);
+      }
+    },
+  });
   const { setRefreshTrigger, setProblemUrl: setContextProblemUrl } = useChatLayout();
   const prevChatIdRef = useRef<string | null>(null);
   const lastSavedMessageCountRef = useRef<number>(0);
@@ -320,7 +307,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
               const textPart = firstUserMessage.parts?.find(
                 (part) => part.type === "text"
               );
-              if (textPart && "text" in textPart && textPart.text) {
+              if (textPart && "text" in textPart) {
                 title = textPart.text.substring(0, 50);
               }
             }
@@ -406,132 +393,24 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
     }
   }, [messages, status, chatId, problemUrl, onChatIdChange]);
 
-  // 메시지 전송 함수
-  const sendMessage = useCallback(async (text: string) => {
-    if (!text.trim() || !chatId) return;
-
-    // 사용자 메시지 추가
-    const userMessage: UIMessage = {
-      id: nanoid(),
-      role: "user",
-      parts: [{ type: "text", text }],
-    };
-    setMessages((prev) => [...prev, userMessage]);
-    setStatus("submitted");
-
-    try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: text,
-          chatId,
-          problemUrl: problemUrl || undefined,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        if (response.status === 429 || errorData.error === "DAILY_LIMIT_EXCEEDED") {
-          setTokenLimitExceeded(true);
-        }
-        throw new Error(errorData.message || "Failed to send message");
-      }
-
-      const data = await response.json();
-      console.log("[ChatComponent] API response:", data);
-
-      // type이 hint면 힌트 추가
-      if (data.type === "hint" && data.content) {
-        setHints((prev) => {
-          const newStep = (prev?.length || 0) + 1;
-          return [...(prev || []), { step: newStep, content: data.content }];
-        });
-      }
-
-      // AI 응답 메시지 추가 (힌트도 메시지로 표시)
-      const assistantMessage: UIMessage = {
-        id: nanoid(),
-        role: "assistant",
-        parts: [{ type: "text", text: data.content || JSON.stringify(data) }],
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
-    } catch (error) {
-      console.error("Failed to send message:", error);
-      setStatus("error");
-      return;
-    }
-
-    setStatus("ready");
-  }, [chatId, problemUrl]);
-
-  // 재생성 함수
-  const regenerate = useCallback(async () => {
-    if (messages.length < 2) return;
-
-    // 마지막 assistant 메시지 제거
-    const lastAssistantIndex = messages.findLastIndex((m) => m.role === "assistant");
-    if (lastAssistantIndex === -1) return;
-
-    // 해당 assistant 메시지 직전의 user 메시지 찾기
-    const userMessage = messages.slice(0, lastAssistantIndex).findLast((m) => m.role === "user");
-    if (!userMessage) return;
-
-    // assistant 메시지 제거
-    setMessages((prev) => prev.slice(0, lastAssistantIndex));
-
-    // 마지막 user 메시지 다시 전송
-    const userText = userMessage.parts.find((p) => p.type === "text")?.text;
-    if (userText) {
-      // 직접 API 호출 (sendMessage는 user 메시지를 또 추가하므로)
-      setStatus("submitted");
-      try {
-        const response = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            message: userText,
-            chatId,
-            problemUrl: problemUrl || undefined,
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to regenerate");
-        }
-
-        const data = await response.json();
-
-        // type이 hint면 힌트 추가
-        if (data.type === "hint" && data.content) {
-          setHints((prev) => {
-            const newStep = (prev?.length || 0) + 1;
-            return [...(prev || []), { step: newStep, content: data.content }];
-          });
-        }
-
-        const assistantMessage: UIMessage = {
-          id: nanoid(),
-          role: "assistant",
-          parts: [{ type: "text", text: data.content || JSON.stringify(data) }],
-        };
-        setMessages((prev) => [...prev, assistantMessage]);
-      } catch (error) {
-        console.error("Failed to regenerate:", error);
-        setStatus("error");
-        return;
-      }
-      setStatus("ready");
-    }
-  }, [messages, chatId, problemUrl]);
-
   const handleSubmit = (message: PromptInputMessage) => {
     const hasText = Boolean(message.text);
     const hasAttachments = Boolean(message.files?.length);
     if (!(hasText || hasAttachments)) {
       return;
     }
-    sendMessage(message.text || "");
+    sendMessage(
+      {
+        text: message.text || "Sent with attachments",
+        files: message.files,
+      },
+      {
+        body: {
+          chatId: chatId || undefined,
+          problemUrl: problemUrl || undefined,
+        },
+      }
+    );
     setInput("");
   };
   return (
@@ -594,7 +473,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
                     switch (part.type) {
                       case "text":
                         // hints 블록 파싱
-                        const { hintContents: parsedHints, textWithoutHints } = parseHintsFromMessage(part.text || "");
+                        const { hintContents: parsedHints, textWithoutHints } = parseHintsFromMessage(part.text);
 
                         return (
                           <Message
@@ -624,7 +503,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
                                   </MessageAction>
                                   <MessageAction
                                     onClick={() =>
-                                      navigator.clipboard.writeText(part.text || "")
+                                      navigator.clipboard.writeText(part.text)
                                     }
                                     label="Copy"
                                   >
@@ -639,10 +518,14 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
                           <Reasoning
                             key={`${message.id}-${i}`}
                             className="w-full"
-                            isStreaming={false}
+                            isStreaming={
+                              status === "streaming" &&
+                              i === message.parts.length - 1 &&
+                              message.id === messages.at(-1)?.id
+                            }
                           >
                             <ReasoningTrigger />
-                            <ReasoningContent>{part.text || ""}</ReasoningContent>
+                            <ReasoningContent>{part.text}</ReasoningContent>
                           </Reasoning>
                         );
                       default:
