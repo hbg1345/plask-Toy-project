@@ -6,11 +6,11 @@ import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
+import type { Hint } from "@/lib/hints";
 
-interface Hint {
-  step: number;
-  content: string;
-}
+// re-export for backward compatibility
+export { parseHintsFromMessage } from "@/lib/hints";
+export type { Hint } from "@/lib/hints";
 
 interface HintsCardProps {
   hints: Hint[];
@@ -146,74 +146,3 @@ export function HintsCard({ hints }: HintsCardProps) {
 // 메시지에서 JSON 응답 파싱
 // 힌트: {"type": "hint", "content": "..."}
 // 일반 응답: {"type": "response", "content": "..."}
-export function parseHintsFromMessage(text: string): {
-  hintContents: string[] | null;  // 힌트 content만 반환 (번호는 시스템에서 부여)
-  textWithoutHints: string;
-} {
-  let resultText = text;
-  const hintContents: string[] = [];
-
-  // JSON 블록 추출 함수 - 중괄호 매칭으로 완전한 JSON 찾기
-  const extractJsonBlocks = (str: string): string[] => {
-    const blocks: string[] = [];
-    let i = 0;
-
-    while (i < str.length) {
-      if (str[i] === '{') {
-        let depth = 1;
-        let j = i + 1;
-        let inString = false;
-        let escape = false;
-
-        while (j < str.length && depth > 0) {
-          const char = str[j];
-
-          if (escape) {
-            escape = false;
-          } else if (char === '\\' && inString) {
-            escape = true;
-          } else if (char === '"' && !escape) {
-            inString = !inString;
-          } else if (!inString) {
-            if (char === '{') depth++;
-            else if (char === '}') depth--;
-          }
-          j++;
-        }
-
-        if (depth === 0) {
-          blocks.push(str.slice(i, j));
-        }
-        i = j;
-      } else {
-        i++;
-      }
-    }
-
-    return blocks;
-  };
-
-  // JSON 블록들 추출 및 파싱
-  const jsonBlocks = extractJsonBlocks(text);
-
-  for (const block of jsonBlocks) {
-    try {
-      const parsed = JSON.parse(block);
-
-      if (parsed?.type === "hint" && parsed?.content) {
-        hintContents.push(parsed.content);
-        resultText = resultText.replace(block, "").trim();
-      } else if (parsed?.type === "response" && parsed?.content) {
-        resultText = resultText.replace(block, parsed.content).trim();
-      }
-    } catch {
-      // JSON 파싱 실패 - 무시
-    }
-  }
-
-  if (hintContents.length > 0) {
-    return { hintContents, textWithoutHints: resultText };
-  }
-
-  return { hintContents: null, textWithoutHints: resultText };
-}

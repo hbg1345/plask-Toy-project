@@ -18,6 +18,11 @@ import {
 // Note: getEditorial is used for lazy loading, not as a tool
 import { createClient } from "@/lib/supabase/server";
 import { extractContestId } from "@/lib/atcoder/problems";
+import {
+  loadChatFromDB,
+  createChatRecord,
+  saveChatAfterStream,
+} from "@/lib/chat-persistence";
 
 const MODEL_NAME = "gemini-3-flash-preview";
 
@@ -233,38 +238,54 @@ export async function POST(req: Request) {
     );
   }
 
+  // 클라이언트는 마지막 메시지만 전송 (AI SDK 6 패턴)
   const {
-    messages,
+    message,
     problemUrl,
     chatId,
-  }: { messages: UIMessage[]; problemUrl?: string; chatId?: string } =
+  }: { message: UIMessage; problemUrl?: string; chatId?: string } =
     await req.json();
 
   console.log("=== API chat route called ===");
   console.log("chatId:", chatId);
   console.log("problemUrl:", problemUrl);
-  console.log("messagesCount:", messages?.length);
 
-  // problemUrl이 request body에 있으면 사용, 없으면 chatId로 DB에서 조회
+  // 서버에서 이전 메시지 로드 + 새 메시지 합치기
+  let previousMessages: UIMessage[] = [];
+  let existingTitle: string | null = null;
+  let existingProblemUrl: string | null = null;
+
+  if (chatId) {
+    const chatData = await loadChatFromDB(supabase, chatId, user.id);
+    if (chatData) {
+      previousMessages = chatData.messages;
+      existingTitle = chatData.title;
+      existingProblemUrl = chatData.problemUrl;
+    }
+  }
+
+  const messages: UIMessage[] = [...previousMessages, message];
+  console.log("messagesCount:", messages.length, "(previous:", previousMessages.length, "+ new: 1)");
+
+  // 새 채팅이면 pre-create (chatId 확보)
+  let effectiveChatId = chatId;
+  if (!effectiveChatId) {
+    effectiveChatId = await createChatRecord(
+      supabase,
+      user.id,
+      message,
+      problemUrl
+    ) ?? undefined;
+    console.log("Pre-created new chat:", effectiveChatId);
+  }
+
+  // problemUrl 결정: 요청 > 기존 DB
   let detectedProblemUrl: string | null = null;
 
   if (problemUrl) {
     detectedProblemUrl = problemUrl;
-  } else if (chatId) {
-    // chatId가 있으면 DB에서 problem_url 조회
-    try {
-      const { data: chatData } = await supabase
-        .from("chat_history")
-        .select("problem_url")
-        .eq("id", chatId)
-        .single();
-
-      if (chatData?.problem_url) {
-        detectedProblemUrl = chatData.problem_url;
-      }
-    } catch (error) {
-      console.error("Failed to get problem_url from chat:", error);
-    }
+  } else if (existingProblemUrl) {
+    detectedProblemUrl = existingProblemUrl;
   }
 
   // 문제 URL이 있으면 문제 정보를 DB에서 먼저 확인, 없으면 fetch해서 저장
@@ -438,13 +459,10 @@ ${problemTitle ? `현재 문제: "${problemTitle}"
   }
 
   // 동적 tool 생성 (chatId 캡처)
-  const dynamicTools = createDynamicTools(supabase, chatId);
+  const dynamicTools = createDynamicTools(supabase, effectiveChatId);
   const allTools: ToolSet = { ...tools, ...dynamicTools };
 
   const convertedMessages = await convertToModelMessages(messages);
-
-  console.log("=== systemMessage ===");
-  console.log(systemMessage);
 
   const result = streamText({
     model: google(MODEL_NAME),
@@ -453,30 +471,7 @@ ${problemTitle ? `현재 문제: "${problemTitle}"
     messages: convertedMessages,
     tools: allTools,
     stopWhen: stepCountIs(10),
-    onFinish: async ({ usage, text, steps }) => {
-      console.log("=== streamText onFinish ===");
-      console.log("text length:", text?.length || 0);
-      console.log("text content:", text);
-      console.log("steps count:", steps?.length || 0);
-      // 모든 step 로깅
-      if (steps) {
-        for (let i = 0; i < steps.length; i++) {
-          console.log(`step ${i} finishReason:`, steps[i].finishReason);
-          // 에러 상세 로깅
-          if (steps[i].finishReason === 'error') {
-            console.error(`step ${i} error:`, JSON.stringify(steps[i], null, 2));
-          }
-          console.log(`step ${i} toolCalls:`, steps[i].toolCalls?.length || 0);
-          if (steps[i].toolCalls?.length) {
-            console.log(`step ${i} toolCall names:`, steps[i].toolCalls.map(t => t.toolName));
-          }
-          console.log(`step ${i} text length:`, steps[i].text?.length || 0);
-          if (steps[i].text) {
-            console.log(`step ${i} text:`, steps[i].text.substring(0, 200));
-          }
-        }
-      }
-
+    onFinish: async ({ usage }) => {
       // 토큰 사용량 저장
       if (usage) {
         try {
@@ -493,17 +488,37 @@ ${problemTitle ? `현재 문제: "${problemTitle}"
       }
     },
   });
+
+  // 클라이언트 연결 끊겨도 스트림 완료 보장
+  result.consumeStream();
+
   return result.toUIMessageStreamResponse({
     sendSources: true,
     sendReasoning: true,
+    originalMessages: messages,
+    onFinish: async ({ messages: finalMessages }) => {
+      // 서버 사이드에서 채팅 저장
+      if (effectiveChatId) {
+        await saveChatAfterStream(
+          supabase,
+          effectiveChatId,
+          user.id,
+          finalMessages,
+          detectedProblemUrl,
+          existingTitle,
+          !!detectedProblemUrl
+        );
+      }
+    },
     messageMetadata: ({ part }) => {
+      // 새 채팅이면 chatId를 클라이언트에 전달
+      if (part.type === "start" && effectiveChatId && !chatId) {
+        return { newChatId: effectiveChatId };
+      }
       // linkProblemToChat 도구가 성공했을 때 클라이언트에 problemUrl 전달
       if (part.type === "tool-result" && part.toolName === "linkProblemToChat") {
         const output = part.output as { success?: boolean; problemUrl?: string };
-        console.log("=== messageMetadata for linkProblemToChat ===");
-        console.log("output:", output);
         if (output?.success && output?.problemUrl) {
-          console.log("Returning metadata with linkedProblemUrl:", output.problemUrl);
           return { linkedProblemUrl: output.problemUrl };
         }
       }

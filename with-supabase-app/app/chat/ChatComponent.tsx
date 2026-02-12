@@ -27,14 +27,12 @@ import {
   PromptInputFooter,
   PromptInputTools,
 } from "@/components/ai-elements/prompt-input";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useChat, type UIMessage } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 import { CopyIcon, RefreshCcwIcon, AlertCircleIcon } from "lucide-react";
 import {
-  saveChatHistory,
   getChatHistory,
-  type Message as ChatMessage,
-  type Hint,
 } from "@/app/actions";
 import { useChatLayout } from "./ChatLayoutContext";
 import {
@@ -50,6 +48,7 @@ import {
 } from "@/components/ai-elements/reasoning";
 import { Loader } from "@/components/ai-elements/loader";
 import { HintsCard, parseHintsFromMessage } from "@/components/hints-card";
+import { extractAllHints } from "@/lib/hints";
 import {
   ProblemSelectCard,
   parseSearchResultsFromPart,
@@ -61,14 +60,26 @@ interface ChatBotDemoProps {
   initialProblemId?: string | null;
 }
 
+// 마지막 메시지만 서버로 전송하는 transport (AI SDK 6 패턴)
+const transport = new DefaultChatTransport({
+  api: "/api/chat",
+  prepareSendMessagesRequest: ({ messages, body }) => ({
+    body: {
+      message: messages[messages.length - 1],
+      chatId: body?.chatId,
+      problemUrl: body?.problemUrl,
+    },
+  }),
+});
+
 const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoProps) => {
   const [input, setInput] = useState("");
   const [isLoadingChat, setIsLoadingChat] = useState(false);
   const [problemUrl, setProblemUrl] = useState<string | null>(null);
   const [chatTitle, setChatTitle] = useState<string | null>(null);
-  const [hints, setHints] = useState<Hint[] | null>(null);
   const [tokenLimitExceeded, setTokenLimitExceeded] = useState(false);
   const { messages, setMessages, sendMessage, status, regenerate } = useChat({
+    transport,
     onError: (err) => {
       // 429 에러 (토큰 제한 초과) 감지
       if (err.message?.includes("429") || err.message?.includes("DAILY_LIMIT_EXCEEDED")) {
@@ -78,10 +89,19 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
   });
   const { setRefreshTrigger, setProblemUrl: setContextProblemUrl } = useChatLayout();
   const prevChatIdRef = useRef<string | null>(null);
-  const lastSavedMessageCountRef = useRef<number>(0);
-  const isSavingRef = useRef<boolean>(false);
   const [initialMessage, setInitialMessage] = useState<string | null>(null);
   const [selectedProblemId, setSelectedProblemId] = useState<string | null>(null);
+
+  // 메시지에서 힌트를 reactive하게 계산 (서버 저장은 별도로 처리)
+  const computedHints = useMemo(() => extractAllHints(
+    messages.map((m) => ({
+      role: m.role,
+      parts: m.parts?.map((p) => ({
+        type: p.type,
+        text: "text" in p ? (p as { text?: string }).text : undefined,
+      })),
+    }))
+  ), [messages]);
 
   // 문제 선택 핸들러
   const handleProblemSelect = async (problemId: string) => {
@@ -113,7 +133,6 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
       setProblemUrl(data.problemUrl);
       setChatTitle(data.title);
       setContextProblemUrl(data.problemUrl);
-      setHints(null);
       setRefreshTrigger((prev) => prev + 1);
     } catch (error) {
       console.error("Failed to select problem:", error);
@@ -172,12 +191,12 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
   // chatId가 변경되면 해당 채팅 로드
   useEffect(() => {
     const prevChatId = prevChatIdRef.current;
-    
+
     // chatId가 변경되지 않았으면 무시
     if (chatId === prevChatId) {
       return;
     }
-    
+
     if (chatId) {
       setIsLoadingChat(true);
       getChatHistory(chatId).then((chatData) => {
@@ -192,11 +211,9 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
               : [{ type: "text" as const, text: msg.content }],
           })) as UIMessage[];
           setMessages(convertedMessages);
-          lastSavedMessageCountRef.current = convertedMessages.length;
-          // problemUrl, title, hints 저장
+          // problemUrl, title 저장
           setProblemUrl(chatData.problemUrl || null);
           setChatTitle(chatData.title || null);
-          setHints(chatData.hints || null);
           setSelectedProblemId(null); // 새 채팅 로드 시 선택 초기화
         } else {
           console.error("Failed to load chat data");
@@ -206,19 +223,14 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
     } else if (!chatId) {
       // chatId가 null/undefined인 경우 - 상태 초기화만 (새 채팅은 사이드바에서 생성)
       setMessages([]);
-      lastSavedMessageCountRef.current = 0;
-      isSavingRef.current = false;
       setProblemUrl(null);
       setChatTitle(null);
-      setHints(null);
       setSelectedProblemId(null);
     }
-    
+
     prevChatIdRef.current = chatId || null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatId, setMessages]);
-
-  // chatId 변경 시 부모에게 알림은 저장 완료 후에만 수행 (saveHistory 함수 내에서)
 
   // 메시지에서 linkProblemToChat tool output 감지 (실시간)
   useEffect(() => {
@@ -241,7 +253,6 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
               setProblemUrl(detectedUrl);
               setContextProblemUrl(detectedUrl);
               setChatTitle(toolPart.output.title || null);
-              setHints(null); // 문제 변경 시 힌트 초기화
               setRefreshTrigger((prev) => prev + 1);
             }
             return;
@@ -251,147 +262,23 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
     }
   }, [messages, problemUrl, setRefreshTrigger, setContextProblemUrl]);
 
-  // 메시지가 추가되고 status가 ready일 때 저장
+  // 서버에서 새 chatId가 metadata로 전달되면 감지
   useEffect(() => {
-    // 저장 중이면 무시
-    if (isSavingRef.current) {
-      return;
-    }
+    if (chatId || messages.length === 0) return;
 
-    // 조건: status가 ready이고, 메시지가 있고, 새 메시지가 추가된 경우
-    const hasNewMessages = messages.length > lastSavedMessageCountRef.current;
-    const lastMessage = messages[messages.length - 1];
-    const shouldSave =
-      status === "ready" &&
-      messages.length > 0 &&
-      hasNewMessages &&
-      lastMessage?.role === "assistant";
-
-    // 디버그: 저장 조건 확인
-    console.log("=== Save check ===", {
-      status,
-      messagesLength: messages.length,
-      lastSavedCount: lastSavedMessageCountRef.current,
-      hasNewMessages,
-      lastMessageRole: lastMessage?.role,
-      shouldSave,
-    });
-
-    if (shouldSave) {
-      // 저장 시작 전에 플래그 설정 및 카운트 업데이트
-      isSavingRef.current = true;
-      lastSavedMessageCountRef.current = messages.length;
-
-      const saveHistory = async () => {
-        try {
-          // 문제 링크로 생성된 채팅인 경우 제목을 업데이트하지 않음
-          let title: string | undefined = undefined;
-          let shouldUpdateTitle = true;
-
-          if (chatId && problemUrl) {
-            // problemUrl이 있으면 절대 제목을 업데이트하지 않음
-            shouldUpdateTitle = false;
-            // 기존 제목을 가져옴 (없어도 업데이트 안 함)
-            const existingChat = await getChatHistory(chatId);
-            if (existingChat?.title) {
-              title = existingChat.title;
-            } else {
-              // 제목이 없어도 problemUrl이 있으면 업데이트하지 않음
-              title = chatTitle || "New Chat";
-            }
-          } else {
-            // problemUrl이 없으면 첫 번째 사용자 메시지로 제목 생성
-            const firstUserMessage = messages.find((m) => m.role === "user");
-            title = "New Chat";
-            if (firstUserMessage) {
-              const textPart = firstUserMessage.parts?.find(
-                (part) => part.type === "text"
-              );
-              if (textPart && "text" in textPart) {
-                title = textPart.text.substring(0, 50);
-              }
-            }
-          }
-
-          const messagesToSave: ChatMessage[] = messages.map((msg) => ({
-            id: msg.id,
-            role: msg.role,
-            content:
-              msg.parts
-                ?.map((part) => {
-                  if (part.type === "text" && "text" in part) return part.text;
-                  return "";
-                })
-                .join("") || "",
-            parts: msg.parts as ChatMessage["parts"],
-          }));
-
-          // 모든 assistant 메시지에서 hints 추출하여 누적
-          // 시스템에서 step 번호를 순차적으로 부여
-          let allHints: Hint[] = [];
-          let detectedProblemUrl: string | null = null;
-          for (const msg of messagesToSave) {
-            if (msg.role === "assistant") {
-              const parsed = parseHintsFromMessage(msg.content);
-              if (parsed.hintContents) {
-                for (const content of parsed.hintContents) {
-                  // 새 힌트에 순차적 step 부여
-                  allHints.push({
-                    step: allHints.length + 1,
-                    content
-                  });
-                }
-              }
-            }
-          }
-          const newHints = allHints.length > 0 ? allHints : null;
-          if (newHints) {
-            setHints(newHints);
-          }
-
-          // linkProblemToChat에서 problemUrl이 감지되면 state 업데이트
-          if (detectedProblemUrl && detectedProblemUrl !== problemUrl) {
-            setProblemUrl(detectedProblemUrl);
-          }
-
-          // problemUrl이 있으면 제목을 업데이트하지 않음
-          const savedChatId = await saveChatHistory(
-            chatId ?? null,
-            messagesToSave,
-            title,
-            problemUrl || undefined, // null이면 undefined로 전달해서 DB 덮어쓰기 방지
-            shouldUpdateTitle, // 제목 업데이트 여부
-            newHints ?? hints // 새 hints 또는 기존 hints
-          );
-
-          // 제목이 실제로 변경되었는지 확인
-          const titleChanged = shouldUpdateTitle && title !== chatTitle;
-
-          // 제목 state 업데이트 (problemUrl이 있으면 기존 제목 유지)
-          if (shouldUpdateTitle || !chatTitle) {
-            setChatTitle(title);
-          }
-
-          // 저장이 완료된 후 부모에게 알림 (새로 생성된 경우만)
-          if (savedChatId && savedChatId !== chatId && onChatIdChange) {
-            onChatIdChange(savedChatId);
-          }
-
-          // 사이드바 새로고침 (제목 변경 또는 problemUrl 감지 시)
-          if (titleChanged || detectedProblemUrl) {
-            setRefreshTrigger((prev) => prev + 1);
-          }
-        } catch (error) {
-          console.error("Error saving chat history:", error);
-        } finally {
-          // 저장 완료 후 플래그 해제
-          isSavingRef.current = false;
+    // assistant 메시지의 metadata에서 newChatId 확인
+    for (const msg of messages) {
+      if (msg.role === "assistant" && msg.metadata) {
+        const metadata = msg.metadata as { newChatId?: string };
+        if (metadata.newChatId) {
+          console.log("Received new chatId from server:", metadata.newChatId);
+          onChatIdChange?.(metadata.newChatId);
+          setRefreshTrigger((prev) => prev + 1);
+          return;
         }
-      };
-
-      saveHistory();
+      }
     }
-  }, [messages, status, chatId, problemUrl, onChatIdChange]);
+  }, [messages, chatId, onChatIdChange, setRefreshTrigger]);
 
   const handleSubmit = (message: PromptInputMessage) => {
     const hasText = Boolean(message.text);
@@ -422,9 +309,9 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
       ) : (
         <>
           {/* 힌트 패널 - hints가 있을 때만 표시 */}
-          {hints && hints.length > 0 && (
+          {computedHints && computedHints.length > 0 && (
             <div className="flex-shrink-0 px-4 py-3 border-b bg-muted/20">
-              <HintsCard key={problemUrl ?? chatId} hints={hints} />
+              <HintsCard key={problemUrl ?? chatId} hints={computedHints} />
             </div>
           )}
           <Conversation className="flex-1 min-h-0">
