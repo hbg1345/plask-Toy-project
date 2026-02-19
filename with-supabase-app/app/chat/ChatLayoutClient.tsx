@@ -101,7 +101,7 @@ export function ChatLayoutClient({ children }: ChatLayoutClientProps) {
                 <ProblemPanel problemUrl={problemUrl} />
               </Panel>
               <Separator className="w-2 bg-border hover:bg-primary/20 transition-colors flex items-center justify-center data-[resize-handle-active]:bg-primary/30">
-                <GripVertical className="h-4 w-4 text-muted-foreground" />
+                <GripVertical className="h-4 w-4 text-foreground" />
               </Separator>
               <Panel id="chat-panel" defaultSize="50%" minSize="30%">
                 {children}

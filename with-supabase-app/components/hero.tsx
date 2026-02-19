@@ -13,7 +13,7 @@ export async function Hero() {
     <div className="flex flex-col gap-8 items-center w-full max-w-5xl px-4">
       <div className="text-center">
         <h2 className="text-2xl font-bold mb-2">Rating Leaderboard</h2>
-        <p className="text-muted-foreground">최근 레이팅 변화 순위</p>
+        <p className="text-foreground">최근 레이팅 변화 순위</p>
       </div>
 
       <RatingLeaderboard

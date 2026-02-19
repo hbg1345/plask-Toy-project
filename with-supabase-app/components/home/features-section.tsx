@@ -34,7 +34,7 @@ export function FeaturesSection() {
       <ScrollReveal>
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold mb-3">왜 이 플랫폼인가요?</h2>
-          <p className="text-muted-foreground text-lg">효율적인 알고리즘 학습을 위한 핵심 기능</p>
+          <p className="text-foreground text-lg">효율적인 알고리즘 학습을 위한 핵심 기능</p>
         </div>
       </ScrollReveal>
 
@@ -53,7 +53,7 @@ export function FeaturesSection() {
 
                 {/* 텍스트 */}
                 <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">{feature.description}</p>
+                <p className="text-foreground text-sm leading-relaxed">{feature.description}</p>
               </CardContent>
             </Card>
           </StaggerItem>

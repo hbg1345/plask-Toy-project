@@ -6,7 +6,7 @@ import {
   XCircle,
   Clock,
   Lightbulb,
-  Target,
+
   TrendingUp,
   Circle,
 } from "lucide-react";
@@ -106,15 +106,12 @@ export function PracticeHistory({ sessions, stats }: PracticeHistoryProps) {
     return (
       <Card className="w-full">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5" />
-            연습 기록
-          </CardTitle>
-          <CardDescription>아직 연습 기록이 없습니다</CardDescription>
+          <CardTitle>도전 기록</CardTitle>
+          <CardDescription>아직 도전 기록이 없습니다</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground text-center py-8">
-            위에서 추천 문제를 선택해서 연습을 시작해보세요!
+          <p className="text-foreground text-center py-8">
+            위에서 추천 문제를 선택해서 도전을 시작해보세요!
           </p>
         </CardContent>
       </Card>
@@ -128,12 +125,9 @@ export function PracticeHistory({ sessions, stats }: PracticeHistoryProps) {
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Target className="h-5 w-5" />
-          연습 기록
-        </CardTitle>
+        <CardTitle>도전 기록</CardTitle>
         <CardDescription>
-          총 {stats.totalSessions}회 연습 · {stats.solvedCount}개 해결 ({successRate}%)
+          총 {stats.totalSessions}회 도전 · {stats.solvedCount}개 해결 ({successRate}%)
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -141,7 +135,7 @@ export function PracticeHistory({ sessions, stats }: PracticeHistoryProps) {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="p-4 bg-muted/50 rounded-lg text-center">
             <p className="text-2xl font-bold">{stats.totalSessions}</p>
-            <p className="text-xs text-muted-foreground">총 세션</p>
+            <p className="text-xs text-foreground">총 세션</p>
           </div>
           <div className="p-4 bg-muted/50 rounded-lg text-center">
             <div className="flex items-center justify-center gap-1">
@@ -156,7 +150,7 @@ export function PracticeHistory({ sessions, stats }: PracticeHistoryProps) {
                 {successRate}%
               </p>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-foreground">
               성공률 ({stats.solvedCount}/{stats.totalSessions})
             </p>
           </div>
@@ -164,14 +158,14 @@ export function PracticeHistory({ sessions, stats }: PracticeHistoryProps) {
             <p className="text-2xl font-bold font-mono">
               {formatTimeKorean(Math.round(stats.avgElapsedTime))}
             </p>
-            <p className="text-xs text-muted-foreground">평균 소요 시간</p>
+            <p className="text-xs text-foreground">평균 소요 시간</p>
           </div>
           <div className="p-4 bg-muted/50 rounded-lg text-center">
             <div className="flex items-center justify-center gap-1">
               <Lightbulb className="h-5 w-5 text-amber-500" />
               <p className="text-2xl font-bold">{stats.avgHintsUsed.toFixed(1)}</p>
             </div>
-            <p className="text-xs text-muted-foreground">평균 힌트 사용</p>
+            <p className="text-xs text-foreground">평균 힌트 사용</p>
           </div>
         </div>
 
@@ -216,7 +210,7 @@ export function PracticeHistory({ sessions, stats }: PracticeHistoryProps) {
                 </div>
 
                 {/* 하단: 시간 + 힌트 + 날짜 */}
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <div className="flex items-center justify-between text-xs text-foreground">
                   <div className="flex items-center gap-3">
                     {/* 시간 정보 */}
                     <div className="flex items-center gap-1">
@@ -236,7 +230,7 @@ export function PracticeHistory({ sessions, stats }: PracticeHistoryProps) {
                             "h-2.5 w-2.5",
                             i < session.hints_used
                               ? "fill-amber-500 text-amber-500"
-                              : "text-muted-foreground/30"
+                              : "text-foreground/30"
                           )}
                         />
                       ))}
@@ -255,7 +249,7 @@ export function PracticeHistory({ sessions, stats }: PracticeHistoryProps) {
 
         {/* 스크롤 안내 (9개 이상일 때만) */}
         {sessions.length > 9 && (
-          <p className="text-xs text-center text-muted-foreground">
+          <p className="text-xs text-center text-foreground">
             ↕ 스크롤하여 더 보기 ({sessions.length}개 기록)
           </p>
         )}

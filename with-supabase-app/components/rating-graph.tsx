@@ -356,7 +356,7 @@ export function RatingGraph({ atcoderHandle }: RatingGraphProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-muted-foreground text-sm">
+          <div className="text-foreground text-sm">
             레이팅 기록이 없습니다.
           </div>
         </CardContent>
@@ -379,7 +379,7 @@ export function RatingGraph({ atcoderHandle }: RatingGraphProps) {
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <p className="text-xs text-muted-foreground">Current</p>
+              <p className="text-xs text-foreground">Current</p>
               <Badge
                 style={{ backgroundColor: getRatingColor(currentRating) }}
                 className="text-white"
@@ -388,7 +388,7 @@ export function RatingGraph({ atcoderHandle }: RatingGraphProps) {
               </Badge>
             </div>
             <div className="text-right">
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <p className="text-xs text-foreground flex items-center gap-1">
                 <Trophy className="h-3 w-3" />
                 Highest
               </p>
@@ -412,36 +412,36 @@ export function RatingGraph({ atcoderHandle }: RatingGraphProps) {
               <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div className="min-w-0 flex-1 max-w-[400px] md:max-w-[600px]">
                   <p className="font-medium truncate" title={displayData.contestName}>{displayData.contestName}</p>
-                  <p className="text-muted-foreground text-xs">
+                  <p className="text-foreground text-xs">
                     {displayData.fullDate}
                   </p>
                 </div>
                 <div className="flex gap-4 md:gap-6 text-right flex-wrap">
                   <div>
-                    <p className="text-muted-foreground text-xs">Rating</p>
+                    <p className="text-foreground text-xs">Rating</p>
                     <p style={{ color: displayData.color }} className="font-bold">
                       {displayData.oldRating} → {displayData.rating}
                     </p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground text-xs">Performance</p>
+                    <p className="text-foreground text-xs">Performance</p>
                     <p style={{ color: getRatingColor(displayData.performance) }} className="font-bold">
                       {displayData.performance}
                     </p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground text-xs">변화</p>
+                    <p className="text-foreground text-xs">변화</p>
                     <p className={`font-medium ${displayData.increment >= 0 ? "text-green-600" : "text-red-600"}`}>
                       {displayData.increment >= 0 ? "+" : ""}{displayData.increment}
                     </p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground text-xs">순위</p>
+                    <p className="text-foreground text-xs">순위</p>
                     <p className="font-medium">{displayData.place}위</p>
                   </div>
                   {displayData.movingAverage && (
                     <div>
-                      <p className="text-muted-foreground text-xs">MA({MOVING_AVERAGE_PERIOD})</p>
+                      <p className="text-foreground text-xs">MA({MOVING_AVERAGE_PERIOD})</p>
                       <p className="font-medium text-orange-500">{displayData.movingAverage}</p>
                     </div>
                   )}
@@ -536,7 +536,7 @@ export function RatingGraph({ atcoderHandle }: RatingGraphProps) {
                 className="w-3 h-3 rounded"
                 style={{ backgroundColor: band.color }}
               />
-              <span className="text-muted-foreground">
+              <span className="text-foreground">
                 {band.name} ({band.min}-{band.max - 1})
               </span>
             </div>
@@ -546,11 +546,11 @@ export function RatingGraph({ atcoderHandle }: RatingGraphProps) {
               className="w-3 h-3 rounded"
               style={{ backgroundColor: "#dc2626" }}
             />
-            <span className="text-muted-foreground">Red (2800+)</span>
+            <span className="text-foreground">Red (2800+)</span>
           </div>
           <div className="flex items-center gap-1 ml-4">
             <div className="w-4 h-0.5 bg-orange-500" style={{ borderStyle: "dashed" }} />
-            <span className="text-muted-foreground">MA({MOVING_AVERAGE_PERIOD})</span>
+            <span className="text-foreground">MA({MOVING_AVERAGE_PERIOD})</span>
           </div>
         </div>
 
@@ -562,13 +562,13 @@ export function RatingGraph({ atcoderHandle }: RatingGraphProps) {
                 <Zap className="h-5 w-5" />
                 Performance Graph
               </h3>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-foreground">
                 대회별 퍼포먼스 추이
               </p>
             </div>
             <div className="flex items-center gap-3">
               <div className="text-right">
-                <p className="text-xs text-muted-foreground">Average</p>
+                <p className="text-xs text-foreground">Average</p>
                 <Badge
                   style={{ backgroundColor: getRatingColor(averagePerformance) }}
                   className="text-white"
@@ -577,7 +577,7 @@ export function RatingGraph({ atcoderHandle }: RatingGraphProps) {
                 </Badge>
               </div>
               <div className="text-right">
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <p className="text-xs text-foreground flex items-center gap-1">
                   <Trophy className="h-3 w-3" />
                   Highest
                 </p>

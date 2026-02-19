@@ -14,6 +14,9 @@ interface ChatData {
   title: string;
   problemUrl: string | null;
   hints: Hint[] | null;
+  summary: string | null;
+  summaryMessageCount: number | null;
+  lastInputTokens: number | null;
 }
 
 /**
@@ -26,7 +29,7 @@ export async function loadChatFromDB(
 ): Promise<ChatData | null> {
   const { data, error } = await supabase
     .from("chat_history")
-    .select("messages, title, problem_url, hints")
+    .select("messages, title, problem_url, hints, summary, summary_message_count, last_input_tokens")
     .eq("id", chatId)
     .eq("user_id", userId)
     .single();
@@ -52,6 +55,9 @@ export async function loadChatFromDB(
     title: data.title,
     problemUrl: data.problem_url,
     hints: data.hints,
+    summary: data.summary ?? null,
+    summaryMessageCount: data.summary_message_count ?? null,
+    lastInputTokens: data.last_input_tokens ?? null,
   };
 }
 

@@ -20,7 +20,7 @@ export function TutorialStep({
       >
         <span className="ml-8">{title}</span>
         <div
-          className={`ml-8 text-sm peer-checked:line-through font-normal text-muted-foreground`}
+          className={`ml-8 text-sm peer-checked:line-through font-normal text-foreground`}
         >
           {children}
         </div>

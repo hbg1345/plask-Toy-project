@@ -129,11 +129,11 @@ export function ChatSidebar({
             {isOpen && (
                 <div className="flex-1 overflow-y-auto p-2">
                     {isLoading ? (
-                        <div className="text-sm text-muted-foreground text-center py-4">
+                        <div className="text-sm text-foreground text-center py-4">
                             로딩 중...
                         </div>
                     ) : chatList.length === 0 ? (
-                        <div className="text-sm text-muted-foreground text-center py-4">
+                        <div className="text-sm text-foreground text-center py-4">
                             채팅 내역이 없습니다
                         </div>
                     ) : (

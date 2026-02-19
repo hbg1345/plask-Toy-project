@@ -8,15 +8,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, memo } from "react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
+import { useChatLayoutOptional, type ProblemLanguage } from "@/app/chat/ChatLayoutContext";
 
 interface ProblemPanelProps {
   problemUrl: string | null;
 }
 
-type Language = "en" | "ja" | "ko";
+type Language = ProblemLanguage;
 
 interface ProblemContent {
   en: string | null;
@@ -39,12 +40,15 @@ const languageLabels: Record<Language, string> = {
   ko: "한국어",
 };
 
-export function ProblemPanel({ problemUrl }: ProblemPanelProps) {
+export const ProblemPanel = memo(function ProblemPanel({ problemUrl }: ProblemPanelProps) {
+  const layoutContext = useChatLayoutOptional();
+  const [localLanguage, setLocalLanguage] = useState<ProblemLanguage>("en");
+  const language = layoutContext?.problemLanguage ?? localLanguage;
+  const setLanguage = layoutContext?.setProblemLanguage ?? setLocalLanguage;
   const [isLoading, setIsLoading] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [problemData, setProblemData] = useState<ProblemData | null>(null);
-  const [language, setLanguage] = useState<Language>("en");
   const [translatedContent, setTranslatedContent] = useState<string | null>(
     null
   );
@@ -257,12 +261,16 @@ export function ProblemPanel({ problemUrl }: ProblemPanelProps) {
     }
   }, [problemData, language, translatedContent, isTranslating]);
 
-  // URL 변경 시 문제 로드 (새 문제는 영어로 시작)
+  // URL 변경 시 문제 로드 (언어 설정은 유지, 번역 캐시만 리셋)
   useEffect(() => {
     if (problemUrl) {
-      setLanguage("en");
       setTranslatedContent(null);
-      fetchProblem(problemUrl);
+      fetchProblem(problemUrl).then((data) => {
+        // 한국어 상태에서 새 문제 로드 시 자동 번역
+        if (data && language === "ko") {
+          setNeedsTranslation(true);
+        }
+      });
     } else {
       setProblemData(null);
     }
@@ -291,7 +299,7 @@ export function ProblemPanel({ problemUrl }: ProblemPanelProps) {
   if (!problemUrl) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-muted/30">
-        <div className="text-center text-muted-foreground">
+        <div className="text-center text-foreground">
           <p className="text-lg font-medium">문제가 선택되지 않았습니다</p>
           <p className="text-sm mt-2">
             Problems 페이지에서 문제를 선택하면 여기에 표시됩니다
@@ -315,7 +323,7 @@ export function ProblemPanel({ problemUrl }: ProblemPanelProps) {
               {problemData.title}
             </span>
           ) : (
-            <span className="text-sm text-muted-foreground truncate">
+            <span className="text-sm text-foreground truncate">
               {problemUrl}
             </span>
           )}
@@ -386,14 +394,14 @@ export function ProblemPanel({ problemUrl }: ProblemPanelProps) {
       <div className="flex-1 overflow-auto">
         {isLoading ? (
           <div className="flex items-center justify-center h-full min-h-[200px]">
-            <div className="flex items-center gap-2 text-muted-foreground">
+            <div className="flex items-center gap-2 text-foreground">
               <RefreshCw className="h-5 w-5 animate-spin" />
               <span>로딩 중...</span>
             </div>
           </div>
         ) : isTranslating ? (
           <div className="flex items-center justify-center h-full min-h-[200px]">
-            <div className="flex items-center gap-2 text-muted-foreground">
+            <div className="flex items-center gap-2 text-foreground">
               <RefreshCw className="h-5 w-5 animate-spin" />
               <span>번역 중...</span>
             </div>
@@ -409,7 +417,7 @@ export function ProblemPanel({ problemUrl }: ProblemPanelProps) {
           <div className="p-4" ref={contentRef}>
             {/* 시간/메모리 제한 */}
             {(problemData.timeLimit || problemData.memoryLimit) && (
-              <div className="mb-4 text-sm text-muted-foreground flex gap-4">
+              <div className="mb-4 text-sm text-foreground flex gap-4">
                 {problemData.timeLimit && <span>{problemData.timeLimit}</span>}
                 {problemData.memoryLimit && (
                   <span>{problemData.memoryLimit}</span>
@@ -429,4 +437,4 @@ export function ProblemPanel({ problemUrl }: ProblemPanelProps) {
       </div>
     </div>
   );
-}
+});

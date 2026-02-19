@@ -204,7 +204,7 @@ async function ProblemsContent({
   // 페이지네이션 컴포넌트
   const Pagination = () => (
     <div className="flex items-center justify-between flex-wrap gap-4">
-      <div className="text-sm text-muted-foreground">
+      <div className="text-sm text-foreground">
         페이지 {currentPage} / {totalPages} (총 {totalContests}개 콘테스트)
       </div>
       <div className="flex items-center gap-1">
@@ -238,7 +238,7 @@ async function ProblemsContent({
             return (
               <div key={pageNum} className="flex items-center gap-1">
                 {showEllipsis && (
-                  <span className="px-2 text-muted-foreground">...</span>
+                  <span className="px-2 text-foreground">...</span>
                 )}
                 <Button
                   variant={pageNum === currentPage ? "default" : "outline"}
@@ -275,7 +275,7 @@ async function ProblemsContent({
       {/* Header */}
       <div className="flex flex-col gap-2 w-full">
         <h1 className="text-3xl font-bold tracking-tight">Problems Archive</h1>
-        <p className="text-muted-foreground">
+        <p className="text-foreground">
           Data provided by{" "}
           <Link
             href="https://kenkoooo.com/atcoder/"
@@ -295,7 +295,7 @@ async function ProblemsContent({
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             {/* Filter Buttons - Left */}
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-medium text-muted-foreground mr-2">
+              <span className="text-sm font-medium text-foreground mr-2">
                 필터:
               </span>
               {[
@@ -328,7 +328,7 @@ async function ProblemsContent({
                   <span className="text-sm">푼 문제 포함 콘테스트 제외</span>
                 </Link>
               ) : (
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-foreground">
                   (AtCoder 연동 시 풀이 필터 가능)
                 </span>
               )}
@@ -336,7 +336,7 @@ async function ProblemsContent({
             {/* Search Form - Right */}
             <form action="/problems" method="GET" className="flex gap-2 max-w-sm">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground" />
                 <Input
                   type="text"
                   name="search"
@@ -363,7 +363,7 @@ async function ProblemsContent({
           </div>
           {/* Search Result Info */}
           {search && (
-            <div className="text-sm text-muted-foreground">
+            <div className="text-sm text-foreground">
               &quot;{search}&quot; 검색 결과: {totalContests}개 콘테스트
             </div>
           )}
@@ -441,7 +441,7 @@ async function ProblemsContent({
                                 key={i}
                                 className="p-2 border-r last:border-r-0 border-border"
                               >
-                                <span className="text-muted-foreground/30 text-xs">
+                                <span className="text-foreground/30 text-xs">
                                   -
                                 </span>
                               </div>
@@ -533,7 +533,7 @@ function ProblemsLoading() {
       {/* Header */}
       <div className="flex flex-col gap-2 w-full">
         <h1 className="text-3xl font-bold tracking-tight">Problems Archive</h1>
-        <p className="text-muted-foreground">로딩 중...</p>
+        <p className="text-foreground">로딩 중...</p>
       </div>
 
       {/* Loading Table */}

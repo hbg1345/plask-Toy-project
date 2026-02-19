@@ -21,16 +21,16 @@ interface DifficultyDistributionProps {
   problems: SolvedProblem[];
 }
 
-// AtCoder 난이도 분류 (더 부드러운 색상 + 그라데이션용 밝은 색상)
+// AtCoder 난이도 분류 (채도 높은 단색)
 const DIFFICULTY_LEVELS = [
-  { name: "Gray", min: 0, max: 399, color: "#6b7280", lightColor: "#9ca3af" },
-  { name: "Brown", min: 400, max: 799, color: "#92400e", lightColor: "#b45309" },
-  { name: "Green", min: 800, max: 1199, color: "#16a34a", lightColor: "#22c55e" },
-  { name: "Cyan", min: 1200, max: 1599, color: "#0891b2", lightColor: "#22d3ee" },
-  { name: "Blue", min: 1600, max: 1999, color: "#2563eb", lightColor: "#60a5fa" },
-  { name: "Yellow", min: 2000, max: 2399, color: "#ca8a04", lightColor: "#facc15" },
-  { name: "Orange", min: 2400, max: 2799, color: "#ea580c", lightColor: "#fb923c" },
-  { name: "Red", min: 2800, max: Infinity, color: "#dc2626", lightColor: "#f87171" },
+  { name: "Gray", min: 0, max: 399, color: "#808080" },
+  { name: "Brown", min: 400, max: 799, color: "#8B4513" },
+  { name: "Green", min: 800, max: 1199, color: "#008000" },
+  { name: "Cyan", min: 1200, max: 1599, color: "#00BFBF" },
+  { name: "Blue", min: 1600, max: 1999, color: "#0000FF" },
+  { name: "Yellow", min: 2000, max: 2399, color: "#C0C000" },
+  { name: "Orange", min: 2400, max: 2799, color: "#FF8C00" },
+  { name: "Red", min: 2800, max: Infinity, color: "#FF0000" },
 ] as const;
 
 function getDifficultyLevel(difficulty: number | null): string {
@@ -70,7 +70,6 @@ export function DifficultyDistribution({ problems }: DifficultyDistributionProps
         name: level.name,
         value: counts[level.name],
         color: level.color,
-        lightColor: level.lightColor,
         range: level.max === Infinity ? `${level.min}+` : `${level.min}-${level.max}`,
       }))
       .filter((item) => item.value > 0);
@@ -97,7 +96,7 @@ export function DifficultyDistribution({ problems }: DifficultyDistributionProps
     <Card className="w-full">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <span className="text-muted-foreground text-sm font-normal">난이도 분포</span>
+          <span className="text-foreground text-sm font-normal">난이도 분포</span>
         </CardTitle>
         <CardDescription className="text-2xl font-bold text-foreground">
           {total.toLocaleString()}문제 해결
@@ -109,30 +108,6 @@ export function DifficultyDistribution({ problems }: DifficultyDistributionProps
           <div className="w-full lg:w-1/2">
             <ChartContainer config={chartConfig} className="mx-auto aspect-square max-h-[300px]">
               <PieChart>
-                {/* 그라데이션 정의 */}
-                <defs>
-                  {distribution.map((entry) => (
-                    <linearGradient
-                      key={`gradient-${entry.name}`}
-                      id={`gradient-${entry.name}`}
-                      x1="0%"
-                      y1="0%"
-                      x2="100%"
-                      y2="100%"
-                    >
-                      <stop offset="0%" stopColor={entry.lightColor} stopOpacity={1} />
-                      <stop offset="100%" stopColor={entry.color} stopOpacity={1} />
-                    </linearGradient>
-                  ))}
-                  {/* 글로우 필터 */}
-                  <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-                    <feGaussianBlur stdDeviation="3" result="coloredBlur" />
-                    <feMerge>
-                      <feMergeNode in="coloredBlur" />
-                      <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                  </filter>
-                </defs>
                 <ChartTooltip
                   content={
                     <ChartTooltipContent
@@ -140,7 +115,7 @@ export function DifficultyDistribution({ problems }: DifficultyDistributionProps
                         <div className="flex items-center gap-2">
                           <span>{name}</span>
                           <span className="font-bold">{value}문제</span>
-                          <span className="text-muted-foreground">
+                          <span className="text-foreground">
                             ({((Number(value) / total) * 100).toFixed(1)}%)
                           </span>
                         </div>
@@ -158,13 +133,12 @@ export function DifficultyDistribution({ problems }: DifficultyDistributionProps
                   outerRadius={100}
                   paddingAngle={2}
                   strokeWidth={1}
-                  stroke="rgba(255,255,255,0.2)"
-                  style={{ filter: "url(#glow)" }}
+                  stroke="rgba(255,255,255,0.3)"
                 >
                   {distribution.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
-                      fill={`url(#gradient-${entry.name})`}
+                      fill={entry.color}
                     />
                   ))}
                 </Pie>
@@ -194,11 +168,8 @@ export function DifficultyDistribution({ problems }: DifficultyDistributionProps
                         <td className="px-4 py-2">
                           <div className="flex items-center gap-2">
                             <div
-                              className="w-3 h-3 rounded-full"
-                              style={{
-                                background: `linear-gradient(135deg, ${level.lightColor}, ${level.color})`,
-                                boxShadow: `0 0 6px ${level.color}40`,
-                              }}
+                              className="w-3 h-3 rounded-none"
+                              style={{ backgroundColor: level.color }}
                             />
                             <span style={{ color: level.color }} className="font-medium">
                               {level.name}
@@ -208,7 +179,7 @@ export function DifficultyDistribution({ problems }: DifficultyDistributionProps
                         <td className="px-4 py-2 text-right font-medium">
                           {count.toLocaleString()}
                         </td>
-                        <td className="px-4 py-2 text-right text-muted-foreground">
+                        <td className="px-4 py-2 text-right text-foreground">
                           {percent}%
                         </td>
                       </tr>

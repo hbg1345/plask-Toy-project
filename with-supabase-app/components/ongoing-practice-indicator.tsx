@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Clock, Play, X } from "lucide-react";
+import { Clock, Play, X, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -75,6 +75,14 @@ export function OngoingPracticeIndicator() {
     setDismissed(true);
   };
 
+  // 포기
+  const handleAbandon = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    localStorage.removeItem(PRACTICE_STATE_KEY);
+    setPracticeState(null);
+  };
+
   if (!practiceState || dismissed) {
     return null;
   }
@@ -116,7 +124,7 @@ export function OngoingPracticeIndicator() {
             <p className="text-sm font-medium truncate">
               {practiceState.problemTitle || practiceState.problemId}
             </p>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2 text-xs text-foreground">
               <span>
                 {practiceState.status === "running" ? "진행 중" : "일시정지"}
               </span>
@@ -136,6 +144,16 @@ export function OngoingPracticeIndicator() {
             </div>
           </div>
 
+          {/* 포기 버튼 */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 flex-shrink-0 text-red-500 hover:text-red-600"
+            onClick={handleAbandon}
+            title="포기"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
           {/* 닫기 버튼 */}
           <Button
             variant="ghost"

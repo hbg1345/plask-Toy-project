@@ -26,66 +26,19 @@ export interface RatingRange {
 export function getRatingRanges(userRating: number): RatingRange[] {
   const ranges: RatingRange[] = [];
 
-  // 첫 번째 범위: userRating - 500 ~ userRating - 250
-  const min1 = Math.max(0, userRating - 500);
-  const max1 = userRating - 250;
-  if (min1 < max1 && max1 >= 0) {
-    ranges.push({
-      min: min1,
-      max: max1,
-      label: `${min1} ~ ${max1}`,
-    });
+  const min1 = Math.max(0, userRating - 300);
+  const max1 = Math.max(0, userRating - 100);
+  if (min1 < max1) {
+    ranges.push({ min: min1, max: max1, label: "Easy" });
   }
 
-  // 두 번째 범위: userRating - 250 ~ userRating
-  const min2 = Math.max(0, userRating - 250);
-  const max2 = userRating;
-  if (min2 < max2) {
-    ranges.push({
-      min: min2,
-      max: max2,
-      label: `${min2} ~ ${max2}`,
-    });
-  }
+  const min2 = Math.max(0, userRating - 100);
+  const max2 = userRating + 100;
+  ranges.push({ min: min2, max: max2, label: "Normal" });
 
-  // 세 번째 범위: userRating ~ userRating + 250
-  const min3 = userRating;
-  const max3 = userRating + 250;
-  ranges.push({
-    min: min3,
-    max: max3,
-    label: `${min3} ~ ${max3}`,
-  });
+  ranges.push({ min: userRating + 100, max: userRating + 300, label: "Hard" });
 
-  // 네 번째 범위: userRating + 250 ~ userRating + 500
-  const min4 = userRating + 250;
-  const max4 = userRating + 500;
-  ranges.push({
-    min: min4,
-    max: max4,
-    label: `${min4} ~ ${max4}`,
-  });
-
-  // 항상 4개 열을 유지하기 위해 부족한 만큼 오른쪽으로 범위 추가
-  const neededRanges = 4;
-  const currentCount = ranges.length;
-  const additionalCount = neededRanges - currentCount;
-
-  if (additionalCount > 0) {
-    // 마지막 범위의 최대값부터 시작
-    let lastMax = ranges[ranges.length - 1]?.max || userRating + 500;
-    
-    for (let i = 0; i < additionalCount; i++) {
-      const newMin = lastMax;
-      const newMax = lastMax + 250;
-      ranges.push({
-        min: newMin,
-        max: newMax,
-        label: `${newMin} ~ ${newMax}`,
-      });
-      lastMax = newMax;
-    }
-  }
+  ranges.push({ min: userRating + 300, max: userRating + 500, label: "Very Hard" });
 
   return ranges;
 }

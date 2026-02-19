@@ -2,14 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MessageSquare, Archive, Sword, User } from "lucide-react";
+import { MessageSquare, Archive, Sword } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/practice", label: "추천", icon: Sword },
-  { href: "/problems", label: "문제", icon: Archive },
-  { href: "/chat", label: "AI채팅", icon: MessageSquare },
-  { href: "/profile", label: "프로필", icon: User },
+  { href: "/practice", label: "도전", icon: Sword },
+  { href: "/problems", label: "아카이브", icon: Archive },
+  { href: "/chat", label: "채팅", icon: MessageSquare },
 ];
 
 export function DesktopNav() {

@@ -62,7 +62,7 @@ export function SolvedProblemsList({ problems }: SolvedProblemsProps) {
 
   if (problems.length === 0) {
     return (
-      <p className="text-muted-foreground text-sm">
+      <p className="text-foreground text-sm">
         아직 푼 문제가 없습니다.
       </p>
     );

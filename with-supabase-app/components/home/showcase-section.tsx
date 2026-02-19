@@ -51,7 +51,7 @@ export function ShowcaseSection() {
               <span>Feature {index + 1}</span>
             </div>
             <h3 className="text-2xl md:text-3xl font-bold">{item.title}</h3>
-            <p className="text-muted-foreground text-lg leading-relaxed">
+            <p className="text-foreground text-lg leading-relaxed">
               {item.description}
             </p>
           </ScrollReveal>
@@ -66,8 +66,8 @@ export function ShowcaseSection() {
               {/* 실제 이미지가 없으면 placeholder */}
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center p-8">
-                  <item.icon className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
-                  <p className="text-muted-foreground/50 text-sm">
+                  <item.icon className="h-16 w-16 mx-auto mb-4 text-foreground/50" />
+                  <p className="text-foreground/50 text-sm">
                     스크린샷 이미지
                     <br />
                     {item.image}

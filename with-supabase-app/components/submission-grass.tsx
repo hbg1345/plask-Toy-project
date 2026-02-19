@@ -90,7 +90,7 @@ export function SubmissionGrass({ userId }: SubmissionGrassProps) {
   if (isLoading) {
     return (
       <div className="w-full flex items-center justify-center py-8">
-        <div className="text-sm text-muted-foreground">
+        <div className="text-sm text-foreground">
           제출 기록을 불러오는 중...
         </div>
       </div>
@@ -108,7 +108,7 @@ export function SubmissionGrass({ userId }: SubmissionGrassProps) {
   if (data.length === 0) {
     return (
       <div className="w-full flex items-center justify-center py-8">
-        <div className="text-sm text-muted-foreground">
+        <div className="text-sm text-foreground">
           제출 기록이 없습니다.
         </div>
       </div>
@@ -223,24 +223,24 @@ export function SubmissionGrass({ userId }: SubmissionGrassProps) {
           </Select>
           <h3 className="text-sm font-medium">{selectedYear}년 정답 기록</h3>
         </div>
-        <div className="text-sm text-muted-foreground">
+        <div className="text-sm text-foreground">
           총 {totalSubmissions}회 AC
         </div>
       </div>
 
       {/* 잔디 그래프 */}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto overflow-y-hidden">
         <div className="flex gap-[3px]">
           {/* 요일 레이블 (세로) */}
           <div className="flex flex-col gap-[3px]" style={{ width: "20px" }}>
             <div className="h-4" /> {/* 월 레이블 높이만큼 빈 공간 */}
-            <div className="text-xs text-muted-foreground leading-[14px] h-[14px]">일</div>
-            <div className="text-xs text-muted-foreground leading-[14px] h-[14px]">월</div>
-            <div className="text-xs text-muted-foreground leading-[14px] h-[14px]">화</div>
-            <div className="text-xs text-muted-foreground leading-[14px] h-[14px]">수</div>
-            <div className="text-xs text-muted-foreground leading-[14px] h-[14px]">목</div>
-            <div className="text-xs text-muted-foreground leading-[14px] h-[14px]">금</div>
-            <div className="text-xs text-muted-foreground leading-[14px] h-[14px]">토</div>
+            <div className="text-xs text-foreground leading-[14px] h-[14px]">일</div>
+            <div className="text-xs text-foreground leading-[14px] h-[14px]">월</div>
+            <div className="text-xs text-foreground leading-[14px] h-[14px]">화</div>
+            <div className="text-xs text-foreground leading-[14px] h-[14px]">수</div>
+            <div className="text-xs text-foreground leading-[14px] h-[14px]">목</div>
+            <div className="text-xs text-foreground leading-[14px] h-[14px]">금</div>
+            <div className="text-xs text-foreground leading-[14px] h-[14px]">토</div>
           </div>
 
           {/* 주별 데이터 (월 레이블 포함) */}
@@ -251,7 +251,7 @@ export function SubmissionGrass({ userId }: SubmissionGrassProps) {
             return (
               <div key={weekIndex} className="flex flex-col gap-[3px]">
                 {/* 월 레이블 */}
-                <div className="h-4 text-xs text-muted-foreground whitespace-nowrap">
+                <div className="h-4 text-xs text-foreground whitespace-nowrap">
                   {monthLabel ? `${monthLabel.month + 1}월` : ""}
                 </div>
                 {/* 날짜 셀 */}
@@ -282,7 +282,7 @@ export function SubmissionGrass({ userId }: SubmissionGrassProps) {
       </div>
 
       {/* 범례 */}
-      <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
+      <div className="flex items-center justify-end gap-2 text-xs text-foreground">
         <span>적음</span>
         <div className="flex gap-[3px]">
           <div className="w-3 h-3 rounded-sm bg-gray-100 dark:bg-gray-800" />

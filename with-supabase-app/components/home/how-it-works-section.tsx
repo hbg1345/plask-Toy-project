@@ -40,7 +40,7 @@ export function HowItWorksSection() {
       <ScrollReveal>
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold mb-3">어떻게 사용하나요?</h2>
-          <p className="text-muted-foreground text-lg">4단계로 시작하는 알고리즘 학습</p>
+          <p className="text-foreground text-lg">4단계로 시작하는 알고리즘 학습</p>
         </div>
       </ScrollReveal>
 
@@ -64,7 +64,7 @@ export function HowItWorksSection() {
 
                 {/* 텍스트 */}
                 <h3 className="font-semibold mt-4 mb-1 text-lg">{item.title}</h3>
-                <p className="text-sm text-muted-foreground">{item.description}</p>
+                <p className="text-sm text-foreground">{item.description}</p>
               </div>
             </StaggerItem>
           ))}

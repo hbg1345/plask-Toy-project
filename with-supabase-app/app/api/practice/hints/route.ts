@@ -37,12 +37,21 @@ export async function GET(request: NextRequest) {
       .eq("id", problemId)
       .single();
 
+    // contest_id를 DB에서 가져오기
+    const { data: cpData } = await supabase
+      .from("contest_problems")
+      .select("contest_id")
+      .eq("problem_id", problemId)
+      .single();
+    const contestId = cpData?.contest_id || problemId.split("_")[0];
+
     // 이미 힌트가 있으면 반환
     if (problemData?.hints && Array.isArray(problemData.hints) && problemData.hints.length > 0) {
       return NextResponse.json({
         hints: problemData.hints,
         problemTitle: problemData.title,
         difficulty: problemData.difficulty,
+        contestId,
       });
     }
 
@@ -52,12 +61,12 @@ export async function GET(request: NextRequest) {
         hints: [],
         problemTitle: problemData?.title,
         difficulty: problemData?.difficulty,
+        contestId,
       });
     }
 
     // 2. Editorial 가져오기 (없으면 크롤링)
     let editorial = problemData?.editorial;
-    const contestId = problemId.split("_")[0];
     const problemUrl = `https://atcoder.jp/contests/${contestId}/tasks/${problemId}`;
 
     if (!editorial) {
@@ -116,6 +125,7 @@ Generate exactly 5 hints.`;
       hints,
       problemTitle: metadata.title,
       difficulty: problemData?.difficulty,
+      contestId,
     });
   } catch (error) {
     console.error("Failed to generate hints:", error);

@@ -296,7 +296,7 @@ export const MessageBranchPage = ({
   return (
     <ButtonGroupText
       className={cn(
-        "border-none bg-transparent text-muted-foreground shadow-none",
+        "border-none bg-transparent text-foreground shadow-none",
         className
       )}
       {...props}
@@ -380,7 +380,7 @@ export function MessageAttachment({
         <>
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="flex size-full shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+              <div className="flex size-full shrink-0 items-center justify-center rounded-lg bg-muted text-foreground">
                 <PaperclipIcon className="size-4" />
               </div>
             </TooltipTrigger>

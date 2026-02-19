@@ -82,25 +82,25 @@ export function TokenUsageCard() {
       <CardContent>
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">입력 토큰</p>
+            <p className="text-sm text-foreground">입력 토큰</p>
             <p className="text-2xl font-bold">
               {usage?.total_input_tokens.toLocaleString() || 0}
             </p>
           </div>
           <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">출력 토큰</p>
+            <p className="text-sm text-foreground">출력 토큰</p>
             <p className="text-2xl font-bold">
               {usage?.total_output_tokens.toLocaleString() || 0}
             </p>
           </div>
           <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">총 토큰</p>
+            <p className="text-sm text-foreground">총 토큰</p>
             <p className="text-2xl font-bold text-primary">
               {usage?.total_tokens.toLocaleString() || 0}
             </p>
           </div>
           <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">요청 수</p>
+            <p className="text-sm text-foreground">요청 수</p>
             <p className="text-2xl font-bold">
               {usage?.request_count.toLocaleString() || 0}
             </p>

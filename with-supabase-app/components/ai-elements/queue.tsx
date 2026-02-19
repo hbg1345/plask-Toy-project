@@ -77,8 +77,8 @@ export const QueueItemContent = ({
     className={cn(
       "line-clamp-1 grow break-words",
       completed
-        ? "text-muted-foreground/50 line-through"
-        : "text-muted-foreground",
+        ? "text-foreground/50 line-through"
+        : "text-foreground",
       className
     )}
     {...props}
@@ -98,8 +98,8 @@ export const QueueItemDescription = ({
     className={cn(
       "ml-6 text-xs",
       completed
-        ? "text-muted-foreground/40 line-through"
-        : "text-muted-foreground",
+        ? "text-foreground/40 line-through"
+        : "text-foreground",
       className
     )}
     {...props}
@@ -126,7 +126,7 @@ export const QueueItemAction = ({
 }: QueueItemActionProps) => (
   <Button
     className={cn(
-      "size-auto rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-muted-foreground/10 hover:text-foreground group-hover:opacity-100",
+      "size-auto rounded p-1 text-foreground opacity-0 transition-opacity hover:bg-muted-foreground/10 hover:text-foreground group-hover:opacity-100",
       className
     )}
     size="icon"
@@ -215,7 +215,7 @@ export const QueueSectionTrigger = ({
   <CollapsibleTrigger asChild>
     <button
       className={cn(
-        "group flex w-full items-center justify-between rounded-md bg-muted/40 px-3 py-2 text-left font-medium text-muted-foreground text-sm transition-colors hover:bg-muted",
+        "group flex w-full items-center justify-between rounded-md bg-muted/40 px-3 py-2 text-left font-medium text-foreground text-sm transition-colors hover:bg-muted",
         className
       )}
       type="button"

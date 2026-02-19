@@ -99,6 +99,11 @@ function formatDifficulty(difficulty: number | null): string {
   return difficulty.toLocaleString();
 }
 
+function getSolveProbability(userRating: number, difficulty: number | null): number | null {
+  if (difficulty === null) return null;
+  return 1 / (1 + Math.pow(6, (difficulty - userRating) / 400));
+}
+
 async function PracticeContent() {
   const supabase = await createClient();
   const { data: claimsData } = await supabase.auth.getClaims();
@@ -122,7 +127,7 @@ async function PracticeContent() {
           <CardTitle>문제 추천</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">
+          <p className="text-foreground">
             AtCoder 핸들을 연동해주세요.{" "}
             <Link href="/profile" className="text-primary hover:underline">
               프로필 페이지
@@ -141,7 +146,7 @@ async function PracticeContent() {
           <CardTitle>문제 추천</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">
+          <p className="text-foreground">
             레이팅 정보가 없습니다. AtCoder 핸들을 연동해주세요.{" "}
             <Link href="/profile" className="text-primary hover:underline">
               프로필 페이지
@@ -155,7 +160,7 @@ async function PracticeContent() {
 
   // 추천 문제와 연습 기록을 병렬로 가져오기
   const [recommendedByRange, practiceSessions, practiceStats] = await Promise.all([
-    getRecommendedProblemsByRange(userData.rating, 10),
+    getRecommendedProblemsByRange(userData.rating, 5),
     getPracticeSessions(50),
     getPracticeStats(),
   ]);
@@ -174,7 +179,7 @@ async function PracticeContent() {
           <CardTitle>문제 추천</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">
+          <p className="text-foreground">
             현재 레이팅 ({userData.rating}) ±500 범위에 해당하는 문제를 찾을 수 없습니다.
           </p>
         </CardContent>
@@ -184,35 +189,23 @@ async function PracticeContent() {
 
   return (
     <>
-      {/* Header */}
-      <div className="flex flex-col gap-2 w-full">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Practice</h1>
-            <p className="text-muted-foreground">
-              현재 레이팅: <span className="font-semibold">{userData.rating}</span> (
-              {userData.atcoder_handle || "Unknown"}) ±500 범위의 문제
-            </p>
-          </div>
-          <Button asChild variant="outline" size="sm">
-            <Link href="/practice">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              새로고침
-            </Link>
-          </Button>
-        </div>
-      </div>
-
-      {/* 진행 중인 연습 세션 */}
+      {/* 진행 중인 도전 세션 */}
       <OngoingSessionCard />
-
-      {/* 연습 기록 */}
-      <PracticeHistory sessions={practiceSessions} stats={practiceStats} />
 
       {/* Recommended Problems Grid */}
       <Card className="w-full">
         <CardHeader>
-          <CardTitle>추천 문제 ({totalProblems}개)</CardTitle>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <CardTitle>추천 문제 ({totalProblems}개)</CardTitle>
+              <span className="text-xs font-medium text-black dark:text-white">% = 예상 해결 확률</span>
+            </div>
+            <Button asChild variant="ghost" size="icon" className="h-7 w-7">
+              <Link href="/practice">
+                <RefreshCw className="h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -224,68 +217,68 @@ async function PracticeContent() {
                 <div key={rangeIndex} className="flex flex-col">
                   <div className="mb-3 pb-2 border-b">
                     <h3 className="text-sm font-semibold">{range.label}</h3>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="text-xs font-medium text-black dark:text-white mt-1">
                       {problems.length}개 문제
                     </p>
                   </div>
                   <div className="space-y-2 flex-1">
                     {problems.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-black dark:text-white">
                         이 범위에 문제가 없습니다.
                       </p>
                     ) : (
                       problems.map((problem) => {
                         const colors = getDifficultyColor(problem.difficulty);
+                        const prob = getSolveProbability(userData.rating, problem.difficulty);
 
                         return (
                           <div
                             key={problem.id}
                             className="p-3 border rounded-lg hover:bg-muted/30 dark:hover:bg-muted/20 transition-colors"
                           >
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className={cn("text-xs font-medium", colors.text)}>
-                                {formatDifficulty(problem.difficulty)}
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                {problem.contest_id}
-                              </span>
-                            </div>
-                            <ProblemLink
-                              problemId={problem.id}
-                              problemTitle={problem.title}
-                              problemUrl={problem.problem_url}
-                              contestId={problem.contest_id}
-                              difficulty={problem.difficulty}
-                              className="group"
-                              mode="practice"
-                            >
-                              <div
-                                className={cn(
-                                  "text-sm font-bold group-hover:underline truncate",
-                                  problem.difficulty && problem.difficulty >= 3200
-                                    ? ""
-                                    : colors.text
-                                )}
-                                title={problem.title}
+                            <div className="flex items-center justify-between gap-2">
+                              <ProblemLink
+                                problemId={problem.id}
+                                problemTitle={problem.title}
+                                problemUrl={problem.problem_url}
+                                contestId={problem.contest_id}
+                                difficulty={problem.difficulty}
+                                className="group min-w-0 flex-1"
+                                mode="practice"
                               >
-                                {problem.difficulty && problem.difficulty >= 3200 ? (
-                                  problem.title.length > 0 ? (
-                                    <>
-                                      <span className="text-black dark:text-white">
-                                        {problem.title[0]}
-                                      </span>
-                                      <span className="text-red-600 dark:text-red-400">
-                                        {problem.title.slice(1)}
-                                      </span>
-                                    </>
+                                <div
+                                  className={cn(
+                                    "text-sm font-bold group-hover:underline truncate",
+                                    problem.difficulty && problem.difficulty >= 3200
+                                      ? ""
+                                      : colors.text
+                                  )}
+                                  title={problem.title}
+                                >
+                                  {problem.difficulty && problem.difficulty >= 3200 ? (
+                                    problem.title.length > 0 ? (
+                                      <>
+                                        <span className="text-black dark:text-white">
+                                          {problem.title[0]}
+                                        </span>
+                                        <span className="text-red-600 dark:text-red-400">
+                                          {problem.title.slice(1)}
+                                        </span>
+                                      </>
+                                    ) : (
+                                      problem.title
+                                    )
                                   ) : (
                                     problem.title
-                                  )
-                                ) : (
-                                  problem.title
-                                )}
-                              </div>
-                            </ProblemLink>
+                                  )}
+                                </div>
+                              </ProblemLink>
+                              {prob !== null && (
+                                <span className="text-xs font-medium text-black dark:text-white shrink-0">
+                                  {Math.round(prob * 100)}%
+                                </span>
+                              )}
+                            </div>
                           </div>
                         );
                       })
@@ -297,6 +290,9 @@ async function PracticeContent() {
           </div>
         </CardContent>
       </Card>
+
+      {/* 도전 기록 */}
+      <PracticeHistory sessions={practiceSessions} stats={practiceStats} />
     </>
   );
 }
@@ -305,8 +301,8 @@ function PracticeLoading() {
   return (
     <>
       <div className="flex flex-col gap-2 w-full">
-        <h1 className="text-3xl font-bold tracking-tight">Practice</h1>
-        <p className="text-muted-foreground">로딩 중...</p>
+        <h1 className="text-3xl font-bold tracking-tight">Challenge</h1>
+        <p className="text-foreground">로딩 중...</p>
       </div>
       <Card className="w-full">
         <CardHeader>

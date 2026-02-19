@@ -41,7 +41,7 @@ const lineNumberTransformer: ShikiTransformer = {
           "mr-4",
           "text-right",
           "select-none",
-          "text-muted-foreground",
+          "text-foreground",
         ],
       },
       children: [{ type: "text", value: String(line) }],

@@ -174,7 +174,7 @@ export const InlineCitationCarouselIndex = ({
   return (
     <div
       className={cn(
-        "flex flex-1 items-center justify-end px-3 py-1 text-muted-foreground text-xs",
+        "flex flex-1 items-center justify-end px-3 py-1 text-foreground text-xs",
         className
       )}
       {...props}
@@ -206,7 +206,7 @@ export const InlineCitationCarouselPrev = ({
       type="button"
       {...props}
     >
-      <ArrowLeftIcon className="size-4 text-muted-foreground" />
+      <ArrowLeftIcon className="size-4 text-foreground" />
     </button>
   );
 };
@@ -233,7 +233,7 @@ export const InlineCitationCarouselNext = ({
       type="button"
       {...props}
     >
-      <ArrowRightIcon className="size-4 text-muted-foreground" />
+      <ArrowRightIcon className="size-4 text-foreground" />
     </button>
   );
 };
@@ -257,10 +257,10 @@ export const InlineCitationSource = ({
       <h4 className="truncate font-medium text-sm leading-tight">{title}</h4>
     )}
     {url && (
-      <p className="truncate break-all text-muted-foreground text-xs">{url}</p>
+      <p className="truncate break-all text-foreground text-xs">{url}</p>
     )}
     {description && (
-      <p className="line-clamp-3 text-muted-foreground text-sm leading-relaxed">
+      <p className="line-clamp-3 text-foreground text-sm leading-relaxed">
         {description}
       </p>
     )}
@@ -277,7 +277,7 @@ export const InlineCitationQuote = ({
 }: InlineCitationQuoteProps) => (
   <blockquote
     className={cn(
-      "border-muted border-l-2 pl-3 text-muted-foreground text-sm italic",
+      "border-muted border-l-2 pl-3 text-foreground text-sm italic",
       className
     )}
     {...props}

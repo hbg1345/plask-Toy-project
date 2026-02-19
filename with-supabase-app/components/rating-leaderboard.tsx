@@ -38,7 +38,7 @@ function RatingListItem({
 
   return (
     <div className="flex items-center gap-3 py-2 border-b last:border-0">
-      <span className="w-6 text-sm font-medium text-muted-foreground">
+      <span className="w-6 text-sm font-medium text-foreground">
         {rank}
       </span>
       <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center overflow-hidden">
@@ -51,12 +51,12 @@ function RatingListItem({
             className="rounded-full"
           />
         ) : (
-          <User className="h-4 w-4 text-muted-foreground" />
+          <User className="h-4 w-4 text-foreground" />
         )}
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium truncate">{entry.atcoder_handle}</p>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-foreground">
           {entry.previous_rating} → {entry.current_rating}
         </p>
       </div>
@@ -80,7 +80,7 @@ function RatingList({
 }) {
   if (entries.length === 0) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
+      <div className="text-center py-8 text-foreground">
         데이터가 없습니다
       </div>
     );
@@ -172,17 +172,17 @@ export function RatingLeaderboard({
           <CardContent>
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">전체 순위</p>
+                <p className="text-sm text-foreground">전체 순위</p>
                 <p className="text-2xl font-bold">
                   {myRank.rank}
-                  <span className="text-sm font-normal text-muted-foreground">
+                  <span className="text-sm font-normal text-foreground">
                     {" "}
                     / {myRank.totalUsers}명
                   </span>
                 </p>
               </div>
               <div className="space-y-1 text-right">
-                <p className="text-sm text-muted-foreground">레이팅 변화</p>
+                <p className="text-sm text-foreground">레이팅 변화</p>
                 <p
                   className={`text-2xl font-bold ${
                     myRank.ratingChange > 0
@@ -197,7 +197,7 @@ export function RatingLeaderboard({
                 </p>
               </div>
               <div className="space-y-1 text-right">
-                <p className="text-sm text-muted-foreground">현재 레이팅</p>
+                <p className="text-sm text-foreground">현재 레이팅</p>
                 <p className="text-2xl font-bold">{myRank.currentRating}</p>
               </div>
             </div>

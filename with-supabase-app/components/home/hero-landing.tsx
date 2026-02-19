@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Sword, MessageSquare, Archive, User, ChevronRight } from "lucide-react";
+import { Sword, MessageSquare, Archive, ChevronRight } from "lucide-react";
 
 interface HeroLandingProps {
   isLoggedIn: boolean;
@@ -12,35 +12,27 @@ interface HeroLandingProps {
 const menuItems = [
   {
     id: "practice",
-    label: "문제 추천",
-    subLabel: "PRACTICE",
+    label: "도전",
+    subLabel: "CHALLENGE",
     href: "/practice",
     icon: Sword,
     description: "레이팅 기반 맞춤 문제 추천",
   },
   {
     id: "chat",
-    label: "AI 채팅",
-    subLabel: "AI CHAT",
+    label: "채팅",
+    subLabel: "CHAT",
     href: "/chat",
     icon: MessageSquare,
     description: "AI와 함께 문제 풀이",
   },
   {
     id: "problems",
-    label: "문제 목록",
-    subLabel: "PROBLEMS",
+    label: "아카이브",
+    subLabel: "ARCHIVE",
     href: "/problems",
     icon: Archive,
     description: "AtCoder 문제 아카이브",
-  },
-  {
-    id: "profile",
-    label: "프로필",
-    subLabel: "PROFILE",
-    href: "/profile",
-    icon: User,
-    description: "내 정보 및 풀이 기록",
   },
 ];
 

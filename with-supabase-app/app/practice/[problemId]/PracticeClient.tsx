@@ -89,7 +89,19 @@ interface OngoingSession {
   problemTitle: string | null;
 }
 
+function getMaxHints(userRating: number | null, difficulty: number | null): number {
+  if (userRating === null || difficulty === null) return 3;
+  const diff = difficulty - userRating;
+  if (diff < -100) return 1;      // Easy
+  if (diff <= 100) return 2;      // Normal
+  if (diff <= 300) return 4;      // Hard
+  return 5;                        // Very Hard
+}
+
 export default function PracticeClient({ problemId }: PracticeClientProps) {
+  // localStorage key
+  const PRACTICE_STATE_KEY = "ongoing_practice";
+
   // 상태
   const [status, setStatus] = useState<PracticeStatus>("setup");
   const [selectedTime, setSelectedTime] = useState<number>(30); // 분
@@ -108,16 +120,14 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
   const [otherOngoingSession, setOtherOngoingSession] = useState<OngoingSession | null>(null);
   const [recommendedTime, setRecommendedTime] = useState<number | null>(null);
   const [selectedHintIndex, setSelectedHintIndex] = useState<number | null>(null);
+  const [initialized, setInitialized] = useState(false);
   const router = useRouter();
 
-  // 문제 URL 생성
-  const contestId = problemId.split("_")[0];
-  const problemUrl = `https://atcoder.jp/contests/${contestId}/tasks/${problemId}`;
+  // 문제 URL 생성 (contest_id는 DB에서 가져온 후 설정)
+  const [contestId, setContestId] = useState<string | null>(null);
+  const problemUrl = contestId ? `https://atcoder.jp/contests/${contestId}/tasks/${problemId}` : null;
 
-  // localStorage key
-  const PRACTICE_STATE_KEY = "ongoing_practice";
-
-  // 다른 문제의 진행 중인 세션 확인
+  // 세션 복원 + 다른 문제 세션 확인 (마운트 시 1회)
   useEffect(() => {
     try {
       const saved = localStorage.getItem(PRACTICE_STATE_KEY);
@@ -128,15 +138,26 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
             problemId: state.problemId,
             problemTitle: state.problemTitle,
           });
+        } else if (state.problemId === problemId && (state.status === "running" || state.status === "paused")) {
+          const elapsed = Math.floor((Date.now() - state.startedAt) / 1000);
+          const remaining = Math.max(0, state.selectedTime * 60 - elapsed);
+          setSelectedTime(state.selectedTime);
+          setElapsedTime(elapsed);
+          setRemainingTime(remaining);
+          setStatus(state.status);
+          if (state.problemTitle) setProblemTitle(state.problemTitle);
         }
       }
     } catch {
       // ignore
     }
+    setInitialized(true);
   }, [problemId]);
 
-  // 진행 중인 연습 상태 저장
+  // 진행 중인 연습 상태 저장 (초기화 완료 후에만)
   useEffect(() => {
+    if (!initialized) return;
+
     if (status === "running" || status === "paused") {
       const practiceState = {
         problemId,
@@ -149,10 +170,9 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
       };
       localStorage.setItem(PRACTICE_STATE_KEY, JSON.stringify(practiceState));
     } else if (status === "completed" || status === "setup") {
-      // 완료되거나 설정 화면으로 돌아가면 localStorage에서 삭제
       localStorage.removeItem(PRACTICE_STATE_KEY);
     }
-  }, [status, problemId, problemTitle, selectedTime, remainingTime, elapsedTime]);
+  }, [initialized, status, problemId, problemTitle, selectedTime, remainingTime, elapsedTime]);
 
   // AtCoder 핸들 및 레이팅 가져오기
   useEffect(() => {
@@ -184,6 +204,7 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
           setHints(data.hints || []);
           if (data.problemTitle) setProblemTitle(data.problemTitle);
           if (data.difficulty) setDifficulty(data.difficulty);
+          if (data.contestId) setContestId(data.contestId);
         }
       } catch (error) {
         console.error("Failed to fetch problem info:", error);
@@ -246,12 +267,14 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
     return () => clearInterval(interval);
   }, [status]);
 
-  // 힌트가 로드되면 모두 해금 상태로 설정
+  const maxHints = getMaxHints(userRating, difficulty);
+
+  // 힌트가 로드되면 난이도에 맞게 해금
   useEffect(() => {
     if (hints.length > 0) {
-      setUnlockedHints(Math.min(5, hints.length));
+      setUnlockedHints(Math.min(maxHints, hints.length));
     }
-  }, [hints.length]);
+  }, [hints.length, maxHints]);
 
   // Submission 체크
   const checkSubmission = useCallback(async () => {
@@ -308,6 +331,7 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
         if (response.ok) {
           const data = await response.json();
           setHints(data.hints || []);
+          if (data.contestId) setContestId(data.contestId);
         }
       } catch (error) {
         console.error("Failed to generate hints:", error);
@@ -351,6 +375,7 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
 
   // 채팅으로 질문하기
   const handleAskQuestion = async () => {
+    if (!problemUrl) return;
     // 기존 채팅이 있는지 확인
     let chatId = await getChatByProblemUrl(problemUrl);
 
@@ -383,10 +408,7 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
                 돌아가기
               </Link>
             </Button>
-            <div>
-              <h1 className="text-lg font-semibold">{problemId}</h1>
-              <p className="text-sm text-muted-foreground">연습 모드</p>
-            </div>
+            <h1 className="text-lg font-semibold">{problemId}</h1>
           </div>
 
           {/* 타이머 */}
@@ -482,11 +504,11 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
                 {userRating !== null && difficulty !== null && (
                   <div className="p-3 bg-muted/50 rounded-lg">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">내 레이팅</span>
+                      <span className="text-foreground">내 레이팅</span>
                       <span className="font-semibold">{userRating}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm mt-1">
-                      <span className="text-muted-foreground">문제 난이도</span>
+                      <span className="text-foreground">문제 난이도</span>
                       <span className={cn(
                         "font-semibold",
                         difficulty > userRating + 200 ? "text-red-500" :
@@ -498,7 +520,7 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-sm mt-1 pt-1 border-t">
-                      <span className="text-muted-foreground">난이도 차이</span>
+                      <span className="text-foreground">난이도 차이</span>
                       <span className={cn(
                         "font-semibold",
                         difficulty - userRating > 200 ? "text-red-500" :
@@ -512,7 +534,7 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
                   </div>
                 )}
 
-                <p className="text-muted-foreground">
+                <p className="text-foreground">
                   문제를 풀 시간을 설정하세요. 시간이 경과할수록 힌트가 하나씩
                   해금됩니다.
                 </p>
@@ -541,10 +563,10 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
                         className="w-20 text-4xl font-bold tabular-nums text-center bg-transparent border-b-2 border-transparent hover:border-muted focus:border-primary focus:outline-none"
                         min={MIN_TIME}
                       />
-                      <span className="text-2xl font-bold text-muted-foreground">분</span>
+                      <span className="text-2xl font-bold text-foreground">분</span>
                     </div>
                     {recommendedTime && (
-                      <span className="text-xs text-muted-foreground mt-1">
+                      <span className="text-xs text-foreground mt-1">
                         추천: {recommendedTime}분
                       </span>
                     )}
@@ -610,13 +632,13 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-4 bg-muted rounded-lg text-center">
-                    <p className="text-sm text-muted-foreground">소요 시간</p>
+                    <p className="text-sm text-foreground">소요 시간</p>
                     <p className="text-2xl font-mono font-bold">
                       {formatTime(elapsedTime)}
                     </p>
                   </div>
                   <div className="p-4 bg-muted rounded-lg text-center">
-                    <p className="text-sm text-muted-foreground">사용한 힌트</p>
+                    <p className="text-sm text-foreground">사용한 힌트</p>
                     <p className="text-2xl font-bold">{unlockedHints}개</p>
                   </div>
                 </div>
@@ -625,7 +647,7 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
                 {hints.length > 0 && (
                   <div>
                     <h3 className="font-semibold mb-3">전체 힌트</h3>
-                    <HintsCard hints={hints.slice(0, 5)} />
+                    <HintsCard hints={hints.slice(0, maxHints)} />
                   </div>
                 )}
 
@@ -702,7 +724,7 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
                       )}
                     </Button>
                     {!atcoderHandle && (
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-foreground">
                         AtCoder 핸들을 연동해주세요
                       </p>
                     )}
@@ -711,7 +733,7 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
                         아직 AC를 받지 못했습니다. 다시 시도해보세요!
                       </p>
                     )}
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-foreground">
                       AtCoder에서 AC를 받은 후 버튼을 눌러주세요
                     </p>
                   </CardContent>
@@ -722,24 +744,24 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm flex items-center gap-2">
                       <Lightbulb className="h-4 w-4" />
-                      힌트 ({Math.min(5, hints.length)}개)
+                      힌트 ({Math.min(maxHints, hints.length)}개)
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     {hints.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-foreground">
                         힌트를 불러올 수 없습니다
                       </p>
                     ) : (
                       <div className="space-y-2">
-                        {hints.slice(0, 5).map((hint, index) => (
+                        {hints.slice(0, maxHints).map((hint, index) => (
                           <button
                             key={hint.step}
                             onClick={() => setSelectedHintIndex(index)}
                             className="w-full p-3 rounded-lg border text-sm bg-background hover:bg-muted/50 transition-colors flex items-center justify-between"
                           >
                             <span className="font-medium">힌트 {index + 1}</span>
-                            <Eye className="h-4 w-4 text-muted-foreground" />
+                            <Eye className="h-4 w-4 text-foreground" />
                           </button>
                         ))}
                       </div>

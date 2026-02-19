@@ -53,7 +53,7 @@ export function ProfileForm({ rating, atcoder_handle }: UserInfoRow) {
       <CardContent className="space-y-4">
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-muted-foreground">
+            <span className="text-sm font-medium text-foreground">
               Atcoder Handle
             </span>
             <Badge variant="outline" className="text-sm">
@@ -62,7 +62,7 @@ export function ProfileForm({ rating, atcoder_handle }: UserInfoRow) {
           </div>
           <Separator />
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-muted-foreground">
+            <span className="text-sm font-medium text-foreground">
               Rating
             </span>
             <Badge variant="default" className="text-sm">
@@ -171,7 +171,7 @@ export function ProfileWithGrass({
       <>
         <div className="flex flex-col gap-2 self-start w-full">
           <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
-          <p className="text-muted-foreground">
+          <p className="text-foreground">
             프로필 정보를 확인하고 관리하세요
           </p>
         </div>
@@ -192,23 +192,22 @@ export function ProfileWithGrass({
 
   return (
     <>
-      <div className="flex items-center justify-between self-start w-full">
-        <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 self-start w-full">
+        <div className="flex items-center gap-2">
           <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
-          <p className="text-muted-foreground">
-            프로필 정보를 확인하고 관리하세요
-          </p>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleRefresh}
+            disabled={isPending}
+            className="h-7 w-7"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isPending ? "animate-spin" : ""}`} />
+          </Button>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleRefresh}
-          disabled={isPending}
-          className="gap-2"
-        >
-          <RefreshCw className={`h-4 w-4 ${isPending ? "animate-spin" : ""}`} />
-          {isPending ? "갱신 중..." : "정보 갱신"}
-        </Button>
+        <p className="text-foreground">
+          프로필 정보를 확인하고 관리하세요
+        </p>
       </div>
       <div className="w-full max-w-5xl space-y-6">
         <div className="flex flex-col md:flex-row gap-6">
@@ -228,7 +227,7 @@ export function ProfileWithGrass({
                 />
                 <div className="flex-1 space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-muted-foreground">
+                    <span className="text-sm font-medium text-foreground">
                       Atcoder Handle
                     </span>
                     {modify ? (
@@ -276,7 +275,7 @@ export function ProfileWithGrass({
                   </div>
                   <Separator />
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-muted-foreground">
+                    <span className="text-sm font-medium text-foreground">
                       Rating
                     </span>
                     <Badge

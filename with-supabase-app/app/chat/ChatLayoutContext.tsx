@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, ReactNode } from "react";
 
 export type LayoutMode = "both" | "problem-only" | "chat-only";
+export type ProblemLanguage = "en" | "ja" | "ko";
 
 interface ChatLayoutContextType {
   selectedChatId: string | null;
@@ -15,6 +16,8 @@ interface ChatLayoutContextType {
   setLayoutMode: (mode: LayoutMode) => void;
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
+  problemLanguage: ProblemLanguage;
+  setProblemLanguage: (lang: ProblemLanguage) => void;
 }
 
 const ChatLayoutContext = createContext<ChatLayoutContextType | undefined>(
@@ -27,6 +30,7 @@ export function ChatLayoutProvider({ children }: { children: ReactNode }) {
   const [problemUrl, setProblemUrl] = useState<string | null>(null);
   const [layoutMode, setLayoutMode] = useState<LayoutMode>("both");
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [problemLanguage, setProblemLanguage] = useState<ProblemLanguage>("en");
 
   return (
     <ChatLayoutContext.Provider
@@ -41,6 +45,8 @@ export function ChatLayoutProvider({ children }: { children: ReactNode }) {
         setLayoutMode,
         sidebarOpen,
         setSidebarOpen,
+        problemLanguage,
+        setProblemLanguage,
       }}
     >
       {children}
@@ -54,4 +60,8 @@ export function useChatLayout() {
     throw new Error("useChatLayout must be used within ChatLayoutProvider");
   }
   return context;
+}
+
+export function useChatLayoutOptional() {
+  return useContext(ChatLayoutContext);
 }

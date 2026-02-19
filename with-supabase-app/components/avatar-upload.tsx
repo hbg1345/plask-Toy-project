@@ -145,7 +145,7 @@ export function AvatarUpload({ avatarUrl, onUpload }: AvatarUploadProps) {
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+          <div className="w-full h-full flex items-center justify-center text-foreground">
             <Camera className="w-8 h-8" />
           </div>
         )}

@@ -15,7 +15,7 @@ export default function PracticePage({ params }: PageProps) {
     <Suspense
       fallback={
         <div className="w-full h-full flex items-center justify-center">
-          <div className="text-muted-foreground">로딩 중...</div>
+          <div className="text-foreground">로딩 중...</div>
         </div>
       }
     >

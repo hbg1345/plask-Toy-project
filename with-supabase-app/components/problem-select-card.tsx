@@ -36,7 +36,7 @@ export function ProblemSelectCard({
   };
 
   const getDifficultyColor = (difficulty: number | null) => {
-    if (difficulty === null) return "text-muted-foreground";
+    if (difficulty === null) return "text-foreground";
     if (difficulty < 400) return "text-gray-500";
     if (difficulty < 800) return "text-green-600 dark:text-green-400";
     if (difficulty < 1200) return "text-cyan-600 dark:text-cyan-400";
@@ -49,7 +49,7 @@ export function ProblemSelectCard({
   if (problems.length === 0) {
     return (
       <div className="border rounded-lg p-3 bg-muted/30">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 text-sm text-foreground">
           <Search className="h-4 w-4" />
           <span>검색 결과가 없습니다. 다른 키워드로 검색해주세요.</span>
         </div>
@@ -59,7 +59,7 @@ export function ProblemSelectCard({
 
   return (
     <div className="border rounded-lg p-3 bg-muted/30 space-y-2">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+      <div className="flex items-center gap-2 text-sm text-foreground mb-2">
         <Search className="h-4 w-4" />
         <span>문제를 선택하세요</span>
       </div>

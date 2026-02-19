@@ -107,11 +107,11 @@ export function OngoingSessionCard() {
 
             {/* 정보 */}
             <div>
-              <p className="text-sm text-muted-foreground">진행 중인 연습</p>
+              <p className="text-sm text-foreground">진행 중인 연습</p>
               <p className="font-semibold">
                 {practiceState.problemTitle || practiceState.problemId}
               </p>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+              <div className="flex items-center gap-2 text-sm text-foreground mt-1">
                 <span>
                   {practiceState.status === "running" ? "진행 중" : "일시정지"}
                 </span>
@@ -132,13 +132,26 @@ export function OngoingSessionCard() {
             </div>
           </div>
 
-          {/* 이어하기 버튼 */}
-          <Button asChild>
-            <Link href={`/practice/${practiceState.problemId}`}>
-              이어하기
-              <ArrowRight className="h-4 w-4 ml-2" />
-            </Link>
-          </Button>
+          {/* 이어하기 / 포기 버튼 */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-red-600 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-950"
+              onClick={() => {
+                localStorage.removeItem(PRACTICE_STATE_KEY);
+                setPracticeState(null);
+              }}
+            >
+              포기
+            </Button>
+            <Button asChild>
+              <Link href={`/practice/${practiceState.problemId}`}>
+                이어하기
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Link>
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
