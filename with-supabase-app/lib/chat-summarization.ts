@@ -48,10 +48,17 @@ export async function summarizeIfNeeded(
     };
   }
 
-  const cutoffIndex = totalCount - KEEP_RECENT_COUNT;
+  let cutoffIndex = totalCount - KEEP_RECENT_COUNT;
+
+  // 첫 번째 recent message가 user가 아니면 user까지 뒤로 조정
+  // (Gemini API는 user 또는 function response 다음에만 function call 허용)
+  while (cutoffIndex > 0 && allMessages[cutoffIndex]?.role !== "user") {
+    cutoffIndex--;
+  }
+
   const recentMessages = allMessages.slice(cutoffIndex);
 
-  console.log("[summarize] TRIGGERED - cutoffIndex:", cutoffIndex, "keeping recent:", KEEP_RECENT_COUNT);
+  console.log("[summarize] TRIGGERED - cutoffIndex:", cutoffIndex, "keeping recent:", recentMessages.length);
 
   // 기존 요약이 cutoffIndex까지 커버하면 재사용
   if (existingSummary && existingSummaryCount !== null && existingSummaryCount >= cutoffIndex) {

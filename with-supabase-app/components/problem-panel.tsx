@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useState, useEffect, useRef, memo } from "react";
+import { useState, useEffect, useMemo, memo } from "react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 import { useChatLayoutOptional, type ProblemLanguage } from "@/app/chat/ChatLayoutContext";
@@ -53,7 +53,6 @@ export const ProblemPanel = memo(function ProblemPanel({ problemUrl }: ProblemPa
     null
   );
   const [needsTranslation, setNeedsTranslation] = useState(false);
-  const contentRef = useRef<HTMLDivElement>(null);
 
   // 번역 소스 콘텐츠 가져오기 (일본어 우선, 없으면 영어, 없으면 full)
   const getSourceContent = (data: ProblemData): string => {
@@ -168,98 +167,62 @@ export const ProblemPanel = memo(function ProblemPanel({ problemUrl }: ProblemPa
     return problemData.content.en || problemData.content.full || "";
   };
 
-  // KaTeX로 수식 렌더링
-  useEffect(() => {
-    if (contentRef.current && problemData && !isTranslating) {
-      const container = contentRef.current;
+  // KaTeX로 수식 렌더링된 HTML 생성 (useMemo로 캐싱)
+  const renderedHtml = useMemo(() => {
+    if (!problemData) return '';
 
-      // \( ... \) 인라인 수식 처리
-      const inlineRegex = /\\\(([\s\S]*?)\\\)/g;
-      // \[ ... \] 디스플레이 수식 처리
-      const displayRegex = /\\\[([\s\S]*?)\\\]/g;
-      // $ ... $ 인라인 수식 처리
-      const dollarInlineRegex = /\$([^\$\n]+)\$/g;
+    let html = problemData.styles + getCurrentContent();
 
-      const renderMath = () => {
-        const walker = document.createTreeWalker(
-          container,
-          NodeFilter.SHOW_TEXT,
-          null
-        );
-
-        const nodesToReplace: { node: Text; html: string }[] = [];
-
-        let node: Text | null;
-        while ((node = walker.nextNode() as Text | null)) {
-          let text = node.textContent || "";
-          let hasMatch = false;
-
-          text = text.replace(displayRegex, (match, formula) => {
-            hasMatch = true;
-            try {
-              return katex.renderToString(formula.trim(), {
-                displayMode: true,
-                throwOnError: false,
-              });
-            } catch {
-              return match;
-            }
-          });
-
-          text = text.replace(inlineRegex, (match, formula) => {
-            hasMatch = true;
-            try {
-              return katex.renderToString(formula.trim(), {
-                displayMode: false,
-                throwOnError: false,
-              });
-            } catch {
-              return match;
-            }
-          });
-
-          text = text.replace(dollarInlineRegex, (match, formula) => {
-            hasMatch = true;
-            try {
-              return katex.renderToString(formula.trim(), {
-                displayMode: false,
-                throwOnError: false,
-              });
-            } catch {
-              return match;
-            }
-          });
-
-          if (hasMatch) {
-            nodesToReplace.push({ node, html: text });
-          }
-        }
-
-        nodesToReplace.forEach(({ node, html }) => {
-          const span = document.createElement("span");
-          span.innerHTML = html;
-          node.parentNode?.replaceChild(span, node);
+    // \[ ... \] 디스플레이 수식 처리
+    html = html.replace(/\\\[([\s\S]*?)\\\]/g, (match, formula) => {
+      try {
+        return katex.renderToString(formula.trim(), {
+          displayMode: true,
+          throwOnError: false,
         });
+      } catch {
+        return match;
+      }
+    });
 
-        container.querySelectorAll("var").forEach((varEl) => {
-          const text = varEl.textContent || "";
-          if (text && !varEl.querySelector(".katex")) {
-            try {
-              const rendered = katex.renderToString(text.trim(), {
-                displayMode: false,
-                throwOnError: false,
-              });
-              varEl.innerHTML = rendered;
-            } catch {
-              // 렌더링 실패 시 원본 유지
-            }
-          }
+    // \( ... \) 인라인 수식 처리
+    html = html.replace(/\\\(([\s\S]*?)\\\)/g, (match, formula) => {
+      try {
+        return katex.renderToString(formula.trim(), {
+          displayMode: false,
+          throwOnError: false,
         });
-      };
+      } catch {
+        return match;
+      }
+    });
 
-      requestAnimationFrame(renderMath);
-    }
-  }, [problemData, language, translatedContent, isTranslating]);
+    // $ ... $ 인라인 수식 처리
+    html = html.replace(/\$([^\$\n]+)\$/g, (match, formula) => {
+      try {
+        return katex.renderToString(formula.trim(), {
+          displayMode: false,
+          throwOnError: false,
+        });
+      } catch {
+        return match;
+      }
+    });
+
+    // <var>...</var> 태그 처리
+    html = html.replace(/<var>(.*?)<\/var>/g, (match, content) => {
+      try {
+        return katex.renderToString(content.trim(), {
+          displayMode: false,
+          throwOnError: false,
+        });
+      } catch {
+        return match;
+      }
+    });
+
+    return html;
+  }, [problemData, language, translatedContent]);
 
   // URL 변경 시 문제 로드 (언어 설정은 유지, 번역 캐시만 리셋)
   useEffect(() => {
@@ -414,7 +377,7 @@ export const ProblemPanel = memo(function ProblemPanel({ problemUrl }: ProblemPa
             </Button>
           </div>
         ) : problemData ? (
-          <div className="p-4" ref={contentRef}>
+          <div className="p-4">
             {/* 시간/메모리 제한 */}
             {(problemData.timeLimit || problemData.memoryLimit) && (
               <div className="mb-4 text-sm text-foreground flex gap-4">
@@ -429,7 +392,7 @@ export const ProblemPanel = memo(function ProblemPanel({ problemUrl }: ProblemPa
             <div
               className="task-statement prose prose-sm dark:prose-invert max-w-none"
               dangerouslySetInnerHTML={{
-                __html: problemData.styles + getCurrentContent(),
+                __html: renderedHtml,
               }}
             />
           </div>

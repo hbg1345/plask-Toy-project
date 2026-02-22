@@ -134,6 +134,22 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
       setChatTitle(data.title);
       setContextProblemUrl(data.problemUrl);
       setRefreshTrigger((prev) => prev + 1);
+
+      // 채팅 리로드 (DB의 hints: null이 반영되도록)
+      const chatData = await getChatHistory(chatId);
+      if (chatData) {
+        const convertedMessages = chatData.messages.map((msg) => ({
+          id: msg.id,
+          role: msg.role,
+          parts: msg.parts && msg.parts.length > 0
+            ? msg.parts
+            : [{ type: "text" as const, text: msg.content }],
+        })) as UIMessage[];
+        setMessages(convertedMessages);
+      }
+
+      // 선택 상태 리셋
+      setSelectedProblemId(null);
     } catch (error) {
       console.error("Failed to select problem:", error);
     }
@@ -197,6 +213,13 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
       return;
     }
 
+    // 새로 생성된 chatId (null → chatId) + 이미 메시지가 있으면 DB 로드 건너뛰기
+    // (스트리밍 중인 메시지가 덮어써지는 것 방지)
+    if (chatId && prevChatId === null && messages.length > 0) {
+      prevChatIdRef.current = chatId;
+      return;
+    }
+
     if (chatId) {
       setIsLoadingChat(true);
       getChatHistory(chatId).then((chatData) => {
@@ -233,27 +256,28 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
   }, [chatId, setMessages]);
 
   // 메시지에서 linkProblemToChat tool output 감지 (실시간)
+  // 스트리밍 중에도 도구 결과는 즉시 감지해야 함
   useEffect(() => {
     if (messages.length === 0) return;
 
+    // 스트리밍 중이어도 도구 결과는 처리해야 하므로 모든 메시지 확인
     for (const message of messages) {
       if (message.role !== "assistant") continue;
 
       for (const part of message.parts) {
-        // tool-linkProblemToChat part에서 output.problemUrl 확인
-        if (part.type === "tool-linkProblemToChat") {
+        // tool-result에서 linkProblemToChat 결과 확인
+        if (part.type === "tool-result") {
           const toolPart = part as {
             type: string;
-            output?: { success?: boolean; problemUrl?: string; title?: string };
+            toolName?: string;
+            output?: { success?: boolean; problemId?: string; problemUrl?: string; title?: string };
           };
-          if (toolPart.output?.success && toolPart.output?.problemUrl) {
-            const detectedUrl = toolPart.output.problemUrl;
-            if (detectedUrl !== problemUrl) {
-              console.log("Detected problemUrl from tool output:", detectedUrl);
-              setProblemUrl(detectedUrl);
-              setContextProblemUrl(detectedUrl);
-              setChatTitle(toolPart.output.title || null);
-              setRefreshTrigger((prev) => prev + 1);
+          if (toolPart.toolName === "linkProblemToChat" && toolPart.output?.success && toolPart.output?.problemId) {
+            // 기존 handleProblemSelect 로직 재사용 (UI 버튼과 동일)
+            const problemId = toolPart.output.problemId;
+            if (problemId !== selectedProblemId) {
+              console.log("AI linked problem:", problemId);
+              handleProblemSelect(problemId);
             }
             return;
           }
@@ -280,12 +304,13 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
     }
   }, [messages, chatId, onChatIdChange, setRefreshTrigger]);
 
-  const handleSubmit = (message: PromptInputMessage) => {
+  const handleSubmit = async (message: PromptInputMessage) => {
     const hasText = Boolean(message.text);
     const hasAttachments = Boolean(message.files?.length);
     if (!(hasText || hasAttachments)) {
       return;
     }
+
     sendMessage(
       {
         text: message.text || "Sent with attachments",
@@ -308,15 +333,34 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
         </div>
       ) : (
         <>
-          {/* 힌트 패널 - hints가 있을 때만 표시 */}
-          {computedHints && computedHints.length > 0 && (
+          {/* 힌트 패널 - hints가 있고 문제 전환 직후가 아닐 때만 표시 */}
+          {computedHints && computedHints.length > 0 && selectedProblemId === null && (
             <div className="flex-shrink-0 px-4 py-3 border-b bg-muted/20">
               <HintsCard key={problemUrl ?? chatId} hints={computedHints} />
             </div>
           )}
           <Conversation className="flex-1 min-h-0">
             <ConversationContent>
-              {messages.map((message, messageIndex) => (
+              {messages.map((message, messageIndex) => {
+                // 스트리밍 중인 마지막 메시지는 완료될 때까지 숨김
+                const isLastMessage = messageIndex === messages.length - 1;
+                const isStreaming = status === "streaming";
+
+                if (isLastMessage && message.role === "assistant") {
+                  console.log("[DEBUG] Last assistant message:", {
+                    status,
+                    isStreaming,
+                    chatId,
+                    messageId: message.id,
+                    willHide: isStreaming
+                  });
+                }
+
+                if (isLastMessage && isStreaming && message.role === "assistant") {
+                  return null; // 스트리밍 중에는 숨김
+                }
+
+                return (
                 <div key={`${message.id}-${messageIndex}`}>
                   {message.role === "assistant" &&
                     message.parts.filter((part) => part.type === "source-url")
@@ -420,7 +464,8 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
                     }
                   })}
                 </div>
-              ))}
+              );
+              })}
               {status === "submitted" && (
                 <div className="flex items-center gap-1 py-4 text-foreground">
                   <span className="text-sm">생각 중</span>

@@ -1,5 +1,5 @@
 import * as cheerio from 'cheerio';
-import { fetchUpcomingContests, fetchRecentContests } from '@qatadaazzeh/atcoder-api';
+import { fetchUpcomingContests } from '@qatadaazzeh/atcoder-api';
 import { createClient } from '@/lib/supabase/server';
 
 // taskUrl에서 problem_id 추출 (e.g., "https://atcoder.jp/contests/abc314/tasks/abc314_a" -> "abc314_a")
@@ -17,9 +17,45 @@ export async function getUpcomingcontests() {
     }
 }
 
-export async function getRecentContests() {
+export async function getRecentContests(limit?: number) {
     try {
-        return await fetchRecentContests();
+        const supabase = await createClient();
+        const now = Math.floor(Date.now() / 1000); // 현재 시간 (Unix timestamp)
+
+        // 최근 종료된 대회 (시작 시간 기준 내림차순)
+        let query = supabase
+            .from('contests')
+            .select('*')
+            .lte('start_epoch_second', now) // 이미 시작한 대회만
+            .order('start_epoch_second', { ascending: false });
+
+        // limit이 지정되면 적용
+        if (limit !== undefined) {
+            query = query.limit(limit);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+            return `에러: 최근 컨테스트 정보를 가져오는 중 오류가 발생했습니다. (${error.message})`;
+        }
+
+        // 외부 패키지 형식과 호환되도록 변환
+        return data.map(contest => {
+            const contestType = contest.id.match(/^([a-z]+)/)?.[1]?.toUpperCase() || 'OTHER';
+            const startDate = new Date(contest.start_epoch_second * 1000);
+            const durationMinutes = Math.floor(contest.duration_second / 60);
+
+            return {
+                contestId: contest.id,
+                contestName: contest.title,
+                contestTime: startDate.toISOString().replace('T', ' ').slice(0, 19), // "2024-08-03 21:00:00"
+                contestDuration: `${durationMinutes}분`,
+                isRated: contest.rate_change !== '-',
+                contestType: contestType,
+                contestUrl: `https://atcoder.jp/contests/${contest.id}`,
+            };
+        });
     } catch (e) {
         return `에러: 최근 컨테스트 정보를 가져오는 중 오류가 발생했습니다. (${e instanceof Error ? e.message : 'Unknown'})`;
     }

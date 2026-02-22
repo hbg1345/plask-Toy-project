@@ -72,11 +72,20 @@ export function parseHintsFromMessage(text: string): {
     }
   }
 
+  // 불완전한 JSON 블록 감지 (파싱되지 않은 JSON이 남아있으면)
+  const hasUnparsedJson = resultText.trim().startsWith('{') && !resultText.trim().endsWith('}');
+
   if (hintContents.length > 0) {
-    return { hintContents, textWithoutHints: resultText };
+    return {
+      hintContents,
+      textWithoutHints: hasUnparsedJson ? '' : resultText // 불완전한 JSON은 숨김
+    };
   }
 
-  return { hintContents: null, textWithoutHints: resultText };
+  return {
+    hintContents: null,
+    textWithoutHints: hasUnparsedJson ? '' : resultText // 불완전한 JSON은 숨김
+  };
 }
 
 /**

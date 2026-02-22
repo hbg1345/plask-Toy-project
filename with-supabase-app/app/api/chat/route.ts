@@ -32,12 +32,15 @@ export const maxDuration = 30;
 
 const tools: ToolSet = {
   fetchRecentContests: tool({
-    description: `Get list of recent AtCoder contests
-    example: fetchRecentContests({})`,
-    inputSchema: z.object({}),
-    execute: async () => {
-      console.log("=== fetchRecentContests called ===");
-      return await getRecentContests();
+    description: `Get list of recent AtCoder contests that have already started.
+    example: fetchRecentContests({limit: 10})
+    Returns all recent contests if limit is not specified.`,
+    inputSchema: z.object({
+      limit: z.number().optional().describe("Maximum number of contests to return (optional)"),
+    }),
+    execute: async ({ limit }) => {
+      console.log("=== fetchRecentContests called ===", { limit });
+      return await getRecentContests(limit);
     },
   }),
   fetchUpcomingcontests: tool({
@@ -124,9 +127,14 @@ Examples:
     }),
 
     linkProblemToChat: tool({
-      description: `Link a problem to the current chat session. Use this when user confirms which problem they want to discuss.
-IMPORTANT: Call this tool after user confirms the problem from search results.
-This will set the problem URL for the current chat so you can fetch its metadata.
+      description: `Link a problem to the current chat session.
+
+Use this tool when user mentions a problem with clear identification:
+- Specific problem ID: "abc314_a", "arc123_b"
+- Contest + problem: "ABC 314 A번", "ARC 123의 B번 문제"
+- Direct URL mention
+
+DO NOT use this for vague descriptions like "어려운 문제", "DP 문제" - use searchProblems instead.
 
 Example: linkProblemToChat({problemId: "abc314_a"})`,
       inputSchema: z.object({
@@ -161,6 +169,7 @@ Example: linkProblemToChat({problemId: "abc314_a"})`,
               hints: null, // 문제 변경 시 힌트 초기화
             })
             .eq("id", chatId)
+            .eq("user_id", user.id) // 보안: 본인 채팅만 수정 가능
             .select();
 
           console.log("DB update result:", { data, error, count });
@@ -429,9 +438,11 @@ ${problemTitle ? `현재 문제: "${problemTitle}"
 - 이 문제에 대해 답변하세요
 - "어떤 문제?", "문제 이름?" 질문 금지` : `문제가 연결되지 않음.`}
 
-- 사용자가 다른 문제를 언급하면 searchProblems 도구 사용
-- 검색 결과가 나오면 사용자가 UI에서 직접 선택함
-- linkProblemToChat 호출하지 마세요 (UI가 처리함)
+사용자가 문제를 언급하는 경우:
+1. 명확한 문제 식별 (예: "abc314_a", "ABC 314 A번", "arc123의 B번")
+   → linkProblemToChat 도구로 즉시 연결
+2. 애매한 표현 (예: "그 어려운 문제", "DP 문제", "sum이 들어간 문제")
+   → searchProblems 도구로 검색하고, 사용자가 UI에서 선택
 
 응답 형식 상세:
 - 새 힌트: {"type": "hint", "content": "1-2문장 힌트"}
