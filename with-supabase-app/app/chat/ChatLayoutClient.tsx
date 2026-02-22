@@ -91,11 +91,22 @@ export function ChatLayoutClient({ children }: ChatLayoutClientProps) {
   return (
     <div className={`relative w-full h-full flex flex-col overflow-hidden transition-all duration-300 ${sidebarOpen ? 'pl-64' : 'pl-12'}`}>
       {/* 메인 콘텐츠 영역 */}
-      <div className="flex-1 min-h-0">
-        {problemUrl && layoutMode !== "chat-only" ? (
-          layoutMode === "problem-only" ? (
-            <ProblemPanel problemUrl={problemUrl} />
-          ) : (
+      <div className="flex-1 min-h-0 relative">
+        {/* chat-only 또는 problem-only 모드 */}
+        <div className={problemUrl && layoutMode === "both" ? "hidden h-full" : "h-full flex"}>
+          {problemUrl && layoutMode === "problem-only" && (
+            <div className="flex-1 h-full">
+              <ProblemPanel problemUrl={problemUrl} />
+            </div>
+          )}
+          <div className={layoutMode === "problem-only" ? "hidden" : "flex-1 h-full"}>
+            {children}
+          </div>
+        </div>
+
+        {/* both 모드 */}
+        {problemUrl && layoutMode === "both" && (
+          <div className="h-full">
             <Group orientation="horizontal" className="h-full">
               <Panel id="problem-panel" defaultSize="50%" minSize="30%">
                 <ProblemPanel problemUrl={problemUrl} />
@@ -104,12 +115,10 @@ export function ChatLayoutClient({ children }: ChatLayoutClientProps) {
                 <GripVertical className="h-4 w-4 text-foreground" />
               </Separator>
               <Panel id="chat-panel" defaultSize="50%" minSize="30%">
-                {children}
+                <div className="h-full">{children}</div>
               </Panel>
             </Group>
-          )
-        ) : (
-          children
+          </div>
         )}
       </div>
 

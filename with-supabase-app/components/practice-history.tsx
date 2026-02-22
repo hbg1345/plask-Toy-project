@@ -169,9 +169,9 @@ export function PracticeHistory({ sessions, stats }: PracticeHistoryProps) {
           </div>
         </div>
 
-        {/* 세션 목록 - 그리드 (최대 3행, 내부 스크롤) */}
-        <div className="max-h-[420px] overflow-y-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pr-1">
+        {/* 세션 목록 - 그리드 (한 행에 4개, 내부 스크롤) */}
+        <div className="max-h-[500px] overflow-y-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 pr-1">
             {sessions.map((session) => (
               <Link
                 key={session.id}
@@ -247,8 +247,8 @@ export function PracticeHistory({ sessions, stats }: PracticeHistoryProps) {
           </div>
         </div>
 
-        {/* 스크롤 안내 (9개 이상일 때만) */}
-        {sessions.length > 9 && (
+        {/* 스크롤 안내 (12개 이상일 때만) */}
+        {sessions.length > 12 && (
           <p className="text-xs text-center text-foreground">
             ↕ 스크롤하여 더 보기 ({sessions.length}개 기록)
           </p>

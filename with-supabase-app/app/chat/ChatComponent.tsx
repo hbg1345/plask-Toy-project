@@ -73,10 +73,16 @@ const transport = new DefaultChatTransport({
 });
 
 const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoProps) => {
+  const prevChatIdRef = useRef<string | null>(null);
+  const hasLoadedRef = useRef(false);
+
   useEffect(() => {
     console.log("[ChatComponent] MOUNTED");
     return () => {
       console.log("[ChatComponent] UNMOUNTED");
+      // unmount 시 상태 초기화하여 다음 mount 시 DB 로드하도록
+      hasLoadedRef.current = false;
+      prevChatIdRef.current = null;
     };
   }, []);
 
@@ -95,7 +101,6 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
     },
   });
   const { setRefreshTrigger, setProblemUrl: setContextProblemUrl } = useChatLayout();
-  const prevChatIdRef = useRef<string | null>(null);
   const [initialMessage, setInitialMessage] = useState<string | null>(null);
   const [selectedProblemId, setSelectedProblemId] = useState<string | null>(null);
 
@@ -228,22 +233,13 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
       return;
     }
 
-    // 새로 생성된 chatId (null → chatId)면 DB 로드 건너뛰기
-    // (새로 만든 채팅은 DB 로드 불필요, 스트리밍 중인 메시지 보존)
-    if (chatId && prevChatId === null) {
-      console.log("[useEffect chatId] SKIP - newly created chat");
-      prevChatIdRef.current = chatId;
-      return;
-    }
-
     console.log("[useEffect chatId] LOADING from DB...");
 
     if (chatId) {
       setIsLoadingChat(true);
       getChatHistory(chatId).then((chatData) => {
-        if (chatData) {
-          // Message 타입을 useChat이 사용하는 형식으로 변환
-          // parts가 있으면 그대로 사용, 없으면 content를 text로 변환
+        if (chatData && chatData.messages.length > 0) {
+          // 메시지가 있을 때만 설정 (새 채팅은 빈 결과이므로 무시)
           const convertedMessages = chatData.messages.map((msg) => ({
             id: msg.id,
             role: msg.role,
@@ -257,7 +253,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
           setChatTitle(chatData.title || null);
           setSelectedProblemId(null); // 새 채팅 로드 시 선택 초기화
         } else {
-          console.error("Failed to load chat data");
+          console.log("[useEffect chatId] No messages in DB, keeping current messages");
         }
         setIsLoadingChat(false);
       });
