@@ -361,7 +361,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
           backgroundEnabled && status === "ready" ? "opacity-30" : "opacity-0"
         }`}
       >
-        <source src="/generated_video.mp4" type="video/mp4" />
+        <source src="https://fskgibfypuqcmkcosgax.supabase.co/storage/v1/object/public/Solve%20Helper/generated_video.mp4" type="video/mp4" />
       </video>
       <video
         autoPlay
@@ -372,7 +372,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
           backgroundEnabled && status !== "ready" ? "opacity-30" : "opacity-0"
         }`}
       >
-        <source src="/generated_video (1).mp4" type="video/mp4" />
+        <source src="https://fskgibfypuqcmkcosgax.supabase.co/storage/v1/object/public/Solve%20Helper/generated_video%20(1).mp4" type="video/mp4" />
       </video>
 
       {isLoadingChat ? (
