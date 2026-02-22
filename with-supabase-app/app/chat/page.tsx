@@ -46,7 +46,6 @@ function ChatPageContent() {
 
   return (
     <ChatComponent
-      key={selectedChatId || initialProblemId || 'new-chat'}
       chatId={selectedChatId}
       onChatIdChange={handleChatIdChange}
       initialProblemId={initialProblemId}

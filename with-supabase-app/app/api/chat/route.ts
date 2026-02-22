@@ -542,11 +542,14 @@ ${problemTitle ? `현재 문제: "${problemTitle}"
   // 클라이언트 연결 끊겨도 스트림 완료 보장
   result.consumeStream();
 
+  console.log("[API] Sending stream response, chatId:", effectiveChatId);
+
   return result.toUIMessageStreamResponse({
     sendSources: true,
     sendReasoning: true,
     originalMessages: messages,
     onFinish: async ({ messages: finalMessages }) => {
+      console.log("[API] onFinish called, finalMessages count:", finalMessages.length);
       // 서버 사이드에서 채팅 저장
       if (effectiveChatId) {
         await saveChatAfterStream(

@@ -30,7 +30,7 @@ import {
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useChat, type UIMessage } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { CopyIcon, RefreshCcwIcon, AlertCircleIcon } from "lucide-react";
+import { CopyIcon, RefreshCcwIcon, AlertCircleIcon, SquareIcon, XIcon, CornerDownLeftIcon } from "lucide-react";
 import {
   getChatHistory,
 } from "@/app/actions";
@@ -73,12 +73,19 @@ const transport = new DefaultChatTransport({
 });
 
 const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoProps) => {
+  useEffect(() => {
+    console.log("[ChatComponent] MOUNTED");
+    return () => {
+      console.log("[ChatComponent] UNMOUNTED");
+    };
+  }, []);
+
   const [input, setInput] = useState("");
   const [isLoadingChat, setIsLoadingChat] = useState(false);
   const [problemUrl, setProblemUrl] = useState<string | null>(null);
   const [chatTitle, setChatTitle] = useState<string | null>(null);
   const [tokenLimitExceeded, setTokenLimitExceeded] = useState(false);
-  const { messages, setMessages, sendMessage, status, regenerate } = useChat({
+  const { messages, setMessages, sendMessage, status, regenerate, stop } = useChat({
     transport,
     onError: (err) => {
       // 429 에러 (토큰 제한 초과) 감지
@@ -208,17 +215,28 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
   useEffect(() => {
     const prevChatId = prevChatIdRef.current;
 
+    console.log("[useEffect chatId] Triggered:", {
+      chatId,
+      prevChatId,
+      messagesLength: messages.length,
+      status
+    });
+
     // chatId가 변경되지 않았으면 무시
     if (chatId === prevChatId) {
+      console.log("[useEffect chatId] SKIP - chatId unchanged");
       return;
     }
 
-    // 새로 생성된 chatId (null → chatId) + 이미 메시지가 있으면 DB 로드 건너뛰기
-    // (스트리밍 중인 메시지가 덮어써지는 것 방지)
-    if (chatId && prevChatId === null && messages.length > 0) {
+    // 새로 생성된 chatId (null → chatId)면 DB 로드 건너뛰기
+    // (새로 만든 채팅은 DB 로드 불필요, 스트리밍 중인 메시지 보존)
+    if (chatId && prevChatId === null) {
+      console.log("[useEffect chatId] SKIP - newly created chat");
       prevChatIdRef.current = chatId;
       return;
     }
+
+    console.log("[useEffect chatId] LOADING from DB...");
 
     if (chatId) {
       setIsLoadingChat(true);
@@ -245,6 +263,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
       });
     } else if (!chatId) {
       // chatId가 null/undefined인 경우 - 상태 초기화만 (새 채팅은 사이드바에서 생성)
+      console.log("[useEffect chatId] RESETTING - chatId is null/undefined");
       setMessages([]);
       setProblemUrl(null);
       setChatTitle(null);
@@ -288,6 +307,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
 
   // 서버에서 새 chatId가 metadata로 전달되면 감지
   useEffect(() => {
+    console.log("[useEffect metadata] Check:", { chatId, messagesLength: messages.length });
     if (chatId || messages.length === 0) return;
 
     // assistant 메시지의 metadata에서 newChatId 확인
@@ -295,7 +315,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
       if (msg.role === "assistant" && msg.metadata) {
         const metadata = msg.metadata as { newChatId?: string };
         if (metadata.newChatId) {
-          console.log("Received new chatId from server:", metadata.newChatId);
+          console.log("Received new chatId from server:", metadata.newChatId, "messages.length:", messages.length);
           onChatIdChange?.(metadata.newChatId);
           setRefreshTrigger((prev) => prev + 1);
           return;
@@ -342,24 +362,14 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
           <Conversation className="flex-1 min-h-0">
             <ConversationContent>
               {messages.map((message, messageIndex) => {
-                // 스트리밍 중인 마지막 메시지는 완료될 때까지 숨김
-                const isLastMessage = messageIndex === messages.length - 1;
-                const isStreaming = status === "streaming";
-
-                if (isLastMessage && message.role === "assistant") {
-                  console.log("[DEBUG] Last assistant message:", {
-                    status,
-                    isStreaming,
-                    chatId,
-                    messageId: message.id,
-                    willHide: isStreaming
-                  });
-                }
-
-                if (isLastMessage && isStreaming && message.role === "assistant") {
-                  return null; // 스트리밍 중에는 숨김
-                }
-
+                console.log("[DEBUG] Rendering message:", {
+                  index: messageIndex,
+                  role: message.role,
+                  id: message.id,
+                  partsCount: message.parts?.length,
+                  chatId,
+                  status
+                });
                 return (
                 <div key={`${message.id}-${messageIndex}`}>
                   {message.role === "assistant" &&
@@ -466,7 +476,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
                 </div>
               );
               })}
-              {status === "submitted" && (
+              {status !== "ready" && (
                 <div className="flex items-center gap-1 py-4 text-foreground">
                   <span className="text-sm">생각 중</span>
                   <span className="flex gap-0.5">
@@ -511,7 +521,24 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
                 </PromptInputActionMenuContent>
               </PromptInputActionMenu>
             </PromptInputTools>
-            <PromptInputSubmit disabled={tokenLimitExceeded || (!input && !status)} status={status} />
+            <PromptInputSubmit
+              disabled={tokenLimitExceeded || (!input && status === "ready")}
+              status={status}
+              onClick={(e) => {
+                if (status !== "ready") {
+                  e.preventDefault();
+                  stop();
+                }
+              }}
+            >
+              {status !== "ready" && status !== "error" ? (
+                <SquareIcon className="size-4" />
+              ) : status === "error" ? (
+                <XIcon className="size-4" />
+              ) : (
+                <CornerDownLeftIcon className="size-4" />
+              )}
+            </PromptInputSubmit>
           </PromptInputFooter>
         </PromptInput>
       </div>
