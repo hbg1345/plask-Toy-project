@@ -342,21 +342,46 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
     setInput("");
   };
   return (
-    <div className="w-full h-full flex flex-col overflow-hidden max-w-4xl mx-auto">
+    <div className="w-full h-full flex flex-col overflow-hidden max-w-4xl mx-auto relative">
+      {/* Background Videos - fade between them */}
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className={`absolute inset-0 w-full h-full object-cover -z-10 transition-opacity duration-500 ${
+          status === "ready" ? "opacity-30" : "opacity-0"
+        }`}
+      >
+        <source src="/generated_video.mp4" type="video/mp4" />
+      </video>
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className={`absolute inset-0 w-full h-full object-cover -z-10 transition-opacity duration-500 ${
+          status !== "ready" ? "opacity-30" : "opacity-0"
+        }`}
+      >
+        <source src="/generated_video (1).mp4" type="video/mp4" />
+      </video>
+
       {isLoadingChat ? (
         <div className="flex-1 flex items-center justify-center">
           <Loader />
         </div>
       ) : (
         <>
-          {/* 힌트 패널 - hints가 있고 문제 전환 직후가 아닐 때만 표시 */}
-          {computedHints && computedHints.length > 0 && selectedProblemId === null && (
-            <div className="flex-shrink-0 px-4 py-3 border-b bg-muted/20">
-              <HintsCard key={problemUrl ?? chatId} hints={computedHints} />
-            </div>
-          )}
-          <Conversation className="flex-1 min-h-0">
-            <ConversationContent>
+          <div className="flex-1 min-h-0 flex flex-col relative z-10">
+            {/* 힌트 패널 - hints가 있고 문제 전환 직후가 아닐 때만 표시 */}
+            {computedHints && computedHints.length > 0 && selectedProblemId === null && (
+              <div className="flex-shrink-0 px-4 py-3 border-b bg-muted/20">
+                <HintsCard key={problemUrl ?? chatId} hints={computedHints} />
+              </div>
+            )}
+            <Conversation className="flex-1 min-h-0">
+              <ConversationContent>
               {messages.map((message, messageIndex) => {
                 console.log("[DEBUG] Rendering message:", {
                   index: messageIndex,
@@ -485,9 +510,10 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
             </ConversationContent>
             <ConversationScrollButton />
           </Conversation>
+          </div>
         </>
       )}
-      <div className="flex-shrink-0 p-4">
+      <div className="flex-shrink-0 p-4 relative z-10">
         {tokenLimitExceeded && (
           <div className="mb-3 p-3 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-2 text-destructive text-sm">
             <AlertCircleIcon className="size-4 flex-shrink-0" />

@@ -74,19 +74,19 @@ export function HeroLanding({ isLoggedIn }: HeroLandingProps) {
   }, [handleKeyDown]);
 
   return (
-    <div className="min-h-[calc(100vh-56px)] w-full relative flex flex-col items-center justify-center p-4 overflow-hidden">
+    <div className="h-screen w-full relative flex flex-col items-center justify-center p-4 overflow-hidden">
       {/* Pixelated background image */}
       <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat pixelated-bg"
+        className="absolute -top-12 left-0 right-0 bottom-0 bg-cover bg-center bg-no-repeat pixelated-bg"
         style={{
           backgroundImage: "url('/hero-bg.jpg')",
           filter: "contrast(1.1) saturate(1.2)",
         }}
       />
       {/* Dot pattern overlay for pixel art effect */}
-      <div className="absolute inset-0 dot-overlay" />
+      <div className="absolute -top-12 left-0 right-0 bottom-0 dot-overlay" />
       {/* Dark overlay for better text readability */}
-      <div className="absolute inset-0 bg-black/20" />
+      <div className="absolute -top-12 left-0 right-0 bottom-0 bg-black/20" />
 
       {/* Title */}
       <motion.div

@@ -13,8 +13,8 @@ interface CollapsibleHeaderProps {
 
 export function CollapsibleHeader({ authButton, mobileAuthButton }: CollapsibleHeaderProps) {
   return (
-    <header className="sticky top-0 z-50 w-full bg-pixel-dark border-b-4 border-pixel-navy">
-      <div className="container flex max-w-5xl items-center mx-auto px-4 h-14">
+    <header className="sticky top-0 z-50 w-full bg-pixel-dark">
+      <div className="container flex max-w-5xl items-center mx-auto px-4 h-12">
         {/* Logo */}
         <Link href="/" className="mr-6 flex items-center gap-2 group">
           <div className="w-5 h-5 bg-pixel-yellow" />
