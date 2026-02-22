@@ -74,8 +74,8 @@ const tools: ToolSet = {
   }),
 };
 
-// chatId를 클로저로 캡처하기 위해 동적으로 생성하는 함수
-function createDynamicTools(supabase: Awaited<ReturnType<typeof createClient>>, chatId: string | undefined): ToolSet {
+// chatId와 userId를 클로저로 캡처하기 위해 동적으로 생성하는 함수
+function createDynamicTools(supabase: Awaited<ReturnType<typeof createClient>>, chatId: string | undefined, userId: string): ToolSet {
   return {
     searchProblems: tool({
       description: `Search for AtCoder problems in the database by keyword or difficulty.
@@ -169,7 +169,7 @@ Example: linkProblemToChat({problemId: "abc314_a"})`,
               hints: null, // 문제 변경 시 힌트 초기화
             })
             .eq("id", chatId)
-            .eq("user_id", user.id) // 보안: 본인 채팅만 수정 가능
+            .eq("user_id", userId) // 보안: 본인 채팅만 수정 가능
             .select();
 
           console.log("DB update result:", { data, error, count });
@@ -534,8 +534,8 @@ ${problemTitle ? `현재 문제: "${problemTitle}"
     systemMessage += `\n\n문제 URL: ${detectedProblemUrl}\nfetchTaskMetadata 도구로 문제 정보를 가져오세요.`;
   }
 
-  // 동적 tool 생성 (chatId 캡처)
-  const dynamicTools = createDynamicTools(supabase, effectiveChatId);
+  // 동적 tool 생성 (chatId, userId 캡처)
+  const dynamicTools = createDynamicTools(supabase, effectiveChatId, user.id);
   const allTools: ToolSet = { ...tools, ...dynamicTools };
 
   const convertedMessages = await convertToModelMessages(messagesToSend);
