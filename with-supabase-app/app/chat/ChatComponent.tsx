@@ -1,4 +1,6 @@
 "use client";
+import { Button } from "@/components/ui/button";
+import { useAnimeMode } from "@/components/anime-mode-context";
 import {
   Conversation,
   ConversationContent,
@@ -13,24 +15,16 @@ import {
 } from "@/components/ai-elements/message";
 import {
   PromptInput,
-  PromptInputActionAddAttachments,
-  PromptInputActionMenu,
-  PromptInputActionMenuContent,
-  PromptInputActionMenuTrigger,
-  PromptInputAttachment,
-  PromptInputAttachments,
   PromptInputBody,
-  PromptInputHeader,
   type PromptInputMessage,
   PromptInputSubmit,
   PromptInputTextarea,
   PromptInputFooter,
-  PromptInputTools,
 } from "@/components/ai-elements/prompt-input";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useChat, type UIMessage } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { CopyIcon, RefreshCcwIcon, AlertCircleIcon, SquareIcon, XIcon, CornerDownLeftIcon } from "lucide-react";
+import { CopyIcon, RefreshCcwIcon, AlertCircleIcon, SquareIcon, XIcon, CornerDownLeftIcon, VideoIcon } from "lucide-react";
 import {
   getChatHistory,
 } from "@/app/actions";
@@ -63,16 +57,21 @@ interface ChatBotDemoProps {
 // 마지막 메시지만 서버로 전송하는 transport (AI SDK 6 패턴)
 const transport = new DefaultChatTransport({
   api: "/api/chat",
-  prepareSendMessagesRequest: ({ messages, body }) => ({
-    body: {
+  prepareSendMessagesRequest: ({ messages, body }) => {
+    console.log("[Transport] prepareSendMessagesRequest body:", body);
+    const requestBody = {
       message: messages[messages.length - 1],
       chatId: body?.chatId,
       problemUrl: body?.problemUrl,
-    },
-  }),
+      isAnimeMode: body?.isAnimeMode,
+    };
+    console.log("[Transport] Sending requestBody:", requestBody);
+    return { body: requestBody };
+  },
 });
 
 const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoProps) => {
+  const { isAnimeMode } = useAnimeMode();
   const prevChatIdRef = useRef<string | null>(null);
   const hasLoadedRef = useRef(false);
 
@@ -91,6 +90,13 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
   const [problemUrl, setProblemUrl] = useState<string | null>(null);
   const [chatTitle, setChatTitle] = useState<string | null>(null);
   const [tokenLimitExceeded, setTokenLimitExceeded] = useState(false);
+  const [backgroundEnabled, setBackgroundEnabled] = useState(isAnimeMode);
+
+  // 애니 모드 변경 시 배경도 함께 변경
+  useEffect(() => {
+    setBackgroundEnabled(isAnimeMode);
+  }, [isAnimeMode]);
+
   const { messages, setMessages, sendMessage, status, regenerate, stop } = useChat({
     transport,
     onError: (err) => {
@@ -327,6 +333,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
       return;
     }
 
+    console.log("[DEBUG] Sending message with isAnimeMode:", isAnimeMode);
     sendMessage(
       {
         text: message.text || "Sent with attachments",
@@ -336,6 +343,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
         body: {
           chatId: chatId || undefined,
           problemUrl: problemUrl || undefined,
+          isAnimeMode,
         },
       }
     );
@@ -350,7 +358,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
         muted
         playsInline
         className={`absolute inset-0 w-full h-full object-cover -z-10 transition-opacity duration-500 ${
-          status === "ready" ? "opacity-30" : "opacity-0"
+          backgroundEnabled && status === "ready" ? "opacity-30" : "opacity-0"
         }`}
       >
         <source src="/generated_video.mp4" type="video/mp4" />
@@ -361,7 +369,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
         muted
         playsInline
         className={`absolute inset-0 w-full h-full object-cover -z-10 transition-opacity duration-500 ${
-          status !== "ready" ? "opacity-30" : "opacity-0"
+          backgroundEnabled && status !== "ready" ? "opacity-30" : "opacity-0"
         }`}
       >
         <source src="/generated_video (1).mp4" type="video/mp4" />
@@ -376,8 +384,17 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
           <div className="flex-1 min-h-0 flex flex-col relative z-10">
             {/* 힌트 패널 - hints가 있고 문제 전환 직후가 아닐 때만 표시 */}
             {computedHints && computedHints.length > 0 && selectedProblemId === null && (
-              <div className="flex-shrink-0 px-4 py-3 border-b bg-muted/20">
+              <div className="flex-shrink-0 px-4 py-3 border-b bg-muted/20 flex items-start justify-between gap-4">
                 <HintsCard key={problemUrl ?? chatId} hints={computedHints} />
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => setBackgroundEnabled(!backgroundEnabled)}
+                  aria-label={backgroundEnabled ? "배경 끄기" : "배경 켜기"}
+                  className={backgroundEnabled ? "" : "opacity-40"}
+                >
+                  <VideoIcon className="size-4" />
+                </Button>
               </div>
             )}
             <Conversation className="flex-1 min-h-0">
@@ -520,12 +537,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
             <span>일일 토큰 사용량을 초과했습니다. 내일 다시 시도해주세요.</span>
           </div>
         )}
-        <PromptInput onSubmit={handleSubmit} globalDrop={true} multiple={true}>
-          <PromptInputHeader>
-            <PromptInputAttachments>
-              {(attachment) => <PromptInputAttachment data={attachment} />}
-            </PromptInputAttachments>
-          </PromptInputHeader>
+        <PromptInput onSubmit={handleSubmit}>
           <PromptInputBody>
             <PromptInputTextarea
               onChange={(e) => setInput(e.target.value)}
@@ -535,14 +547,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
             />
           </PromptInputBody>
           <PromptInputFooter>
-            <PromptInputTools>
-              <PromptInputActionMenu>
-                <PromptInputActionMenuTrigger />
-                <PromptInputActionMenuContent>
-                  <PromptInputActionAddAttachments />
-                </PromptInputActionMenuContent>
-              </PromptInputActionMenu>
-            </PromptInputTools>
+            <div />
             <PromptInputSubmit
               disabled={tokenLimitExceeded || (!input && status === "ready")}
               status={status}

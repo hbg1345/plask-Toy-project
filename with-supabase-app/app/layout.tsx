@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
+import { AnimeModeProvider } from "@/components/anime-mode-context";
 import "katex/dist/katex.min.css";
 import "./globals.css";
 
@@ -34,7 +35,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <AnimeModeProvider>
+            {children}
+          </AnimeModeProvider>
         </ThemeProvider>
       </body>
     </html>
