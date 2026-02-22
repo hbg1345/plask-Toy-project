@@ -8,12 +8,14 @@ interface AppLayoutProps {
   children: React.ReactNode;
   contentWrapperClassName?: string;
   outerWrapperClassName?: string;
+  fixedHeight?: boolean;
 }
 
 export function AppLayout({
   children,
   contentWrapperClassName,
   outerWrapperClassName,
+  fixedHeight = false,
 }: AppLayoutProps) {
   const authButton = !hasEnvVars ? (
     <EnvVarWarning />
@@ -32,7 +34,7 @@ export function AppLayout({
   );
 
   return (
-    <main className="min-h-screen flex flex-col">
+    <main className={fixedHeight ? "h-screen flex flex-col overflow-hidden" : "min-h-screen flex flex-col"}>
       <CollapsibleHeader authButton={authButton} mobileAuthButton={mobileAuthButton} />
 
       {/* Content */}

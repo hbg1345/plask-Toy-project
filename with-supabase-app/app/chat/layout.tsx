@@ -10,8 +10,9 @@ export default function ChatLayout({
 }) {
   return (
     <AppLayout
-      contentWrapperClassName="flex flex-col p-0 w-full h-[calc(100vh-4rem-3rem)]"
-      outerWrapperClassName="flex w-full flex-col items-center"
+      fixedHeight={true}
+      contentWrapperClassName="flex flex-col p-0 w-full h-[calc(100vh-3.5rem)] overflow-hidden"
+      outerWrapperClassName="flex w-full flex-col items-center h-[calc(100vh-3.5rem)] overflow-hidden"
     >
       <Suspense
         fallback={
