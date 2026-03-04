@@ -76,7 +76,7 @@ export function TokenUsageCard() {
           </Tabs>
         </div>
         <CardDescription>
-          {activeTab === "month" ? "이번 달의" : "전체"} Gemini API 토큰 사용 현황
+          {activeTab === "month" ? "이번 달의" : "전체"} AI 토큰 사용 현황
         </CardDescription>
       </CardHeader>
       <CardContent>
