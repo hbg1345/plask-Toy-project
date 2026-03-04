@@ -9,25 +9,25 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getTodayTokenUsage, getTotalTokenUsage, TokenUsage } from "@/app/actions";
+import { getMonthlyTokenUsage, getTotalTokenUsage, TokenUsage } from "@/app/actions";
 import { Zap } from "lucide-react";
 
-type UsageTab = "today" | "total";
+type UsageTab = "month" | "total";
 
 export function TokenUsageCard() {
-  const [todayUsage, setTodayUsage] = useState<TokenUsage | null>(null);
+  const [monthUsage, setMonthUsage] = useState<TokenUsage | null>(null);
   const [totalUsage, setTotalUsage] = useState<TokenUsage | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<UsageTab>("today");
+  const [activeTab, setActiveTab] = useState<UsageTab>("month");
 
   useEffect(() => {
     async function fetchUsage() {
       try {
-        const [today, total] = await Promise.all([
-          getTodayTokenUsage(),
+        const [month, total] = await Promise.all([
+          getMonthlyTokenUsage(),
           getTotalTokenUsage(),
         ]);
-        setTodayUsage(today);
+        setMonthUsage(month);
         setTotalUsage(total);
       } catch (error) {
         console.error("Failed to fetch token usage:", error);
@@ -38,7 +38,7 @@ export function TokenUsageCard() {
     fetchUsage();
   }, []);
 
-  const usage = activeTab === "today" ? todayUsage : totalUsage;
+  const usage = activeTab === "month" ? monthUsage : totalUsage;
 
   if (loading) {
     return (
@@ -66,8 +66,8 @@ export function TokenUsageCard() {
           </CardTitle>
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as UsageTab)}>
             <TabsList className="h-8">
-              <TabsTrigger value="today" className="text-xs px-3">
-                오늘
+              <TabsTrigger value="month" className="text-xs px-3">
+                이번 달
               </TabsTrigger>
               <TabsTrigger value="total" className="text-xs px-3">
                 전체
@@ -76,7 +76,7 @@ export function TokenUsageCard() {
           </Tabs>
         </div>
         <CardDescription>
-          {activeTab === "today" ? "오늘의" : "전체"} Gemini API 토큰 사용 현황
+          {activeTab === "month" ? "이번 달의" : "전체"} Gemini API 토큰 사용 현황
         </CardDescription>
       </CardHeader>
       <CardContent>
