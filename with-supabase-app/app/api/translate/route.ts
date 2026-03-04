@@ -37,7 +37,6 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (cached?.translated_content) {
-        console.log("Translation cache hit:", problemUrl, targetLang);
         return NextResponse.json({
           translated: cached.translated_content,
           targetLang,
@@ -119,8 +118,6 @@ Return ONLY the translated HTML without any explanation.`;
 
       if (upsertError) {
         console.error("Failed to cache translation:", upsertError);
-      } else {
-        console.log("Translation cached:", problemUrl, targetLang);
       }
     }
 

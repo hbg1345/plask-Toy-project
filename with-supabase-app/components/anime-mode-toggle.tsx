@@ -8,9 +8,7 @@ export function AnimeModeToggle() {
   const { isAnimeMode, setIsAnimeMode } = useAnimeMode();
 
   const handleToggle = () => {
-    const newMode = !isAnimeMode;
-    console.log("[AnimeModeToggle] Switching mode:", isAnimeMode, "->", newMode);
-    setIsAnimeMode(newMode);
+    setIsAnimeMode(!isAnimeMode);
   };
 
   return (

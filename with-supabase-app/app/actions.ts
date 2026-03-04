@@ -26,7 +26,6 @@ export async function updatAtcoderHandle(handle: string): Promise<{ success: boo
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;
   if (!claims) {
-        console.log("User not authenticated");
         return { success: false, rating: null, handle: null };
     }
   const userId = claims.sub as string;
@@ -54,20 +53,17 @@ export async function updatAtcoderHandle(handle: string): Promise<{ success: boo
           }
         }
 
-        console.log(userName, userRating);
     const { error } = await supabase
       .from("user_info")
       .update({ atcoder_handle: userName, rating: userRating })
         .eq("id", userId);
-        console.log("userid", userId);
         if (error) {
-            console.log(error);
             return { success: false, rating: null, handle: null };
         }
 
         return { success: true, rating: userRating, handle: userName };
     } catch (error) {
-        console.log("Failed to fetch Atcoder user info:", error);
+        console.error("Failed to fetch Atcoder user info:", error);
         return { success: false, rating: null, handle: null };
     }
 }
@@ -182,8 +178,6 @@ export async function getSolvedProblems(atcoderHandle: string): Promise<SolvedPr
       }
     }
 
-    console.log("[getSolvedProblems] Total fetched:", allCachedProblems.length);
-
     // 캐시가 있으면 사용
     if (allCachedProblems.length > 0) {
       return enrichProblemsWithInfo(allCachedProblems, supabase);
@@ -210,8 +204,6 @@ async function fetchAndEnrichProblems(atcoderHandle: string, userId: string | nu
 
   // userId가 있으면 DB에 저장
   if (userId) {
-    console.log("[fetchAndEnrichProblems] Saving", apiProblems.length, "problems to DB");
-
     // 기존 데이터 삭제 후 새로 삽입
     await supabase
       .from("user_solved_problems")
@@ -365,13 +357,13 @@ export async function refreshAtcoderRating(): Promise<number | null> {
       .eq("id", userId);
 
     if (updateError) {
-      console.log("Failed to update rating:", updateError);
+      console.error("Failed to update rating:", updateError);
       return null;
     }
 
     return userRating;
   } catch (error) {
-    console.log("Failed to refresh AtCoder rating:", error);
+    console.error("Failed to refresh AtCoder rating:", error);
     return null;
   }
 }
@@ -384,29 +376,19 @@ export async function saveChatHistory(
   updateTitle: boolean = true,
   hints?: Hint[] | null
 ) {
-  console.log("saveChatHistory called", {
-    chatId,
-    title,
-    messagesCount: messages.length,
-    hintsCount: hints?.length,
-  });
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;
   if (!claims) {
-    console.log("User not authenticated");
     return null;
   }
   const userId = claims.sub as string;
-  console.log("User authenticated", { userId });
 
   try {
     const messagesJson = JSON.stringify(messages);
-    console.log("Messages JSON length:", messagesJson.length);
 
     if (chatId) {
       // 기존 채팅 업데이트
-      console.log("Updating existing chat", { chatId, updateTitle });
       const updateData: {
         messages: string;
         title?: string;
@@ -434,11 +416,9 @@ export async function saveChatHistory(
         console.error("Failed to update chat history:", error);
         return null;
       }
-      console.log("Chat updated successfully", { id: data.id });
       return data.id;
     } else {
       // 새 채팅 생성
-      console.log("Creating new chat", { userId, title });
       const insertData: {
         user_id: string;
         messages: string;
@@ -466,7 +446,6 @@ export async function saveChatHistory(
         console.error("Failed to create chat history:", error);
         return null;
       }
-      console.log("Chat created successfully", { id: data.id });
       return data.id;
     }
   } catch (error) {
@@ -486,7 +465,6 @@ export async function getChatHistoryList(): Promise<ChatHistoryItem[]> {
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;
   if (!claims) {
-    console.log("User not authenticated");
     return [];
   }
   const userId = claims.sub as string;
@@ -516,7 +494,6 @@ export async function getChatByProblemUrl(
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;
   if (!claims) {
-    console.log("User not authenticated");
     return null;
   }
   const userId = claims.sub as string;
@@ -553,7 +530,6 @@ export async function getChatHistory(
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;
   if (!claims) {
-    console.log("User not authenticated");
     return null;
   }
   const userId = claims.sub as string;
@@ -610,7 +586,6 @@ export async function deleteChatHistory(chatId: string): Promise<boolean> {
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;
   if (!claims) {
-    console.log("User not authenticated");
     return false;
   }
   const userId = claims.sub as string;
@@ -651,7 +626,6 @@ export async function deleteChatHistory(chatId: string): Promise<boolean> {
       return false;
     }
 
-    console.log("Chat deleted successfully:", { chatId });
     return true;
   } catch (error) {
     console.error("Failed to delete chat history:", error);
@@ -768,9 +742,9 @@ export interface TokenUsageHistory {
 }
 
 /**
- * 오늘의 토큰 사용량 조회
+ * 이번 달 토큰 사용량 조회
  */
-export async function getTodayTokenUsage(): Promise<TokenUsage> {
+export async function getMonthlyTokenUsage(): Promise<TokenUsage> {
   const supabase = await createClient();
   const { data: claimsData } = await supabase.auth.getClaims();
   const claims = claimsData?.claims;
@@ -785,18 +759,19 @@ export async function getTodayTokenUsage(): Promise<TokenUsage> {
   }
 
   const userId = claims.sub as string;
-  const today = new Date().toISOString().split("T")[0];
+  const monthStart = new Date();
+  monthStart.setUTCDate(1);
+  monthStart.setUTCHours(0, 0, 0, 0);
 
   try {
     const { data, error } = await supabase
       .from("token_usage")
       .select("input_tokens, output_tokens, total_tokens")
       .eq("user_id", userId)
-      .gte("created_at", `${today}T00:00:00`)
-      .lt("created_at", `${today}T23:59:59.999`);
+      .gte("created_at", monthStart.toISOString());
 
     if (error) {
-      console.error("Failed to get token usage:", error);
+      console.error("Failed to get monthly token usage:", error);
       return {
         total_input_tokens: 0,
         total_output_tokens: 0,
@@ -822,7 +797,7 @@ export async function getTodayTokenUsage(): Promise<TokenUsage> {
 
     return result;
   } catch (error) {
-    console.error("Failed to get token usage:", error);
+    console.error("Failed to get monthly token usage:", error);
     return {
       total_input_tokens: 0,
       total_output_tokens: 0,

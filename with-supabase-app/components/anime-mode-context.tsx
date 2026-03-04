@@ -21,10 +21,8 @@ export function AnimeModeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setIsAnimeMode = (value: boolean) => {
-    console.log("[AnimeModeContext] Setting isAnimeMode to:", value);
     setIsAnimeModeState(value);
     localStorage.setItem("animeMode", String(value));
-    console.log("[AnimeModeContext] Updated localStorage:", localStorage.getItem("animeMode"));
   };
 
   return (

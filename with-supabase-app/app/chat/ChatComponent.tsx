@@ -58,14 +58,12 @@ interface ChatBotDemoProps {
 const transport = new DefaultChatTransport({
   api: "/api/chat",
   prepareSendMessagesRequest: ({ messages, body }) => {
-    console.log("[Transport] prepareSendMessagesRequest body:", body);
     const requestBody = {
       message: messages[messages.length - 1],
       chatId: body?.chatId,
       problemUrl: body?.problemUrl,
       isAnimeMode: body?.isAnimeMode,
     };
-    console.log("[Transport] Sending requestBody:", requestBody);
     return { body: requestBody };
   },
 });
@@ -76,9 +74,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
   const hasLoadedRef = useRef(false);
 
   useEffect(() => {
-    console.log("[ChatComponent] MOUNTED");
     return () => {
-      console.log("[ChatComponent] UNMOUNTED");
       // unmount 시 상태 초기화하여 다음 mount 시 DB 로드하도록
       hasLoadedRef.current = false;
       prevChatIdRef.current = null;
@@ -101,7 +97,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
     transport,
     onError: (err) => {
       // 429 에러 (토큰 제한 초과) 감지
-      if (err.message?.includes("429") || err.message?.includes("DAILY_LIMIT_EXCEEDED")) {
+      if (err.message?.includes("429") || err.message?.includes("MONTHLY_LIMIT_EXCEEDED") || err.message?.includes("GLOBAL_BUDGET_EXCEEDED")) {
         setTokenLimitExceeded(true);
       }
     },
@@ -221,20 +217,10 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
   useEffect(() => {
     const prevChatId = prevChatIdRef.current;
 
-    console.log("[useEffect chatId] Triggered:", {
-      chatId,
-      prevChatId,
-      messagesLength: messages.length,
-      status
-    });
-
     // chatId가 변경되지 않았으면 무시
     if (chatId === prevChatId) {
-      console.log("[useEffect chatId] SKIP - chatId unchanged");
       return;
     }
-
-    console.log("[useEffect chatId] LOADING from DB...");
 
     if (chatId) {
       setIsLoadingChat(true);
@@ -254,14 +240,11 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
           setChatTitle(chatData.title || null);
           setHints(chatData.hints ?? null);
           setSelectedProblemId(null); // 새 채팅 로드 시 선택 초기화
-        } else {
-          console.log("[useEffect chatId] No messages in DB, keeping current messages");
         }
         setIsLoadingChat(false);
       });
     } else if (!chatId) {
       // chatId가 null/undefined인 경우 - 상태 초기화만 (새 채팅은 사이드바에서 생성)
-      console.log("[useEffect chatId] RESETTING - chatId is null/undefined");
       setMessages([]);
       setProblemUrl(null);
       setChatTitle(null);
@@ -315,7 +298,6 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
       const metadata = msg.metadata as { newChatId?: string };
 
       if (metadata.newChatId) {
-        console.log("Received new chatId from server:", metadata.newChatId);
         onChatIdChange?.(metadata.newChatId);
         setRefreshTrigger((prev) => prev + 1);
         return;
@@ -365,7 +347,6 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
       return;
     }
 
-    console.log("[DEBUG] Sending message with isAnimeMode:", isAnimeMode);
     sendMessage(
       {
         text: message.text || "Sent with attachments",
@@ -432,14 +413,6 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
             <Conversation className="flex-1 min-h-0">
               <ConversationContent>
               {messages.map((message, messageIndex) => {
-                console.log("[DEBUG] Rendering message:", {
-                  index: messageIndex,
-                  role: message.role,
-                  id: message.id,
-                  partsCount: message.parts?.length,
-                  chatId,
-                  status
-                });
                 return (
                 <div key={`${message.id}-${messageIndex}`}>
                   {message.role === "assistant" &&
@@ -566,7 +539,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
         {tokenLimitExceeded && (
           <div className="mb-3 p-3 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-2 text-destructive text-sm">
             <AlertCircleIcon className="size-4 flex-shrink-0" />
-            <span>일일 토큰 사용량을 초과했습니다. 내일 다시 시도해주세요.</span>
+            <span>월간 토큰 사용량을 초과했습니다. 다음 달에 다시 시도해주세요.</span>
           </div>
         )}
         <PromptInput onSubmit={handleSubmit}>
@@ -575,7 +548,7 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
               onChange={(e) => setInput(e.target.value)}
               value={input}
               disabled={tokenLimitExceeded}
-              placeholder={tokenLimitExceeded ? "일일 토큰 제한 초과" : undefined}
+              placeholder={tokenLimitExceeded ? "토큰 제한 초과" : undefined}
             />
           </PromptInputBody>
           <PromptInputFooter>

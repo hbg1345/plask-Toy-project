@@ -39,7 +39,6 @@ const tools: ToolSet = {
       limit: z.number().optional().describe("Maximum number of contests to return (optional)"),
     }),
     execute: async ({ limit }) => {
-      console.log("=== fetchRecentContests called ===", { limit });
       return await getRecentContests(limit);
     },
   }),
@@ -141,10 +140,6 @@ Example: linkProblemToChat({problemId: "abc314_a"})`,
         problemId: z.string().describe("The problem ID (e.g., 'abc314_a')"),
       }),
       execute: async ({ problemId }) => {
-        console.log("=== linkProblemToChat called ===");
-        console.log("chatId in closure:", chatId);
-        console.log("problemId:", problemId);
-
         const contestId = extractContestId(problemId);
         const problemUrl = `https://atcoder.jp/contests/${contestId}/tasks/${problemId}`;
 
@@ -159,8 +154,6 @@ Example: linkProblemToChat({problemId: "abc314_a"})`,
 
         // chatId가 있으면 DB에 problem_url, title, hints 업데이트
         if (chatId) {
-          console.log("Attempting DB update:", { chatId, problemUrl, title });
-
           const { data, error, count } = await supabase
             .from("chat_history")
             .update({
@@ -172,14 +165,10 @@ Example: linkProblemToChat({problemId: "abc314_a"})`,
             .eq("user_id", userId) // 보안: 본인 채팅만 수정 가능
             .select();
 
-          console.log("DB update result:", { data, error, count });
-
           if (error) {
             console.error("Failed to link problem to chat:", error);
             return { success: false, error: error.message };
           }
-        } else {
-          console.log("chatId is falsy, skipping DB update");
         }
 
         // 문제 메타데이터 가져와서 반환
@@ -216,33 +205,48 @@ export async function POST(req: Request) {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  // 일일 토큰 제한 체크
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // 월간 토큰 제한 체크
+  const GLOBAL_MONTHLY_BUDGET_KRW = 20000;
+  const monthStart = new Date();
+  monthStart.setUTCDate(1);
+  monthStart.setUTCHours(0, 0, 0, 0);
 
-  const [{ data: userInfo }, { data: todayUsage }] = await Promise.all([
+  const [{ data: userInfo }, { data: monthUsage }, { data: globalCost }] = await Promise.all([
     supabase
       .from("user_info")
-      .select("daily_token_limit")
+      .select("monthly_token_limit")
       .eq("id", user.id)
       .single(),
     supabase
       .from("token_usage")
       .select("total_tokens")
       .eq("user_id", user.id)
-      .gte("created_at", today.toISOString()),
+      .gte("created_at", monthStart.toISOString()),
+    supabase.rpc("get_global_monthly_cost"),
   ]);
 
-  const dailyLimit = userInfo?.daily_token_limit ?? 100000;
-  const usedTokens = todayUsage?.reduce((sum, row) => sum + (row.total_tokens || 0), 0) ?? 0;
-
-  if (usedTokens >= dailyLimit) {
+  // 글로벌 예산 체크
+  if ((globalCost ?? 0) >= GLOBAL_MONTHLY_BUDGET_KRW) {
     return Response.json(
       {
-        error: "DAILY_LIMIT_EXCEEDED",
-        message: "일일 토큰 사용량을 초과했습니다.",
+        error: "GLOBAL_BUDGET_EXCEEDED",
+        message: "이번 달 서비스 예산이 초과되었습니다.",
+      },
+      { status: 429 }
+    );
+  }
+
+  // 유저별 월간 제한 체크
+  const monthlyLimit = userInfo?.monthly_token_limit ?? 3500000;
+  const usedTokens = monthUsage?.reduce((sum, row) => sum + (row.total_tokens || 0), 0) ?? 0;
+
+  if (usedTokens >= monthlyLimit) {
+    return Response.json(
+      {
+        error: "MONTHLY_LIMIT_EXCEEDED",
+        message: "월간 토큰 사용량을 초과했습니다.",
         usedTokens,
-        dailyLimit,
+        monthlyLimit,
       },
       { status: 429 }
     );
@@ -256,11 +260,6 @@ export async function POST(req: Request) {
     isAnimeMode = false,
   }: { message: UIMessage; problemUrl?: string; chatId?: string; isAnimeMode?: boolean } =
     await req.json();
-
-  console.log("=== API chat route called ===");
-  console.log("chatId:", chatId);
-  console.log("problemUrl:", problemUrl);
-  console.log("[DEBUG] isAnimeMode:", isAnimeMode);
 
   // 서버에서 이전 메시지 로드 + 새 메시지 합치기
   let previousMessages: UIMessage[] = [];
@@ -283,7 +282,6 @@ export async function POST(req: Request) {
   }
 
   const messages: UIMessage[] = [...previousMessages, message];
-  console.log("messagesCount:", messages.length, "(previous:", previousMessages.length, "+ new: 1)");
 
   // 요약 처리: AI에 보낼 메시지를 줄이고 요약본을 생성
   const { summary, messagesToSend } = await summarizeIfNeeded(
@@ -305,7 +303,6 @@ export async function POST(req: Request) {
       message,
       problemUrl
     ) ?? undefined;
-    console.log("Pre-created new chat:", effectiveChatId);
   }
 
   // problemUrl 결정: 요청 > 기존 DB
@@ -341,8 +338,6 @@ export async function POST(req: Request) {
           .single();
 
         if (problemData?.problem_statement) {
-          // DB에 메타데이터가 있으면 사용
-          console.log("Using cached metadata from DB for:", problemId);
           problemMetadata = {
             title: problemData.title,
             problem_statement: problemData.problem_statement,
@@ -353,8 +348,6 @@ export async function POST(req: Request) {
           };
           editorial = problemData.editorial;
         } else {
-          // 2. DB에 없으면 fetch해서 저장
-          console.log("Fetching metadata from AtCoder for:", problemId);
           const fetchedMetadata = await getTaskMetadata(detectedProblemUrl);
 
           if (typeof fetchedMetadata === 'object' && 'title' in fetchedMetadata) {
@@ -378,7 +371,6 @@ export async function POST(req: Request) {
                 samples: fetchedMetadata.samples,
               })
               .eq("id", problemId);
-            console.log("Saved metadata to DB for:", problemId);
           }
 
           // editorial도 없으면 가져오기
@@ -433,9 +425,6 @@ export async function POST(req: Request) {
 - 존댓말 사용
 - 명확하고 이해하기 쉬운 설명
 예시: "배열을 사용하시면 됩니다", "이 부분을 고려해보세요"`;
-
-  console.log("[DEBUG] characterPrompt selected:", isAnimeMode ? "Luna (Anime Mode)" : "Normal Mode");
-  console.log("[DEBUG] characterPrompt preview:", characterPrompt.substring(0, 100));
 
   let systemMessage = `${characterPrompt}
 
@@ -512,15 +501,7 @@ ${problemTitle ? `현재 문제: "${problemTitle}"
     systemMessage += `\n\n이전 대화 요약:\n${summary}`;
   }
 
-  console.log("Checking problemMetadata condition:", {
-    hasDetectedProblemUrl: !!detectedProblemUrl,
-    hasProblemMetadata: !!problemMetadata,
-    isObject: typeof problemMetadata === 'object',
-    hasTitle: problemMetadata && 'title' in problemMetadata,
-  });
-
   if (detectedProblemUrl && problemMetadata && typeof problemMetadata === 'object' && 'title' in problemMetadata) {
-    console.log("Adding problem info to system message");
     const { title, problem_statement, constraint, samples } = problemMetadata;
 
     const problemInfo = {
@@ -566,14 +547,12 @@ ${problemTitle ? `현재 문제: "${problemTitle}"
         }
 
         // 다음 요청의 요약 트리거용으로 totalTokens 저장
-        console.log("[token] usage:", { input: usage.inputTokens, output: usage.outputTokens, total: usage.totalTokens });
         if (effectiveChatId) {
           await supabase
             .from("chat_history")
             .update({ last_input_tokens: usage.inputTokens || 0 })
             .eq("id", effectiveChatId)
             .eq("user_id", user.id);
-          console.log("[token] Saved last_input_tokens:", usage.inputTokens, "to chat:", effectiveChatId);
         }
       }
     },
@@ -582,14 +561,11 @@ ${problemTitle ? `현재 문제: "${problemTitle}"
   // 클라이언트 연결 끊겨도 스트림 완료 보장
   result.consumeStream();
 
-  console.log("[API] Sending stream response, chatId:", effectiveChatId);
-
   return result.toUIMessageStreamResponse({
     sendSources: true,
     sendReasoning: true,
     originalMessages: messages,
     onFinish: async ({ messages: finalMessages }) => {
-      console.log("[API] onFinish called, finalMessages count:", finalMessages.length);
       // 서버 사이드에서 채팅 저장
       if (effectiveChatId) {
         await saveChatAfterStream(

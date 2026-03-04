@@ -19,7 +19,6 @@ async function UserDetails() {
   }
 
   const userId = claims.sub as string;
-  console.log(userId);
 
   const { data, error } = await supabase
     .from("user_info")
@@ -28,7 +27,6 @@ async function UserDetails() {
     .single();
 
   if (!data || error) {
-    console.log(error?.message);
     return null;
   }
 

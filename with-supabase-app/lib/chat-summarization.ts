@@ -29,18 +29,8 @@ export async function summarizeIfNeeded(
 ): Promise<SummarizeResult> {
   const totalCount = allMessages.length;
 
-  console.log("=== summarizeIfNeeded ===", {
-    chatId,
-    totalMessages: totalCount,
-    lastTotalTokens,
-    threshold: TOKEN_THRESHOLD,
-    hasExistingSummary: !!existingSummary,
-    existingSummaryCount,
-  });
-
   // 이전 요청 토큰이 임계치 이하면 요약 불필요
   if (!lastTotalTokens || lastTotalTokens <= TOKEN_THRESHOLD) {
-    console.log("[summarize] SKIP - tokens below threshold");
     return {
       summary: null,
       messagesToSend: allMessages,
@@ -58,11 +48,8 @@ export async function summarizeIfNeeded(
 
   const recentMessages = allMessages.slice(cutoffIndex);
 
-  console.log("[summarize] TRIGGERED - cutoffIndex:", cutoffIndex, "keeping recent:", recentMessages.length);
-
   // 기존 요약이 cutoffIndex까지 커버하면 재사용
   if (existingSummary && existingSummaryCount !== null && existingSummaryCount >= cutoffIndex) {
-    console.log("[summarize] REUSE existing summary (covers up to", existingSummaryCount, ", cutoff:", cutoffIndex, ")");
     return {
       summary: existingSummary,
       messagesToSend: recentMessages,
@@ -87,15 +74,12 @@ export async function summarizeIfNeeded(
       ? `기존 요약:\n${existingSummary}\n\n추가된 대화:\n${conversationText}\n\n위 기존 요약과 추가된 대화를 합쳐서 하나의 요약으로 만드세요. ${basePrompt}`
       : `${basePrompt}\n\n대화:\n${conversationText}`;
 
-    console.log("[summarize] GENERATING new summary for", messagesToSummarize.length, "messages");
-
     const result = await generateText({
       model: google(SUMMARIZATION_MODEL),
       prompt,
     });
 
     const newSummary = result.text;
-    console.log("[summarize] Generated summary:", newSummary.substring(0, 200), "...");
 
     // DB에 요약 저장
     if (chatId) {
@@ -110,12 +94,9 @@ export async function summarizeIfNeeded(
 
       if (error) {
         console.error("[summarize] Failed to save summary to DB:", error);
-      } else {
-        console.log("[summarize] Summary saved to DB, summary_message_count:", cutoffIndex);
       }
     }
 
-    console.log("[summarize] Sending", recentMessages.length, "recent messages (instead of", totalCount, ")");
     return {
       summary: newSummary,
       messagesToSend: recentMessages,
