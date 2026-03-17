@@ -605,6 +605,14 @@ export async function getCachedProblemsGroupedByContest(
   filter: ContestFilter = "all",
   search: string = ""
 ): Promise<{ grouped: [string, Problem[]][], totalContests: number }> {
+  // service role key가 없으면 캐싱 없이 일반 클라이언트로 fallback
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    const result = await getProblemsGroupedByContest(page, contestsPerPage, filter, search);
+    return {
+      grouped: Array.from(result.grouped.entries()) as [string, Problem[]][],
+      totalContests: result.totalContests,
+    };
+  }
   return _cachedGetProblems(page, contestsPerPage, filter, search);
 }
 
