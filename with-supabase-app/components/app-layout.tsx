@@ -1,7 +1,6 @@
 import { EnvVarWarning } from "@/components/env-var-warning";
 import { AuthButton } from "@/components/auth-button";
 import { hasEnvVars } from "@/lib/utils";
-import { Suspense } from "react";
 import { CollapsibleHeader } from "./collapsible-header";
 
 interface AppLayoutProps {
@@ -17,21 +16,8 @@ export function AppLayout({
   outerWrapperClassName,
   fixedHeight = false,
 }: AppLayoutProps) {
-  const authButton = !hasEnvVars ? (
-    <EnvVarWarning />
-  ) : (
-    <Suspense fallback={<div className="h-6 w-16 bg-pixel-navy animate-pulse" />}>
-      <AuthButton />
-    </Suspense>
-  );
-
-  const mobileAuthButton = !hasEnvVars ? (
-    <EnvVarWarning />
-  ) : (
-    <Suspense fallback={<div className="h-8 w-full bg-pixel-navy animate-pulse" />}>
-      <AuthButton />
-    </Suspense>
-  );
+  const authButton = !hasEnvVars ? <EnvVarWarning /> : <AuthButton />;
+  const mobileAuthButton = !hasEnvVars ? <EnvVarWarning /> : <AuthButton />;
 
   return (
     <main className={fixedHeight ? "h-screen flex flex-col overflow-hidden" : "min-h-screen flex flex-col"}>
