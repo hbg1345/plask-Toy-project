@@ -226,7 +226,6 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
       setIsLoadingChat(true);
       getChatHistory(chatId).then((chatData) => {
         if (chatData && chatData.messages.length > 0) {
-          // 메시지가 있을 때만 설정 (새 채팅은 빈 결과이므로 무시)
           const convertedMessages = chatData.messages.map((msg) => ({
             id: msg.id,
             role: msg.role,
@@ -235,12 +234,17 @@ const ChatBotDemo = ({ chatId, onChatIdChange, initialProblemId }: ChatBotDemoPr
               : [{ type: "text" as const, text: msg.content }],
           })) as UIMessage[];
           setMessages(convertedMessages);
-          // problemUrl, title 저장
           setProblemUrl(chatData.problemUrl || null);
           setChatTitle(chatData.title || null);
           setHints(chatData.hints ?? null);
-          setSelectedProblemId(null); // 새 채팅 로드 시 선택 초기화
+        } else {
+          // 새 채팅이거나 메시지 없음 — 반드시 초기화
+          setMessages([]);
+          setProblemUrl(null);
+          setChatTitle(null);
+          setHints(null);
         }
+        setSelectedProblemId(null);
         setIsLoadingChat(false);
       });
     } else if (!chatId) {
