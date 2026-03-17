@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import {
   collectAllProblemsFromKenkoo,
   populateContestsFromKenkooAPI,
@@ -31,6 +32,8 @@ export async function GET(req: Request) {
     const contestProblems = await populateContestProblemsFromKenkooAPI(supabase);
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+
+    revalidateTag("problems");
 
     return NextResponse.json({
       success: true,

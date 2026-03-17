@@ -1,5 +1,7 @@
 import * as cheerio from "cheerio";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { unstable_cache } from "next/cache";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
@@ -210,12 +212,13 @@ export async function getProblemsGroupedByContest(
   page: number = 1,
   contestsPerPage: number = 30,
   filter: ContestFilter = "all",
-  search: string = ""
+  search: string = "",
+  supabaseClient?: SupabaseClient
 ): Promise<{
   grouped: Map<string, Problem[]>;
   totalContests: number;
 }> {
-  const supabase = await createClient();
+  const supabase = supabaseClient ?? await createClient();
 
   // 필터 패턴 생성
   const getFilterPattern = (f: ContestFilter): string | null => {
@@ -292,7 +295,7 @@ export async function getProblemsGroupedByContest(
       .order("start_epoch_second", { ascending: false });
 
     if (sortError || !sortedContests) {
-      const fallbackResult = await getProblemsGroupedByContestFallback(filter, search);
+      const fallbackResult = await getProblemsGroupedByContestFallback(filter, search, supabase);
       return {
         grouped: fallbackResult,
         totalContests: fallbackResult.size,
@@ -333,7 +336,7 @@ export async function getProblemsGroupedByContest(
       "contests table not found or error occurred, using fallback:",
       countError
     );
-    const fallbackResult = await getProblemsGroupedByContestFallback(filter, search);
+    const fallbackResult = await getProblemsGroupedByContestFallback(filter, search, supabase);
     return {
       grouped: fallbackResult,
       totalContests: fallbackResult.size,
@@ -343,7 +346,7 @@ export async function getProblemsGroupedByContest(
   // contests 테이블이 비어있으면 fallback 사용
   if (totalContests === 0) {
     console.warn("contests table is empty, using fallback");
-    const fallbackResult = await getProblemsGroupedByContestFallback(filter, search);
+    const fallbackResult = await getProblemsGroupedByContestFallback(filter, search, supabase);
     return {
       grouped: fallbackResult,
       totalContests: fallbackResult.size,
@@ -370,7 +373,7 @@ export async function getProblemsGroupedByContest(
 
   if (contestsError) {
     console.error("Failed to fetch contests:", contestsError);
-    const fallbackResult = await getProblemsGroupedByContestFallback(filter, search);
+    const fallbackResult = await getProblemsGroupedByContestFallback(filter, search, supabase);
     return {
       grouped: fallbackResult,
       totalContests: fallbackResult.size,
@@ -410,7 +413,7 @@ async function fetchContestProblems(
   if (cpError || !contestProblems || contestProblems.length === 0) {
     console.error("Failed to fetch contest_problems:", cpError);
     // Fallback 사용
-    const fallbackResult = await getProblemsGroupedByContestFallback(filter, search);
+    const fallbackResult = await getProblemsGroupedByContestFallback(filter, search, supabase);
     return {
       grouped: fallbackResult,
       totalContests: fallbackResult.size,
@@ -480,9 +483,10 @@ async function fetchContestProblems(
  */
 async function getProblemsGroupedByContestFallback(
   filter: ContestFilter = "all",
-  search: string = ""
+  search: string = "",
+  supabaseClient?: SupabaseClient
 ): Promise<Map<string, Problem[]>> {
-  const supabase = await createClient();
+  const supabase = supabaseClient ?? await createClient();
 
   // 필터 패턴 생성
   const getFilterPrefix = (f: ContestFilter): string | null => {
@@ -577,6 +581,32 @@ async function getProblemsGroupedByContestFallback(
  * CREATE INDEX idx_problems_difficulty ON problems(difficulty);
  * CREATE INDEX idx_problems_id ON problems(id);
  */
+
+/**
+ * 캐시된 버전의 getProblemsGroupedByContest.
+ * service role 클라이언트를 사용하여 쿠키 없이 실행 가능하며, 1시간 캐시됩니다.
+ */
+const _cachedGetProblems = unstable_cache(
+  async (page: number, contestsPerPage: number, filter: ContestFilter, search: string) => {
+    const supabase = createServiceRoleClient();
+    const result = await getProblemsGroupedByContest(page, contestsPerPage, filter, search, supabase);
+    return {
+      grouped: Array.from(result.grouped.entries()) as [string, Problem[]][],
+      totalContests: result.totalContests,
+    };
+  },
+  ["problems-grouped-by-contest"],
+  { revalidate: 3600, tags: ["problems"] }
+);
+
+export async function getCachedProblemsGroupedByContest(
+  page: number = 1,
+  contestsPerPage: number = 30,
+  filter: ContestFilter = "all",
+  search: string = ""
+): Promise<{ grouped: [string, Problem[]][], totalContests: number }> {
+  return _cachedGetProblems(page, contestsPerPage, filter, search);
+}
 
 /**
  * 아카이브 페이지에서 콘테스트 링크를 가져옵니다.

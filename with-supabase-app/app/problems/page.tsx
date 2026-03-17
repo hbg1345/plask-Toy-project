@@ -1,5 +1,5 @@
 import {
-  getProblemsGroupedByContest,
+  getCachedProblemsGroupedByContest,
   extractProblemIndex,
   ContestFilter,
 } from "@/lib/atcoder/problems";
@@ -165,10 +165,10 @@ async function ProblemsContent({
 
   const CONTESTS_PER_PAGE = 30;
   const { grouped: problemsByContest, totalContests: rawTotalContests } =
-    await getProblemsGroupedByContest(page, CONTESTS_PER_PAGE, filter, search);
+    await getCachedProblemsGroupedByContest(page, CONTESTS_PER_PAGE, filter, search);
 
   // hideCompleted가 true이면 모든 문제를 푼 콘테스트 제외
-  let filteredContests = Array.from(problemsByContest.entries());
+  let filteredContests = problemsByContest;
   if (hideCompleted && solvedProblemIds.size > 0) {
     filteredContests = filteredContests.filter(([, problems]) => {
       // 콘테스트의 문제 중 하나라도 풀지 않은 문제가 있으면 포함
