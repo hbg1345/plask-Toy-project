@@ -247,16 +247,20 @@ async function enrichProblemsWithInfo(
   const problemIds = problems.map((p) => p.problem_id);
   const problemInfoMap = new Map<string, { title: string; difficulty: number | null }>();
 
-  // 100개씩 배치로 조회
+  // 100개씩 배치로 병렬 조회
   const batchSize = 100;
+  const batches: string[][] = [];
   for (let i = 0; i < problemIds.length; i += batchSize) {
-    const batch = problemIds.slice(i, i + batchSize);
+    batches.push(problemIds.slice(i, i + batchSize));
+  }
 
-    const { data: problemsData } = await supabase
-      .from("problems")
-      .select("id, title, difficulty")
-      .in("id", batch);
+  const results = await Promise.all(
+    batches.map((batch) =>
+      supabase.from("problems").select("id, title, difficulty").in("id", batch)
+    )
+  );
 
+  for (const { data: problemsData } of results) {
     if (problemsData) {
       for (const p of problemsData) {
         problemInfoMap.set(p.id, { title: p.title, difficulty: p.difficulty });
