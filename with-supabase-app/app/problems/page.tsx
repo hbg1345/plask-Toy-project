@@ -1,5 +1,6 @@
 import {
   getCachedProblemsGroupedByContest,
+  getProblemsGroupedByContest,
   extractProblemIndex,
   ContestFilter,
 } from "@/lib/atcoder/problems";
@@ -156,29 +157,35 @@ async function ProblemsContent({
   const search = params.search || "";
   const hideCompleted = params.hideCompleted === "true";
 
-  // 사용자가 푼 문제 ID 목록 가져오기
-  let solvedProblemIds = new Set<string>();
+  // 사용자가 푼 콘테스트 ID 목록 가져오기 (hideCompleted 필터용)
+  let solvedContestIds = new Set<string>();
   if (hideCompleted && atcoderHandle) {
     const solvedProblems = await getSolvedProblems(atcoderHandle);
-    solvedProblemIds = new Set(solvedProblems.map((p) => p.id));
+    solvedContestIds = new Set(solvedProblems.map((p) => p.contest_id));
   }
 
   const CONTESTS_PER_PAGE = 30;
-  const { grouped: problemsByContest, totalContests: rawTotalContests } =
-    await getCachedProblemsGroupedByContest(page, CONTESTS_PER_PAGE, filter, search);
 
-  // hideCompleted가 true이면 모든 문제를 푼 콘테스트 제외
-  let filteredContests = problemsByContest;
-  if (hideCompleted && solvedProblemIds.size > 0) {
-    filteredContests = filteredContests.filter(([, problems]) => {
-      // 푼 문제가 하나도 없는 콘테스트만 포함 (하나라도 풀었으면 제외)
-      return problems.every((problem) => !solvedProblemIds.has(problem.id));
-    });
+  // hideCompleted가 true이면 DB 레벨에서 필터링 (non-cached, 사용자별 쿼리)
+  // 그 외엔 캐시된 쿼리 사용
+  let problemsByContest: [string, import("@/lib/atcoder/problems").Problem[]][];
+  let rawTotalContests: number;
+
+  if (hideCompleted && solvedContestIds.size > 0) {
+    const result = await getProblemsGroupedByContest(
+      page, CONTESTS_PER_PAGE, filter, search, supabase, solvedContestIds
+    );
+    problemsByContest = Array.from(result.grouped.entries()) as typeof problemsByContest;
+    rawTotalContests = result.totalContests;
+  } else {
+    const cached = await getCachedProblemsGroupedByContest(page, CONTESTS_PER_PAGE, filter, search);
+    problemsByContest = cached.grouped;
+    rawTotalContests = cached.totalContests;
   }
 
-  const paginatedContests = filteredContests;
-  const totalContests = hideCompleted ? filteredContests.length : rawTotalContests;
-  const totalPages = Math.ceil(rawTotalContests / CONTESTS_PER_PAGE);
+  const paginatedContests = problemsByContest;
+  const totalContests = rawTotalContests;
+  const totalPages = Math.ceil(totalContests / CONTESTS_PER_PAGE);
   const currentPage = Math.max(1, Math.min(page, totalPages || 1));
 
   // URL 생성 헬퍼 함수

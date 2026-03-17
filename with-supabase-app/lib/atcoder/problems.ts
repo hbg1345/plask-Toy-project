@@ -213,7 +213,8 @@ export async function getProblemsGroupedByContest(
   contestsPerPage: number = 30,
   filter: ContestFilter = "all",
   search: string = "",
-  supabaseClient?: SupabaseClient
+  supabaseClient?: SupabaseClient,
+  excludeContestIds?: Set<string>
 ): Promise<{
   grouped: Map<string, Problem[]>;
   totalContests: number;
@@ -281,6 +282,11 @@ export async function getProblemsGroupedByContest(
       filteredIds = uniqueContestIds.filter((id) => id.startsWith(filterPrefix));
     }
 
+    // 풀었던 콘테스트 제외
+    if (excludeContestIds && excludeContestIds.size > 0) {
+      filteredIds = filteredIds.filter((id) => !excludeContestIds.has(id));
+    }
+
     totalContests = filteredIds.length;
 
     if (totalContests === 0) {
@@ -326,6 +332,9 @@ export async function getProblemsGroupedByContest(
   if (search) {
     countQuery = countQuery.ilike("id", `%${searchLower}%`);
   }
+  if (excludeContestIds && excludeContestIds.size > 0) {
+    countQuery = countQuery.not("id", "in", `(${Array.from(excludeContestIds).join(",")})`);
+  }
 
   const { count, error: countError } = await countQuery;
   totalContests = count || 0;
@@ -367,6 +376,9 @@ export async function getProblemsGroupedByContest(
   }
   if (search) {
     contestsQuery = contestsQuery.ilike("id", `%${searchLower}%`);
+  }
+  if (excludeContestIds && excludeContestIds.size > 0) {
+    contestsQuery = contestsQuery.not("id", "in", `(${Array.from(excludeContestIds).join(",")})`);
   }
 
   const { data: contests, error: contestsError } = await contestsQuery.range(startIndex, endIndex);
