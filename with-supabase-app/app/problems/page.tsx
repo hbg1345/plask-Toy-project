@@ -231,7 +231,7 @@ async function ProblemsContent({
             return (
               pageNum === 1 ||
               pageNum === totalPages ||
-              (pageNum >= currentPage - 4 && pageNum <= currentPage + 4)
+              (pageNum >= currentPage - 2 && pageNum <= currentPage + 2)
             );
           })
           .map((pageNum, idx, array) => {
