@@ -841,6 +841,7 @@ export async function collectAllProblemsFromKenkoo(supabaseClient?: SupabaseClie
           id: kenkooProblem.id,
           title: kenkooProblem.name || kenkooProblem.title || kenkooProblem.id,
           difficulty,
+          summary: null,
           updated_at: new Date().toISOString(),
         });
       } catch (error) {
