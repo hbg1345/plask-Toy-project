@@ -21,9 +21,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const url = `https://kenkoooo.com/atcoder/atcoder-api/v3/user/submissions?user=${encodeURIComponent(userId)}&from_second=${encodeURIComponent(fromSecond)}`;
-    const response = await fetch(url, {
-      next: { revalidate: 3600 }, // 1시간마다 재검증
-    });
+    const response = await fetch(url, { cache: "no-store" });
 
     if (!response.ok) {
       return NextResponse.json(

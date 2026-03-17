@@ -322,7 +322,7 @@ export function ProfileWithGrass({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <SubmissionGrass userId={atcoder_handle} />
+            <SubmissionGrass key={refreshKey} userId={atcoder_handle} />
           </CardContent>
         </Card>
       )}
