@@ -33,7 +33,7 @@ export async function GET(req: Request) {
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
 
-    revalidateTag("problems");
+    revalidateTag("problems", "max");
 
     return NextResponse.json({
       success: true,
