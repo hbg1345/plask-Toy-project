@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Solve Helper - Patch Notes</title>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f0f; color: #e0e0e0; max-width: 860px; margin: 0 auto; padding: 2rem; }
+    h1 { font-size: 2rem; border-bottom: 2px solid #333; padding-bottom: 0.5rem; }
+    h2 { font-size: 1.2rem; color: #aaa; font-weight: normal; margin-top: 0; }
+    .patch { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; }
+    .patch-header { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 1rem; }
+    .patch-version { font-size: 1.1rem; font-weight: bold; color: #fff; }
+    .patch-date { font-size: 0.85rem; color: #666; }
+    .item { margin-bottom: 1.2rem; padding-bottom: 1.2rem; border-bottom: 1px solid #222; }
+    .item:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+    .item-title { font-weight: bold; color: #c8a0f0; margin-bottom: 0.4rem; }
+    .tag { display: inline-block; font-size: 0.7rem; padding: 2px 7px; border-radius: 4px; margin-right: 6px; font-weight: bold; vertical-align: middle; }
+    .tag-fix { background: #2a1a1a; color: #f87171; border: 1px solid #7f1d1d; }
+    .tag-perf { background: #1a2a1a; color: #4ade80; border: 1px solid #14532d; }
+    .tag-feat { background: #1a1a2a; color: #60a5fa; border: 1px solid #1e3a8a; }
+    .tag-infra { background: #2a2a1a; color: #facc15; border: 1px solid #713f12; }
+    dl { margin: 0.4rem 0 0 0; display: grid; grid-template-columns: 80px 1fr; gap: 0.2rem 0.8rem; font-size: 0.9rem; }
+    dt { color: #666; }
+    dd { margin: 0; color: #ccc; }
+  </style>
+</head>
+<body>
+  <h1>Solve Helper</h1>
+  <h2>Patch Notes</h2>
+
+  <!-- v0.4.0 -->
+  <div class="patch">
+    <div class="patch-header">
+      <span class="patch-version">v0.4.0</span>
+      <span class="patch-date">2026-03-17</span>
+    </div>
+
+    <div class="item">
+      <div class="item-title"><span class="tag tag-feat">FEAT</span> 아카이브 AC/WA 풀이 상태 표시</div>
+      <dl>
+        <dt>문제</dt><dd>아카이브 문제 테이블에서 사용자가 어떤 문제를 풀었는지 / 시도했는지 알 수 없었음</dd>
+        <dt>원인</dt><dd>기존에 AC만 저장하던 구조로 WA 상태 추적 불가, UI에도 상태 배지 없음</dd>
+        <dt>해결</dt><dd>1) DB: user_solved_problems에 status TEXT DEFAULT 'AC' 컬럼 추가. 2) fetchSolvedProblemsFromAPI에서 WA(제출했지만 미해결) 문제도 수집. 3) 새 getProblemStatuses 액션 추가. 4) 아카이브 페이지에서 상태 맵 조회 후 ProblemLink에 status prop 전달. 5) ProblemLink에 [AC] 초록 / [WA] 주황 배지 표시</dd>
+        <dt>결과</dt><dd>아카이브에서 AC 문제엔 초록 [AC], WA 문제엔 주황 [WA] 배지가 문제 제목 앞에 표시됨</dd>
+      </dl>
+    </div>
+
+  </div>
+
+  <!-- v0.3.1 -->
+  <div class="patch">
+    <div class="patch-header">
+      <span class="patch-version">v0.3.1</span>
+      <span class="patch-date">2026-03-17</span>
+    </div>
+
+    <div class="item">
+      <div class="item-title"><span class="tag tag-perf">PERF</span> RLS 정책 auth.uid() 재평가 문제 수정</div>
+      <dl>
+        <dt>문제</dt><dd>DB 쿼리 시 불필요하게 느림</dd>
+        <dt>원인</dt><dd>user_info, chat_history, token_usage, user_solved_problems, problems, contests, contest_problems의 RLS 정책에서 <code>auth.uid()</code> / <code>auth.role()</code>이 조회되는 매 행마다 별도로 재평가됨. 10만 행 조회 시 10만 번 호출</dd>
+        <dt>해결</dt><dd>모든 RLS 정책에서 <code>auth.uid()</code> → <code>(select auth.uid())</code>, <code>auth.role()</code> → <code>(select auth.role())</code>로 교체. PostgreSQL이 한 번만 평가하고 결과를 재사용</dd>
+        <dt>결과</dt><dd>대용량 테이블(problems 10만+행) 쿼리 시 RLS 오버헤드 대폭 감소</dd>
+      </dl>
+    </div>
+
+    <div class="item">
+      <div class="item-title"><span class="tag tag-perf">PERF</span> practice_sessions, chat_history user_id 인덱스 추가</div>
+      <dl>
+        <dt>문제</dt><dd>practice_sessions, chat_history에서 <code>WHERE user_id = ?</code> 쿼리가 느림</dd>
+        <dt>원인</dt><dd>FK 제약은 있었으나 user_id 컬럼에 인덱스가 없어 full scan 발생</dd>
+        <dt>해결</dt><dd><code>idx_practice_sessions_user_id</code>, <code>idx_chat_history_user_id</code> 인덱스 추가</dd>
+        <dt>결과</dt><dd>사용자별 세션/채팅 조회 속도 개선</dd>
+      </dl>
+    </div>
+
+  </div>
+
+  <!-- v0.3.0 -->
+  <div class="patch">
+    <div class="patch-header">
+      <span class="patch-version">v0.3.0</span>
+      <span class="patch-date">2026-03-17</span>
+    </div>
+
+    <div class="item">
+      <div class="item-title"><span class="tag tag-perf">PERF</span> 아카이브 문제 목록 페이지 이동 속도 개선</div>
+      <dl>
+        <dt>문제</dt><dd>페이지 이동 시마다 contests → contest_problems → problems 테이블을 순차적으로 쿼리하여 2초 이상 소요</dd>
+        <dt>원인</dt><dd>페이지 파라미터(page, filter, search)가 바뀔 때마다 DB 쿼리 4개를 매번 재실행</dd>
+        <dt>해결</dt><dd>Next.js <code>unstable_cache</code> + service role 클라이언트로 (page, filter, search) 조합별 1시간 캐싱. 매일 자정 cron 완료 후 <code>revalidateTag("problems")</code>로 자동 초기화</dd>
+        <dt>결과</dt><dd>첫 방문 후 동일 페이지 재방문 시 즉시 반환</dd>
+      </dl>
+    </div>
+
+    <div class="item">
+      <div class="item-title"><span class="tag tag-perf">PERF</span> 프로필 초기 렌더링 속도 개선</div>
+      <dl>
+        <dt>문제</dt><dd>레이팅 카드·토큰 사용량이 solved problems 로딩 완료 전까지 화면에 뜨지 않음</dd>
+        <dt>원인</dt><dd>하나의 Suspense 경계 안에서 getSolvedProblems (최대 20회 Kenkoo API 호출 또는 N번 DB 쿼리)가 완료되어야 전체 컴포넌트가 렌더링됨</dd>
+        <dt>해결</dt><dd>getSolvedProblems를 서버 사이드에서 제거하고, ProfileWithGrass 클라이언트 컴포넌트 마운트 후 useEffect로 비동기 로드. 서버는 user_info + practice stats만 빠르게 가져옴</dd>
+        <dt>결과</dt><dd>레이팅·토큰 사용량이 즉시 렌더링되고, solved problems는 별도 로딩 스켈레톤으로 표시 후 교체</dd>
+      </dl>
+    </div>
+
+    <div class="item">
+      <div class="item-title"><span class="tag tag-perf">PERF</span> getPracticeStats DB 집계로 교체</div>
+      <dl>
+        <dt>문제</dt><dd>연습 세션이 많을수록 프로필 로딩이 느려짐</dd>
+        <dt>원인</dt><dd>전체 practice_sessions 행을 JS로 가져와 filter/reduce로 집계</dd>
+        <dt>해결</dt><dd>PostgreSQL RPC 함수 <code>get_practice_stats(user_id)</code>로 COUNT/AVG를 DB 단에서 처리. 반환값은 숫자 4개뿐</dd>
+        <dt>결과</dt><dd>세션 수에 무관하게 일정한 응답 속도</dd>
+      </dl>
+    </div>
+
+    <div class="item">
+      <div class="item-title"><span class="tag tag-perf">PERF</span> 풀이 목록 문제 정보 조회 병렬화</div>
+      <dl>
+        <dt>문제</dt><dd>1000문제 enrichment 시 100개 단위 배치 10번이 순차 실행</dd>
+        <dt>원인</dt><dd>for 루프로 배치 쿼리를 순서대로 실행</dd>
+        <dt>해결</dt><dd>Promise.all로 모든 배치를 동시 실행</dd>
+        <dt>결과</dt><dd>1000문제 기준 약 10배 속도 향상</dd>
+      </dl>
+    </div>
+
+    <div class="item">
+      <div class="item-title"><span class="tag tag-feat">FEAT</span> Vercel Cron Job — 매일 자정 문제 목록 자동 동기화</div>
+      <dl>
+        <dt>문제</dt><dd>새 AtCoder 콘테스트 문제가 DB에 자동 반영되지 않음</dd>
+        <dt>원인</dt><dd>문제 동기화 API 엔드포인트는 있었으나 vercel.json 스케줄 미등록</dd>
+        <dt>해결</dt><dd>vercel.json에 UTC 00:00 cron 등록, CRON_SECRET으로 무단 호출 차단, 완료 후 problems 캐시 자동 무효화</dd>
+        <dt>결과</dt><dd>매일 자정 Kenkoo API 기반으로 problems/contests/contest_problems 자동 갱신</dd>
+      </dl>
+    </div>
+
+    <div class="item">
+      <div class="item-title"><span class="tag tag-feat">FEAT</span> Vercel Speed Insights / Analytics 추가</div>
+      <dl>
+        <dt>문제</dt><dd>실제 사용자 기준 성능 지표 및 방문자 수 파악 불가</dd>
+        <dt>해결</dt><dd>@vercel/speed-insights, @vercel/analytics 패키지 설치 후 루트 layout.tsx에 컴포넌트 추가</dd>
+        <dt>결과</dt><dd>Vercel 대시보드에서 FCP/LCP/CLS/TTFB 및 페이지뷰 확인 가능</dd>
+      </dl>
+    </div>
+
+    <div class="item">
+      <div class="item-title"><span class="tag tag-fix">FIX</span> collectAllProblemsFromKenkoo summary 필드 누락</div>
+      <dl>
+        <dt>문제</dt><dd>Vercel 빌드 실패 — Type error: Property 'summary' is missing</dd>
+        <dt>원인</dt><dd>problemsToSave 배열에 summary 필드가 누락된 채 upsert 호출</dd>
+        <dt>해결</dt><dd>summary: null 추가</dd>
+      </dl>
+    </div>
+
+  </div>
+
+</body>
+</html>

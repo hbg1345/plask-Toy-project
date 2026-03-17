@@ -11,6 +11,7 @@ interface ProblemLinkProps {
   problemUrl: string;
   contestId: string;
   difficulty: number | null;
+  status?: 'AC' | 'WA' | null;
   className?: string;
   children?: React.ReactNode;
   mode?: "chat" | "practice"; // 어디로 이동할지
@@ -22,6 +23,7 @@ export function ProblemLink({
   problemUrl,
   contestId,
   difficulty,
+  status,
   className,
   children,
   mode = "chat",
@@ -66,6 +68,12 @@ export function ProblemLink({
           )}
           title={problemTitle}
         >
+          {status === 'AC' && (
+            <span className="text-green-500 mr-0.5">[AC]</span>
+          )}
+          {status === 'WA' && (
+            <span className="text-orange-500 mr-0.5">[WA]</span>
+          )}
           {difficulty && difficulty >= 3200 ? (
             problemTitle.length > 0 ? (
               <>

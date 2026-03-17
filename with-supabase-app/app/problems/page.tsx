@@ -5,7 +5,7 @@ import {
   ContestFilter,
 } from "@/lib/atcoder/problems";
 import { Loader } from "@/components/ai-elements/loader";
-import { getSolvedProblems } from "@/app/actions";
+import { getSolvedProblems, getProblemStatuses } from "@/app/actions";
 import Link from "next/link";
 import { ProblemLink } from "@/components/problem-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -157,11 +157,20 @@ async function ProblemsContent({
   const search = params.search || "";
   const hideCompleted = params.hideCompleted === "true";
 
-  // 사용자가 푼 콘테스트 ID 목록 가져오기 (hideCompleted 필터용)
+  // 문제별 풀이 상태 맵 (AC/WA 배지 표시용)
+  let problemStatuses = new Map<string, 'AC' | 'WA'>();
   let solvedContestIds = new Set<string>();
-  if (hideCompleted && atcoderHandle) {
-    const solvedProblems = await getSolvedProblems(atcoderHandle);
-    solvedContestIds = new Set(solvedProblems.map((p) => p.contest_id));
+
+  if (atcoderHandle) {
+    // 병렬로 상태 맵과 (필요한 경우) 풀이 목록 가져오기
+    const [statuses, solvedProblems] = await Promise.all([
+      getProblemStatuses(atcoderHandle),
+      hideCompleted ? getSolvedProblems(atcoderHandle) : Promise.resolve([]),
+    ]);
+    problemStatuses = statuses;
+    if (hideCompleted) {
+      solvedContestIds = new Set(solvedProblems.map((p) => p.contest_id));
+    }
   }
 
   const CONTESTS_PER_PAGE = 30;
@@ -467,6 +476,7 @@ async function ProblemsContent({
                                 problemUrl={`https://atcoder.jp/contests/${contestId}/tasks/${problem.id}`}
                                 contestId={contestId}
                                 difficulty={problem.difficulty}
+                                status={problemStatuses.get(problem.id) ?? null}
                                 className="group"
                               />
                             </div>

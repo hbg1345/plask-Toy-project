@@ -87,6 +87,7 @@ async function fetchSolvedProblemsFromAPI(atcoderHandle: string): Promise<{
   problem_id: string;
   contest_id: string;
   solved_at: Date | null;
+  status: 'AC' | 'WA';
 }[]> {
   const allSubmissions: { problem_id: string; contest_id: string; result: string; epoch_second: number }[] = [];
   let fromSecond = 0;
@@ -115,25 +116,51 @@ async function fetchSolvedProblemsFromAPI(atcoderHandle: string): Promise<{
   }
 
   // AC인 제출에서 고유 문제 ID 추출 (최초 AC 시간 저장)
-  const solvedProblemsMap = new Map<string, { contest_id: string; solved_at: number }>();
+  const acProblemsMap = new Map<string, { contest_id: string; solved_at: number }>();
+  // WA만 있는 문제 추적 (최초 제출의 contest_id)
+  const waProblemsMap = new Map<string, { contest_id: string }>();
 
   for (const sub of allSubmissions) {
     if (sub.result === "AC") {
-      const existing = solvedProblemsMap.get(sub.problem_id);
+      const existing = acProblemsMap.get(sub.problem_id);
       if (!existing || sub.epoch_second < existing.solved_at) {
-        solvedProblemsMap.set(sub.problem_id, {
+        acProblemsMap.set(sub.problem_id, {
           contest_id: sub.contest_id,
           solved_at: sub.epoch_second,
         });
       }
+    } else {
+      // AC가 없는 문제에 대해서만 WA 추적
+      if (!waProblemsMap.has(sub.problem_id)) {
+        waProblemsMap.set(sub.problem_id, { contest_id: sub.contest_id });
+      }
     }
   }
 
-  return Array.from(solvedProblemsMap.entries()).map(([problem_id, data]) => ({
-    problem_id,
-    contest_id: data.contest_id,
-    solved_at: new Date(data.solved_at * 1000),
-  }));
+  const result: { problem_id: string; contest_id: string; solved_at: Date | null; status: 'AC' | 'WA' }[] = [];
+
+  for (const [problem_id, data] of acProblemsMap.entries()) {
+    result.push({
+      problem_id,
+      contest_id: data.contest_id,
+      solved_at: new Date(data.solved_at * 1000),
+      status: 'AC',
+    });
+  }
+
+  for (const [problem_id, data] of waProblemsMap.entries()) {
+    // AC로 풀린 문제는 제외
+    if (!acProblemsMap.has(problem_id)) {
+      result.push({
+        problem_id,
+        contest_id: data.contest_id,
+        solved_at: null,
+        status: 'WA',
+      });
+    }
+  }
+
+  return result;
 }
 
 /**
@@ -218,6 +245,7 @@ async function fetchAndEnrichProblems(atcoderHandle: string, userId: string | nu
         problem_id: p.problem_id,
         contest_id: p.contest_id,
         solved_at: p.solved_at?.toISOString() || null,
+        status: p.status,
       }));
 
       const { error } = await supabase.from("user_solved_problems").insert(batch);
@@ -1127,6 +1155,84 @@ export async function collectAllUserRatings(): Promise<{
     saved: savedCount,
     errors,
   };
+}
+
+/**
+ * 아카이브용: 사용자의 문제별 풀이 상태(AC/WA) 맵을 반환합니다.
+ * DB에서 직접 조회하며, 데이터가 없으면 빈 맵을 반환합니다.
+ */
+export async function getProblemStatuses(
+  atcoderHandle: string
+): Promise<Map<string, 'AC' | 'WA'>> {
+  const supabase = await createClient();
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const claims = claimsData?.claims;
+
+  if (!claims) return new Map();
+
+  const userId = claims.sub as string;
+
+  const allRows: { problem_id: string; status: string }[] = [];
+  const pageSize = 1000;
+  let page = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const from = page * pageSize;
+    const to = from + pageSize - 1;
+
+    const { data, error } = await supabase
+      .from("user_solved_problems")
+      .select("problem_id, status")
+      .eq("user_id", userId)
+      .range(from, to);
+
+    if (error || !data || data.length === 0) {
+      hasMore = false;
+    } else {
+      allRows.push(...data);
+      hasMore = data.length === pageSize;
+      page++;
+    }
+  }
+
+  const map = new Map<string, 'AC' | 'WA'>();
+  for (const row of allRows) {
+    // AC가 이미 있으면 WA로 덮어쓰지 않음
+    if (!map.has(row.problem_id) || row.status === 'AC') {
+      map.set(row.problem_id, row.status as 'AC' | 'WA');
+    }
+  }
+
+  // DB에 데이터가 없으면 API에서 가져와 저장 후 반환
+  if (allRows.length === 0) {
+    try {
+      const apiProblems = await fetchSolvedProblemsFromAPI(atcoderHandle);
+      if (apiProblems.length > 0) {
+        // DB에 저장
+        const batchSize = 500;
+        for (let i = 0; i < apiProblems.length; i += batchSize) {
+          const batch = apiProblems.slice(i, i + batchSize).map((p) => ({
+            user_id: userId,
+            problem_id: p.problem_id,
+            contest_id: p.contest_id,
+            solved_at: p.solved_at?.toISOString() || null,
+            status: p.status,
+          }));
+          await supabase.from("user_solved_problems").insert(batch);
+        }
+        for (const p of apiProblems) {
+          if (!map.has(p.problem_id) || p.status === 'AC') {
+            map.set(p.problem_id, p.status);
+          }
+        }
+      }
+    } catch (e) {
+      console.error("[getProblemStatuses] Failed to fetch from API:", e);
+    }
+  }
+
+  return map;
 }
 
 /**
