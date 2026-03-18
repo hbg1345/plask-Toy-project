@@ -10,6 +10,8 @@ import { AuthButton } from "@/components/auth-button";
 import { EnvVarWarning } from "@/components/env-var-warning";
 import { hasEnvVars } from "@/lib/utils";
 import { Suspense } from "react";
+import { cookies } from "next/headers";
+import type { Lang } from "@/lib/translations";
 import "katex/dist/katex.min.css";
 import "./globals.css";
 
@@ -29,11 +31,15 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const langCookie = cookieStore.get("appLanguage")?.value;
+  const initialLang: Lang = langCookie === "en" || langCookie === "ja" ? langCookie : "ko";
+
   const authButton = !hasEnvVars ? (
     <EnvVarWarning />
   ) : (
@@ -58,7 +64,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <LanguageProvider>
+          <LanguageProvider initialLang={initialLang}>
             <AnimeModeProvider>
               <CollapsibleHeader authButton={authButton} mobileAuthButton={mobileAuthButton} />
               {children}
