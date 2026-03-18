@@ -47,6 +47,25 @@
     </div>
   </div>
 
+  <!-- v0.5.1 -->
+  <div class="patch">
+    <div class="patch-header">
+      <span class="patch-version">v0.5.1</span>
+      <span class="patch-date">2026-03-19</span>
+    </div>
+
+    <div class="item">
+      <div class="item-title"><span class="tag tag-fix">FIX</span> profile 페이지 Vercel 빌드 오류 (cookies() Suspense 외부 호출)</div>
+      <dl>
+        <dt>문제</dt><dd>Vercel 빌드 실패 — "Route /profile: Uncached data was accessed outside of &lt;Suspense&gt;"</dd>
+        <dt>원인</dt><dd>v0.5.0에서 다국어 지원 구현 시 ProfilePage(outer, non-Suspense)를 async로 변경하고 getServerTr() → cookies()를 호출. Next.js 16에서는 동적 API(cookies/headers)를 Suspense 경계 밖에서 호출하면 정적 렌더링 시 오류 발생</dd>
+        <dt>해결</dt><dd>ProfilePage를 다시 non-async으로 되돌리고, getServerTr() 호출을 Suspense 내부의 UserDetails() async 컴포넌트 안으로 이동. subtitle 텍스트도 UserDetails 안에서 렌더링</dd>
+        <dt>결과</dt><dd>Vercel 빌드 성공</dd>
+      </dl>
+    </div>
+
+  </div>
+
   <!-- v0.4.0 -->
   <div class="patch">
     <div class="patch-header">
