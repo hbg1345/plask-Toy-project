@@ -116,6 +116,14 @@ export const translations = {
     },
     profile: {
       subtitle: "프로필 정보를 확인하고 관리하세요",
+      title: "Profile",
+      linkTitle: "AtCoder 연동",
+      linkDesc: "AtCoder 핸들을 입력하여 프로필을 연동하세요",
+      cardTitle: "프로필 정보",
+      cardDesc: "AtCoder 계정 정보를 확인하세요",
+      updateFailed: "핸들 업데이트에 실패했습니다.",
+      acTableDesc: "제출 기록을 확인하세요",
+      solvedCount: (n: number) => `총 ${n}개의 문제를 풀었습니다`,
     },
     gacha: {
       pull: "뽑기!",
@@ -237,6 +245,14 @@ export const translations = {
     },
     profile: {
       subtitle: "View and manage your profile",
+      title: "Profile",
+      linkTitle: "Link AtCoder",
+      linkDesc: "Enter your AtCoder handle to link your profile",
+      cardTitle: "Profile Info",
+      cardDesc: "View your AtCoder account info",
+      updateFailed: "Failed to update handle.",
+      acTableDesc: "View your submission history",
+      solvedCount: (n: number) => `Solved ${n} problems`,
     },
     gacha: {
       pull: "Draw!",
@@ -358,6 +374,14 @@ export const translations = {
     },
     profile: {
       subtitle: "プロフィール情報を確認・管理する",
+      title: "Profile",
+      linkTitle: "AtCoder連携",
+      linkDesc: "AtCoderハンドルを入力してプロフィールを連携してください",
+      cardTitle: "プロフィール情報",
+      cardDesc: "AtCoderアカウント情報を確認してください",
+      updateFailed: "ハンドルの更新に失敗しました。",
+      acTableDesc: "提出履歴を確認してください",
+      solvedCount: (n: number) => `${n}問解きました`,
     },
     gacha: {
       pull: "引く！",

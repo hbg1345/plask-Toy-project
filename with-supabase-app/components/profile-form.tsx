@@ -148,7 +148,7 @@ export function ProfileWithGrass({
     try {
       const result = await updatAtcoderHandle(editHandle);
       if (!result.success) {
-        alert("핸들 업데이트에 실패했습니다.");
+        alert(tr.profile.updateFailed);
         return;
       }
 
@@ -170,7 +170,7 @@ export function ProfileWithGrass({
       router.refresh();
     } catch (error) {
       console.error("Failed to update handle:", error);
-      alert("핸들 업데이트에 실패했습니다.");
+      alert(tr.profile.updateFailed);
     } finally {
       setIsUpdating(false);
     }
@@ -185,16 +185,16 @@ export function ProfileWithGrass({
     return (
       <>
         <div className="flex flex-col gap-2 self-start w-full">
-          <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{tr.profile.title}</h1>
           <p className="text-foreground">
             {tr.profile.subtitle}
           </p>
         </div>
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle>Atcoder 연동</CardTitle>
+            <CardTitle>{tr.profile.linkTitle}</CardTitle>
             <CardDescription>
-              Atcoder 핸들을 입력하여 프로필을 연동하세요
+              {tr.profile.linkDesc}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -209,7 +209,7 @@ export function ProfileWithGrass({
     <>
       <div className="flex flex-col gap-2 self-start w-full">
         <div className="flex items-center gap-2">
-          <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{tr.profile.title}</h1>
           <Button
             variant="ghost"
             size="icon"
@@ -231,8 +231,8 @@ export function ProfileWithGrass({
             style={{ borderColor: getRatingColor(rating ?? 0) }}
           >
             <CardHeader>
-              <CardTitle>프로필 정보</CardTitle>
-              <CardDescription>Atcoder 계정 정보를 확인하세요</CardDescription>
+              <CardTitle>{tr.profile.cardTitle}</CardTitle>
+              <CardDescription>{tr.profile.cardDesc}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-start gap-6">
@@ -320,7 +320,7 @@ export function ProfileWithGrass({
           <CardHeader>
             <CardTitle>AC Table</CardTitle>
             <CardDescription>
-              당신의 기록을 확인하세요
+              {tr.profile.acTableDesc}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -342,7 +342,7 @@ export function ProfileWithGrass({
             <CardHeader>
               <CardTitle>Solved Problems</CardTitle>
               <CardDescription>
-                총 {solvedProblems.length}개의 문제를 풀었습니다
+                {tr.profile.solvedCount(solvedProblems.length)}
               </CardDescription>
             </CardHeader>
             <CardContent>
