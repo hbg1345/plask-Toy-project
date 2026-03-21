@@ -4,41 +4,30 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { Sword, MessageSquare, Archive, ChevronRight } from "lucide-react";
+import { useLanguage } from "@/components/language-context";
 
 interface HeroLandingProps {
   isLoggedIn: boolean;
 }
 
-const menuItems = [
-  {
-    id: "practice",
-    label: "도전",
-    subLabel: "CHALLENGE",
-    href: "/practice",
-    icon: Sword,
-    description: "레이팅 기반 맞춤 문제 추천",
-  },
-  {
-    id: "chat",
-    label: "채팅",
-    subLabel: "CHAT",
-    href: "/chat",
-    icon: MessageSquare,
-    description: "AI와 함께 문제 풀이",
-  },
-  {
-    id: "problems",
-    label: "아카이브",
-    subLabel: "ARCHIVE",
-    href: "/problems",
-    icon: Archive,
-    description: "AtCoder 문제 아카이브",
-  },
-];
+const menuIcons = [Sword, MessageSquare, Archive];
+const menuIds = ["practice", "chat", "problems"] as const;
+const menuSubLabels = ["CHALLENGE", "CHAT", "ARCHIVE"];
+const menuHrefs = ["/practice", "/chat", "/problems"];
 
 export function HeroLanding({ isLoggedIn }: HeroLandingProps) {
+  const { tr } = useLanguage();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [showCursor, setShowCursor] = useState(true);
+
+  const menuItems = menuIds.map((id, i) => ({
+    id,
+    label: tr.landing.menu[id].label,
+    subLabel: menuSubLabels[i],
+    href: menuHrefs[i],
+    icon: menuIcons[i],
+    description: tr.landing.menu[id].description,
+  }));
 
   // Cursor blink effect
   useEffect(() => {
@@ -65,7 +54,7 @@ export function HeroLanding({ isLoggedIn }: HeroLandingProps) {
         }
       }
     },
-    [selectedIndex]
+    [selectedIndex, menuItems]
   );
 
   useEffect(() => {
@@ -111,7 +100,7 @@ export function HeroLanding({ isLoggedIn }: HeroLandingProps) {
             textShadow: "2px 2px 0 #1565C0",
           }}
         >
-          AI와 함께하는 알고리즘 학습
+          {tr.landing.subtitle}
         </p>
       </motion.div>
 

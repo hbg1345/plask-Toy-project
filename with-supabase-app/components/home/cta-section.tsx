@@ -5,12 +5,15 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { ScrollReveal } from "./scroll-reveal";
 import { motion } from "framer-motion";
+import { useLanguage } from "@/components/language-context";
 
 interface CTASectionProps {
   isLoggedIn?: boolean;
 }
 
 export function CTASection({ isLoggedIn }: CTASectionProps) {
+  const { tr } = useLanguage();
+
   if (isLoggedIn) {
     return null;
   }
@@ -56,14 +59,14 @@ export function CTASection({ isLoggedIn }: CTASectionProps) {
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 text-primary-foreground text-sm font-medium mb-6"
             >
               <Sparkles className="h-4 w-4" />
-              무료로 시작하세요
+              {tr.landing.cta.badge}
             </motion.div>
 
             <h2 className="text-3xl md:text-4xl font-bold mb-4 text-primary-foreground">
-              지금 바로 시작하세요
+              {tr.landing.cta.heading}
             </h2>
             <p className="text-primary-foreground/80 mb-8 max-w-md mx-auto text-lg">
-              무료로 가입하고 AI 코치와 함께 첫 문제를 풀어보세요
+              {tr.landing.cta.description}
             </p>
 
             <motion.div
@@ -72,7 +75,7 @@ export function CTASection({ isLoggedIn }: CTASectionProps) {
             >
               <Button asChild size="lg" variant="secondary" className="text-lg px-8 py-6">
                 <Link href="/auth/login">
-                  무료로 시작하기
+                  {tr.landing.cta.button}
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>

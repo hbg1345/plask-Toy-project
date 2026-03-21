@@ -2,45 +2,27 @@
 
 import { UserPlus, Link2, FileSearch, MessageSquare } from "lucide-react";
 import { ScrollReveal, StaggerContainer, StaggerItem } from "./scroll-reveal";
+import { useLanguage } from "@/components/language-context";
 
-const steps = [
-  {
-    icon: UserPlus,
-    step: 1,
-    title: "회원가입",
-    description: "이메일로 간단하게 가입",
-    color: "bg-blue-500",
-  },
-  {
-    icon: Link2,
-    step: 2,
-    title: "AtCoder 연동",
-    description: "핸들 입력으로 레이팅 동기화",
-    color: "bg-purple-500",
-  },
-  {
-    icon: FileSearch,
-    step: 3,
-    title: "문제 선택",
-    description: "추천 문제 또는 직접 검색",
-    color: "bg-orange-500",
-  },
-  {
-    icon: MessageSquare,
-    step: 4,
-    title: "AI와 풀이",
-    description: "막히면 힌트 받으며 해결",
-    color: "bg-green-500",
-  },
-];
+const stepIcons = [UserPlus, Link2, FileSearch, MessageSquare];
+const stepColors = ["bg-blue-500", "bg-purple-500", "bg-orange-500", "bg-green-500"];
 
 export function HowItWorksSection() {
+  const { tr } = useLanguage();
+
+  const steps = tr.landing.howItWorks.steps.map((step, i) => ({
+    ...step,
+    step: i + 1,
+    icon: stepIcons[i],
+    color: stepColors[i],
+  }));
+
   return (
     <section className="w-full max-w-5xl px-4">
       <ScrollReveal>
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold mb-3">어떻게 사용하나요?</h2>
-          <p className="text-foreground text-lg">4단계로 시작하는 알고리즘 학습</p>
+          <h2 className="text-3xl font-bold mb-3">{tr.landing.howItWorks.heading}</h2>
+          <p className="text-foreground text-lg">{tr.landing.howItWorks.subheading}</p>
         </div>
       </ScrollReveal>
 

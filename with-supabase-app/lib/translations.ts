@@ -188,6 +188,37 @@ export const translations = {
         desc: "AtCoder 핸들 연동, 레이팅 그래프, 난이도별 풀이 분포, 제출 기록 등 학습 현황을 한눈에 확인할 수 있습니다.",
       },
     },
+    landing: {
+      subtitle: "AI와 함께하는 알고리즘 학습",
+      menu: {
+        practice: { label: "도전", description: "레이팅 기반 맞춤 문제 추천" },
+        chat: { label: "채팅", description: "AI와 함께 문제 풀이" },
+        problems: { label: "아카이브", description: "AtCoder 문제 아카이브" },
+      },
+      features: {
+        heading: "왜 이 플랫폼인가요?",
+        subheading: "효율적인 알고리즘 학습을 위한 핵심 기능",
+        aiCoaching: { title: "AI 코칭", description: "막힐 때 AI가 힌트를 단계별로 제공합니다. 정답을 바로 알려주지 않아 스스로 생각하며 풀 수 있어요." },
+        recommendation: { title: "맞춤 추천", description: "내 레이팅에 맞는 문제를 자동으로 추천받으세요. 너무 쉽지도, 어렵지도 않은 딱 맞는 난이도." },
+        tracking: { title: "성장 추적", description: "풀이 기록과 통계로 실력 향상을 확인하세요. 잔디 그래프로 꾸준함도 체크할 수 있어요." },
+      },
+      howItWorks: {
+        heading: "어떻게 사용하나요?",
+        subheading: "4단계로 시작하는 알고리즘 학습",
+        steps: [
+          { title: "회원가입", description: "이메일로 간단하게 가입" },
+          { title: "AtCoder 연동", description: "핸들 입력으로 레이팅 동기화" },
+          { title: "문제 선택", description: "추천 문제 또는 직접 검색" },
+          { title: "AI와 풀이", description: "막히면 힌트 받으며 해결" },
+        ],
+      },
+      cta: {
+        badge: "무료로 시작하세요",
+        heading: "지금 바로 시작하세요",
+        description: "무료로 가입하고 AI 코치와 함께 첫 문제를 풀어보세요",
+        button: "무료로 시작하기",
+      },
+    },
   },
   en: {
     nav: {
@@ -376,6 +407,37 @@ export const translations = {
         desc: "View your learning progress at a glance: AtCoder handle integration, rating graph, difficulty distribution, and submission history.",
       },
     },
+    landing: {
+      subtitle: "Algorithm learning with AI",
+      menu: {
+        practice: { label: "Challenge", description: "Problem recommendations based on your rating" },
+        chat: { label: "Chat", description: "Solve problems with AI" },
+        problems: { label: "Archive", description: "AtCoder problem archive" },
+      },
+      features: {
+        heading: "Why this platform?",
+        subheading: "Core features for efficient algorithm learning",
+        aiCoaching: { title: "AI Coaching", description: "Luna provides step-by-step hints when you're stuck. No direct answers — think it through yourself." },
+        recommendation: { title: "Smart Recommendations", description: "Get automatic problem recommendations suited to your rating. Not too easy, not too hard — just right." },
+        tracking: { title: "Growth Tracking", description: "Track your progress with solve history and stats. Check your consistency with a heatmap graph." },
+      },
+      howItWorks: {
+        heading: "How does it work?",
+        subheading: "Start in 4 simple steps",
+        steps: [
+          { title: "Sign Up", description: "Register with your email" },
+          { title: "Link AtCoder", description: "Sync your rating with your handle" },
+          { title: "Pick a Problem", description: "Recommended or manual search" },
+          { title: "Solve with AI", description: "Get hints from Luna when stuck" },
+        ],
+      },
+      cta: {
+        badge: "Start for free",
+        heading: "Get started now",
+        description: "Sign up for free and solve your first problem with an AI coach",
+        button: "Start for free",
+      },
+    },
   },
   ja: {
     nav: {
@@ -562,6 +624,37 @@ export const translations = {
       profile: {
         title: "プロフィール",
         desc: "AtCoderハンドル連携、レーティンググラフ、難易度別解答分布、提出履歴など、学習状況を一目で確認できます。",
+      },
+    },
+    landing: {
+      subtitle: "AIと一緒にアルゴリズムを学ぼう",
+      menu: {
+        practice: { label: "挑戦", description: "レーティング基準のおすすめ問題" },
+        chat: { label: "チャット", description: "AIと一緒に問題を解く" },
+        problems: { label: "アーカイブ", description: "AtCoderの問題アーカイブ" },
+      },
+      features: {
+        heading: "なぜこのプラットフォーム？",
+        subheading: "効率的なアルゴリズム学習のための主要機能",
+        aiCoaching: { title: "AIコーチング", description: "詰まったときにAIが段階的にヒントを提供します。答えを直接教えないので自分で考えながら解けます。" },
+        recommendation: { title: "カスタム推薦", description: "自分のレーティングに合った問題を自動でおすすめ。簡単すぎず難しすぎないちょうどいい難易度。" },
+        tracking: { title: "成長トラッキング", description: "解答履歴と統計で実力アップを確認。草グラフで継続もチェックできます。" },
+      },
+      howItWorks: {
+        heading: "どうやって使うの？",
+        subheading: "4ステップで始めるアルゴリズム学習",
+        steps: [
+          { title: "会員登録", description: "メールで簡単に登録" },
+          { title: "AtCoder連携", description: "ハンドル入力でレーティング同期" },
+          { title: "問題を選ぶ", description: "おすすめ問題または直接検索" },
+          { title: "AIと解く", description: "詰まったらヒントをもらって解決" },
+        ],
+      },
+      cta: {
+        badge: "無料で始めよう",
+        heading: "今すぐ始めよう",
+        description: "無料で登録してAIコーチと一緒に最初の問題を解いてみよう",
+        button: "無料で始める",
       },
     },
   },
