@@ -108,6 +108,7 @@ export const translations = {
       loginToFilter: "(AtCoder 연동 시 풀이 필터 가능)",
       searchPlaceholder: "콘테스트 또는 문제 검색",
       searchResult: (q: string, n: number) => `"${q}" 검색 결과: ${n}개 콘테스트`,
+      recentProblems: "최근 본 문제",
     },
     chat: {
       thinking: "생각 중",
@@ -295,6 +296,7 @@ export const translations = {
       loginToFilter: "(Link AtCoder handle to filter)",
       searchPlaceholder: "Search contest or problem",
       searchResult: (q: string, n: number) => `"${q}": ${n} contest(s) found`,
+      recentProblems: "Recent problems",
     },
     chat: {
       thinking: "Thinking",
@@ -482,6 +484,7 @@ export const translations = {
       loginToFilter: "(AtCoder連携でフィルター可能)",
       searchPlaceholder: "コンテストまたは問題を検索",
       searchResult: (q: string, n: number) => `"${q}": ${n}件のコンテスト`,
+      recentProblems: "最近見た問題",
     },
     chat: {
       thinking: "考え中",

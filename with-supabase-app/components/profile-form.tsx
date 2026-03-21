@@ -108,10 +108,33 @@ export function ProfileWithGrass({
   const [solvedLoading, setSolvedLoading] = useState(!!atcoder_handle_for_solved);
   const [isPending, startTransition] = useTransition();
   const [refreshKey, setRefreshKey] = useState(0);
+  const [activeSection, setActiveSection] = useState("profile-info");
   const router = useRouter();
 
   // router.refresh() 후 서버에서 새 props가 내려올 때 state 동기화
   useEffect(() => { setRating(initialRating); }, [initialRating]);
+
+  // 활성 섹션 감지 (스크롤 기반)
+  useEffect(() => {
+    const ids = ["profile-info", "rating-graph", "ac-table", "solved-problems", "challenge-history"];
+    const HEADER_OFFSET = 96;
+
+    const handleScroll = () => {
+      // 아래에서 위로 순회하며 top이 HEADER_OFFSET 이하인 마지막 섹션을 active로
+      for (let i = ids.length - 1; i >= 0; i--) {
+        const el = document.getElementById(ids[i]);
+        if (el && el.getBoundingClientRect().top <= HEADER_OFFSET) {
+          setActiveSection(ids[i]);
+          return;
+        }
+      }
+      setActiveSection(ids[0]);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // 마운트 후 solved problems 클라이언트 로드
   useEffect(() => {
@@ -230,8 +253,13 @@ export function ProfileWithGrass({
           ].map(({ id, label }) => (
             <a
               key={id}
-              href={`#${id}`}
-              className="text-muted-foreground hover:text-foreground truncate transition-colors py-0.5"
+              href={id === "profile-info" ? "#" : `#${id}`}
+              onClick={id === "profile-info" ? (e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); } : undefined}
+              className={`truncate transition-colors py-0.5 ${
+                activeSection === id
+                  ? "text-foreground font-medium"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
             >
               {label}
             </a>

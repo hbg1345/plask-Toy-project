@@ -5,9 +5,11 @@ import { getRecentProblems, type RecentProblem } from "@/lib/recent-problems";
 import { ProblemLink } from "@/components/problem-link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Clock } from "lucide-react";
+import { useLanguage } from "./language-context";
 
 export function RecentProblems() {
   const [problems, setProblems] = useState<RecentProblem[]>([]);
+  const { tr } = useLanguage();
 
   useEffect(() => {
     setProblems(getRecentProblems());
@@ -21,7 +23,7 @@ export function RecentProblems() {
         <div className="flex items-center gap-3 flex-wrap">
           <span className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
             <Clock className="h-3.5 w-3.5" />
-            최근 본 문제
+            {tr.problems.recentProblems}
           </span>
           <div className="flex items-center gap-2 flex-wrap">
             {problems.map((p) => (
