@@ -11,7 +11,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Menu, MessageSquare, Archive, Sword } from "lucide-react";
+import { Menu, MessageSquare, Archive, Sword, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "./language-context";
 
@@ -28,6 +28,7 @@ export function MobileNav({ children }: MobileNavProps) {
     { href: "/practice", label: tr.nav.challenge, icon: Sword },
     { href: "/problems", label: tr.nav.archive, icon: Archive },
     { href: "/chat", label: tr.nav.chat, icon: MessageSquare },
+    { href: "/guide", label: tr.nav.guide, icon: BookOpen },
   ];
 
   return (

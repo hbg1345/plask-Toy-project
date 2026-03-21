@@ -19,77 +19,27 @@ type Rarity = {
 };
 
 function getRarity(difficulty: number | null): Rarity {
-  if (difficulty === null || difficulty < 400)
-    return {
-      stars: "★",
-      label: "Common",
-      gradient: "linear-gradient(135deg, #374151 0%, #1f2937 100%)",
-      borderColor: "#6b7280",
-      glow: "rgba(107,114,128,0.5)",
-      textColor: "#d1d5db",
-    };
-  if (difficulty < 800)
-    return {
-      stars: "★",
-      label: "Common",
-      gradient: "linear-gradient(135deg, #92400e 0%, #451a03 100%)",
-      borderColor: "#b45309",
-      glow: "rgba(180,83,9,0.5)",
-      textColor: "#fcd34d",
-    };
-  if (difficulty < 1200)
-    return {
-      stars: "★★",
-      label: "Uncommon",
-      gradient: "linear-gradient(135deg, #166534 0%, #052e16 100%)",
-      borderColor: "#16a34a",
-      glow: "rgba(22,163,74,0.6)",
-      textColor: "#86efac",
-    };
-  if (difficulty < 1600)
-    return {
-      stars: "★★★",
-      label: "Rare",
-      gradient: "linear-gradient(135deg, #155e75 0%, #083344 100%)",
-      borderColor: "#06b6d4",
-      glow: "rgba(6,182,212,0.7)",
-      textColor: "#67e8f9",
-    };
-  if (difficulty < 2000)
-    return {
-      stars: "★★★★",
-      label: "Super Rare",
-      gradient: "linear-gradient(135deg, #1d4ed8 0%, #1e1b4b 100%)",
-      borderColor: "#3b82f6",
-      glow: "rgba(59,130,246,0.7)",
-      textColor: "#93c5fd",
-    };
-  if (difficulty < 2400)
-    return {
-      stars: "★★★★★",
-      label: "Epic",
-      gradient: "linear-gradient(135deg, #a16207 0%, #422006 100%)",
-      borderColor: "#eab308",
-      glow: "rgba(234,179,8,0.8)",
-      textColor: "#fde047",
-    };
-  if (difficulty < 2800)
-    return {
-      stars: "✦✦✦✦✦",
-      label: "Epic+",
-      gradient: "linear-gradient(135deg, #c2410c 0%, #431407 100%)",
-      borderColor: "#f97316",
-      glow: "rgba(249,115,22,0.8)",
-      textColor: "#fdba74",
-    };
-  return {
-    stars: "✦✦✦✦✦",
-    label: "Legend",
-    gradient: "linear-gradient(135deg, #b91c1c 0%, #450a0a 100%)",
-    borderColor: "#ef4444",
-    glow: "rgba(239,68,68,0.9)",
-    textColor: "#fca5a5",
+  // 카드 앞면은 흰색, 제목 색상은 AtCoder 난이도 색상 체계
+  const base = {
+    gradient: "linear-gradient(135deg, #ffffff 0%, #f8f8fa 100%)",
+    borderColor: "#e2e2e8",
+    glow: "rgba(0,0,0,0.08)",
   };
+  if (difficulty === null || difficulty < 400)
+    return { ...base, stars: "★", label: "Common", textColor: "#6b7280" };
+  if (difficulty < 800)
+    return { ...base, stars: "★", label: "Common", textColor: "#92400e" };
+  if (difficulty < 1200)
+    return { ...base, stars: "★★", label: "Uncommon", textColor: "#16a34a" };
+  if (difficulty < 1600)
+    return { ...base, stars: "★★★", label: "Rare", textColor: "#0891b2" };
+  if (difficulty < 2000)
+    return { ...base, stars: "★★★★", label: "Super Rare", textColor: "#1d4ed8" };
+  if (difficulty < 2400)
+    return { ...base, stars: "★★★★★", label: "Epic", textColor: "#ca8a04" };
+  if (difficulty < 2800)
+    return { ...base, stars: "✦✦✦✦✦", label: "Epic+", textColor: "#ea580c" };
+  return { ...base, stars: "✦✦✦✦✦", label: "Legend", textColor: "#dc2626" };
 }
 
 function getSolveProbability(userRating: number, difficulty: number | null): number | null {
@@ -103,9 +53,10 @@ interface GachaRevealProps {
   initialProblems: RecommendedProblem[];
   userRating: number;
   fromEpoch?: number;
+  contestType?: string;
 }
 
-export function GachaReveal({ initialProblems, userRating, fromEpoch }: GachaRevealProps) {
+export function GachaReveal({ initialProblems, userRating, fromEpoch, contestType }: GachaRevealProps) {
   const { tr } = useLanguage();
   const [problems, setProblems] = useState(initialProblems);
   const [state, setState] = useState<GachaState>("idle");
@@ -130,51 +81,73 @@ export function GachaReveal({ initialProblems, userRating, fromEpoch }: GachaRev
   const handleRedraw = async () => {
     setIsRedrawing(true);
     try {
-      const newProblems = await getGachaRecommendations(userRating, fromEpoch);
+      const newProblems = await getGachaRecommendations(userRating, fromEpoch, contestType);
       setProblems(newProblems);
-      setState("idle");
       setRevealedCount(0);
+      setState("revealing");
     } finally {
       setIsRedrawing(false);
     }
   };
 
   return (
-    <div className="flex flex-col items-center gap-6 py-2">
-      <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
-        {problems.map((problem, i) => (
-          <GachaCard
-            key={problem.id}
-            problem={problem}
-            isRevealed={i < revealedCount}
-            rarity={getRarity(problem.difficulty)}
-            prob={getSolveProbability(userRating, problem.difficulty)}
-            index={i}
-          />
+    <div className="relative w-full rounded-xl overflow-hidden">
+      {/* 타로 배경 */}
+      <div className="absolute inset-0 bg-gradient-to-b from-indigo-950 via-purple-950 to-slate-950" />
+      <div className="absolute inset-0 opacity-[0.07]" style={{
+        backgroundImage: `radial-gradient(circle at 20% 30%, rgba(168,85,247,0.4) 0%, transparent 50%),
+          radial-gradient(circle at 80% 70%, rgba(99,102,241,0.4) 0%, transparent 50%),
+          radial-gradient(circle at 50% 50%, rgba(236,72,153,0.3) 0%, transparent 60%)`,
+      }} />
+      {/* 별 장식 */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {[
+          "top-4 left-[10%]", "top-8 right-[15%]", "top-16 left-[30%]",
+          "bottom-12 right-[25%]", "bottom-8 left-[20%]", "top-12 right-[40%]",
+          "bottom-20 left-[45%]", "top-6 left-[60%]", "bottom-16 right-[10%]",
+        ].map((pos, i) => (
+          <div key={i} className={`absolute ${pos} text-purple-300/20 text-[10px]`}>
+            {i % 3 === 0 ? "✦" : i % 3 === 1 ? "✧" : "·"}
+          </div>
         ))}
       </div>
 
-      <div className="flex flex-col items-center gap-2">
-        {state === "idle" && (
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-            <Button
-              size="lg"
-              onClick={handlePull}
-              className="relative overflow-hidden px-10 py-5 text-base font-bold bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 border-0 text-white shadow-lg shadow-purple-500/30"
-            >
-              <Sparkles className="mr-2 h-4 w-4" />
-              {tr.gacha.pull}
-            </Button>
-          </motion.div>
-        )}
-        {state === "done" && (
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-            <Button variant="outline" onClick={handleRedraw} disabled={isRedrawing} className="gap-2">
-              <RefreshCw className={`h-4 w-4 ${isRedrawing ? "animate-spin" : ""}`} />
-              {tr.gacha.rePull}
-            </Button>
-          </motion.div>
-        )}
+      <div className="relative flex flex-col items-center gap-6 py-8 px-6">
+        <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
+          {problems.map((problem, i) => (
+            <GachaCard
+              key={problem.id}
+              problem={problem}
+              isRevealed={i < revealedCount}
+              rarity={getRarity(problem.difficulty)}
+              prob={getSolveProbability(userRating, problem.difficulty)}
+              index={i}
+            />
+          ))}
+        </div>
+
+        <div className="flex flex-col items-center gap-2">
+          {state === "idle" && (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+              <Button
+                size="lg"
+                onClick={handlePull}
+                className="relative overflow-hidden px-10 py-5 text-base font-bold bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 border-0 text-white shadow-lg shadow-purple-500/30"
+              >
+                <Sparkles className="mr-2 h-4 w-4" />
+                {tr.gacha.pull}
+              </Button>
+            </motion.div>
+          )}
+          {state === "done" && (
+            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+              <Button variant="ghost" onClick={handleRedraw} disabled={isRedrawing} className="gap-2 border border-purple-400/50 !text-white hover:bg-purple-900/40">
+                <RefreshCw className={`h-4 w-4 ${isRedrawing ? "animate-spin" : ""}`} />
+                {tr.gacha.rePull}
+              </Button>
+            </motion.div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -209,16 +182,16 @@ function GachaCard({
         {/* Front face: card back (unrevealed) */}
         <div
           style={{ backfaceVisibility: "hidden" }}
-          className="absolute inset-0 rounded-xl overflow-hidden bg-gradient-to-br from-indigo-950 via-purple-900 to-indigo-950 border-2 border-purple-500/50 select-none"
+          className="absolute inset-0 rounded-xl overflow-hidden bg-gradient-to-br from-amber-50 via-yellow-100 to-amber-200 border-2 border-amber-400/70 select-none"
         >
-          <div className="absolute inset-2 border border-purple-400/20 rounded-lg pointer-events-none" />
-          <div className="absolute top-1.5 left-1.5 text-[9px] text-purple-300/30">✦</div>
-          <div className="absolute top-1.5 right-1.5 text-[9px] text-purple-300/30">✦</div>
-          <div className="absolute bottom-1.5 left-1.5 text-[9px] text-purple-300/30">✦</div>
-          <div className="absolute bottom-1.5 right-1.5 text-[9px] text-purple-300/30">✦</div>
+          <div className="absolute inset-2 border border-amber-500/30 rounded-lg pointer-events-none" />
+          <div className="absolute top-1.5 left-1.5 text-[9px] text-amber-600/40">✦</div>
+          <div className="absolute top-1.5 right-1.5 text-[9px] text-amber-600/40">✦</div>
+          <div className="absolute bottom-1.5 left-1.5 text-[9px] text-amber-600/40">✦</div>
+          <div className="absolute bottom-1.5 right-1.5 text-[9px] text-amber-600/40">✦</div>
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
-            <span className="text-3xl text-purple-300/70 leading-none">✦</span>
-            <span className="text-[8px] tracking-[0.25em] text-purple-300/40 font-mono">ATCODER</span>
+            <span className="text-3xl text-amber-500/80 leading-none">✦</span>
+            <span className="text-[8px] tracking-[0.2em] text-amber-600/50 font-mono">SOLVE HELPER</span>
           </div>
         </div>
 
@@ -234,10 +207,14 @@ function GachaCard({
           }}
           className="absolute inset-0 rounded-xl overflow-hidden border-2 flex flex-col p-2.5 hover:brightness-110 transition-[filter] duration-200"
         >
-          <div className="text-[10px] font-bold leading-none" style={{ color: rarity.borderColor }}>
-            {rarity.stars}
+          <div className="flex items-center justify-between">
+            <div className="text-[10px] font-bold leading-none text-amber-500">
+              {rarity.stars}
+            </div>
+            <div className="text-[8px] font-bold uppercase tracking-wide text-black">
+              {problem.contest_id.replace(/(\d)/, " $1")}
+            </div>
           </div>
-          <div className="text-[9px] font-semibold mt-0.5 text-white/60">{rarity.label}</div>
           <div className="flex-1 flex items-center mt-2">
             <span className="text-xs font-bold leading-tight line-clamp-4" style={{ color: rarity.textColor }}>
               {problem.title}
@@ -245,10 +222,10 @@ function GachaCard({
           </div>
           <div className="mt-1.5 space-y-0.5">
             {problem.difficulty && (
-              <div className="text-[9px] text-white/50">{problem.difficulty.toLocaleString()} diff</div>
+              <div className="text-[9px] text-black">{problem.difficulty.toLocaleString()} diff</div>
             )}
             {prob !== null && (
-              <div className="text-[10px] font-bold text-white/80">{Math.round(prob * 100)}%</div>
+              <div className="text-[10px] font-bold text-black">{Math.round(prob * 100)}%</div>
             )}
           </div>
         </Link>

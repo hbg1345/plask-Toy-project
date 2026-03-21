@@ -15,12 +15,13 @@ import { GachaReveal } from "@/components/gacha-reveal";
 async function PracticeContent({
   searchParams,
 }: {
-  searchParams: Promise<{ fromYear?: string; fromMonth?: string }>;
+  searchParams: Promise<{ fromYear?: string; fromMonth?: string; contestType?: string }>;
 }) {
   const params = await searchParams;
   const tr = await getServerTr();
   const fromYear = params.fromYear ? parseInt(params.fromYear) : null;
   const fromMonth = params.fromMonth ? parseInt(params.fromMonth) : null;
+  const contestType = params.contestType || undefined;
   const fromEpoch =
     fromYear != null
       ? Math.floor(new Date(fromYear, (fromMonth ?? 1) - 1, 1).getTime() / 1000)
@@ -70,7 +71,7 @@ async function PracticeContent({
   }
 
   const [problems, practiceSessions, practiceStats] = await Promise.all([
-    getRecommendedProblems(userData.rating, fromEpoch),
+    getRecommendedProblems(userData.rating, fromEpoch, contestType),
     getPracticeSessions(50),
     getPracticeStats(),
   ]);
@@ -94,6 +95,36 @@ async function PracticeContent({
       <Card className="w-full py-0">
         <CardContent className="py-3">
           <form action="/practice" method="GET" className="flex items-center gap-3 flex-wrap">
+            <span className="text-sm font-medium shrink-0">{tr.practice.contestType}</span>
+            <div className="flex items-center gap-1">
+              {[
+                { value: "", label: tr.practice.contestAll },
+                { value: "abc", label: "ABC" },
+                { value: "arc", label: "ARC" },
+                { value: "agc", label: "AGC" },
+              ].map((opt) => {
+                const linkParams = new URLSearchParams();
+                if (opt.value) linkParams.set("contestType", opt.value);
+                if (fromYear) linkParams.set("fromYear", String(fromYear));
+                if (fromMonth) linkParams.set("fromMonth", String(fromMonth));
+                const href = linkParams.toString() ? `/practice?${linkParams}` : "/practice";
+                return (
+                  <Link
+                    key={opt.value}
+                    href={href}
+                    scroll={true}
+                    className={`px-2.5 py-1 rounded-md text-sm border transition-colors ${
+                      (contestType ?? "") === opt.value
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background border-input hover:bg-accent"
+                    }`}
+                  >
+                    {opt.label}
+                  </Link>
+                );
+              })}
+            </div>
+            {contestType && <input type="hidden" name="contestType" value={contestType} />}
             <span className="text-sm font-medium shrink-0">{tr.practice.period}</span>
             <div className="flex items-center gap-1.5">
               <input
@@ -119,7 +150,7 @@ async function PracticeContent({
               <span className="text-sm">{tr.practice.after}</span>
             </div>
             <Button type="submit" size="sm" variant="secondary">{tr.practice.apply}</Button>
-            {fromYear && (
+            {(fromYear || contestType) && (
               <Button asChild size="sm" variant="outline">
                 <Link href="/practice">{tr.practice.reset}</Link>
               </Button>
@@ -134,18 +165,12 @@ async function PracticeContent({
       </Card>
 
       {/* 가챠 추천 */}
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle>{tr.practice.title}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <GachaReveal
-            initialProblems={problems}
-            userRating={userData.rating}
-            fromEpoch={fromEpoch}
-          />
-        </CardContent>
-      </Card>
+      <GachaReveal
+        initialProblems={problems}
+        userRating={userData.rating}
+        fromEpoch={fromEpoch}
+        contestType={contestType}
+      />
 
       <PracticeHistory sessions={practiceSessions} stats={practiceStats} />
     </>
@@ -171,7 +196,7 @@ function PracticeLoading() {
 export default function PracticePage({
   searchParams,
 }: {
-  searchParams: Promise<{ fromYear?: string; fromMonth?: string }>;
+  searchParams: Promise<{ fromYear?: string; fromMonth?: string; contestType?: string }>;
 }) {
   return (
     <div className="w-full">

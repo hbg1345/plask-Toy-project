@@ -52,7 +52,8 @@ async function getProblemsInRange(
   count: number,
   isLastRange: boolean = false,
   solvedProblemIds: Set<string> = new Set(),
-  fromEpoch?: number
+  fromEpoch?: number,
+  contestType?: string
 ): Promise<RecommendedProblem[]> {
   const supabase = await createClient();
 
@@ -77,6 +78,15 @@ async function getProblemsInRange(
 
   // 이미 푼 문제 제외
   let unsolvedProblems = problems.filter((p) => !solvedProblemIds.has(p.id));
+
+  // 콘테스트 타입 필터: 특정 타입이면 해당 prefix, 전체면 abc/arc/agc만
+  if (contestType) {
+    unsolvedProblems = unsolvedProblems.filter((p) => p.id.startsWith(contestType));
+  } else {
+    unsolvedProblems = unsolvedProblems.filter((p) =>
+      p.id.startsWith("abc") || p.id.startsWith("arc") || p.id.startsWith("agc")
+    );
+  }
 
   // 날짜 필터: fromEpoch 이후 출제된 콘테스트 문제만
   if (fromEpoch && unsolvedProblems.length > 0) {
@@ -180,7 +190,8 @@ async function getSolvedProblemIds(): Promise<Set<string>> {
  */
 export async function getRecommendedProblems(
   userRating: number,
-  fromEpoch?: number
+  fromEpoch?: number,
+  contestType?: string
 ): Promise<RecommendedProblem[]> {
   const solvedProblemIds = await getSolvedProblemIds();
   return getProblemsInRange(
@@ -189,7 +200,8 @@ export async function getRecommendedProblems(
     5,
     false,
     solvedProblemIds,
-    fromEpoch
+    fromEpoch,
+    contestType
   );
 }
 

@@ -87,7 +87,7 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
   // 문제 URL 생성 (contest_id는 DB에서 가져온 후 설정)
   const [contestId, setContestId] = useState<string | null>(null);
   const problemUrl = contestId ? `https://atcoder.jp/contests/${contestId}/tasks/${problemId}` : null;
-  const { tr } = useLanguage();
+  const { tr, lang } = useLanguage();
 
   // 세션 복원 + 다른 문제 세션 확인 (마운트 시 1회)
   useEffect(() => {
@@ -154,16 +154,15 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
   }, []);
 
   // 문제 정보 가져오기 (setup 단계에서는 AI 생성 없이 DB에서만)
+  // lang 변경 시에도 해당 언어 힌트를 다시 불러옴
   useEffect(() => {
     const fetchProblemInfo = async () => {
-      if (status !== "setup") return;
-
       try {
-        // generate=false로 DB에서만 가져오기 (AI 생성 X)
-        const response = await fetch(`/api/practice/hints?problemId=${problemId}&generate=false`);
+        const shouldGenerate = status !== "setup";
+        const response = await fetch(`/api/practice/hints?problemId=${problemId}&generate=${shouldGenerate}&lang=${lang}`);
         if (response.ok) {
           const data = await response.json();
-          setHints(data.hints || []);
+          if (data.hints?.length > 0) setHints(data.hints);
           if (data.problemTitle) setProblemTitle(data.problemTitle);
           if (data.difficulty) setDifficulty(data.difficulty);
           if (data.contestId) setContestId(data.contestId);
@@ -173,7 +172,7 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
       }
     };
     fetchProblemInfo();
-  }, [problemId, status]);
+  }, [problemId, lang]);
 
   // 자동 시작 (setup 화면 없이 바로 시작)
   useEffect(() => {
@@ -288,7 +287,7 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
     if (hints.length === 0) {
       setIsLoadingHints(true);
       try {
-        const response = await fetch(`/api/practice/hints?problemId=${problemId}&generate=true`);
+        const response = await fetch(`/api/practice/hints?problemId=${problemId}&generate=true&lang=${lang}`);
         if (response.ok) {
           const data = await response.json();
           setHints(data.hints || []);

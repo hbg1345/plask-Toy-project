@@ -177,55 +177,40 @@ export const ProblemPanel = memo(function ProblemPanel({ problemUrl }: ProblemPa
   const renderedHtml = useMemo(() => {
     if (!problemData) return '';
 
+    // 수식 내 HTML 엔티티를 디코딩하는 헬퍼
+    const decodeEntities = (s: string) =>
+      s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&le;/g, '≤').replace(/&ge;/g, '≥').replace(/&ne;/g, '≠').replace(/&times;/g, '×');
+
+    const renderKatex = (formula: string, displayMode: boolean, fallback: string) => {
+      try {
+        return katex.renderToString(decodeEntities(formula.trim()), {
+          displayMode,
+          throwOnError: false,
+        });
+      } catch {
+        return fallback;
+      }
+    };
+
     let html = problemData.styles + getCurrentContent();
 
+    // 번역 과정에서 깨진 수식/변수 태그 복구
+    html = html.replace(/\s*\n\s*(<var>)/g, ' $1');
+    html = html.replace(/(<\/var>)\s*\n\s*/g, '$1 ');
+    html = html.replace(/\s*\n\s*(\\\()/g, ' $1');
+    html = html.replace(/(\\\))\s*\n\s*/g, '$1 ');
+
     // \[ ... \] 디스플레이 수식 처리
-    html = html.replace(/\\\[([\s\S]*?)\\\]/g, (match, formula) => {
-      try {
-        return katex.renderToString(formula.trim(), {
-          displayMode: true,
-          throwOnError: false,
-        });
-      } catch {
-        return match;
-      }
-    });
+    html = html.replace(/\\\[([\s\S]*?)\\\]/g, (m, f) => renderKatex(f, true, m));
 
     // \( ... \) 인라인 수식 처리
-    html = html.replace(/\\\(([\s\S]*?)\\\)/g, (match, formula) => {
-      try {
-        return katex.renderToString(formula.trim(), {
-          displayMode: false,
-          throwOnError: false,
-        });
-      } catch {
-        return match;
-      }
-    });
+    html = html.replace(/\\\(([\s\S]*?)\\\)/g, (m, f) => renderKatex(f, false, m));
 
     // $ ... $ 인라인 수식 처리
-    html = html.replace(/\$([^\$\n]+)\$/g, (match, formula) => {
-      try {
-        return katex.renderToString(formula.trim(), {
-          displayMode: false,
-          throwOnError: false,
-        });
-      } catch {
-        return match;
-      }
-    });
+    html = html.replace(/\$([^\$\n]+)\$/g, (m, f) => renderKatex(f, false, m));
 
     // <var>...</var> 태그 처리
-    html = html.replace(/<var>(.*?)<\/var>/g, (match, content) => {
-      try {
-        return katex.renderToString(content.trim(), {
-          displayMode: false,
-          throwOnError: false,
-        });
-      } catch {
-        return match;
-      }
-    });
+    html = html.replace(/<var>(.*?)<\/var>/g, (m, f) => renderKatex(f, false, m));
 
     return html;
   }, [problemData, language, translatedContent]);
@@ -348,13 +333,13 @@ export const ProblemPanel = memo(function ProblemPanel({ problemUrl }: ProblemPa
             />
           </Button>
           <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 px-3 text-xs font-semibold"
             onClick={handleOpenExternal}
-            title="새 탭에서 열기"
           >
-            <ExternalLink className="h-4 w-4" />
+            AtCoder
+            <ExternalLink className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>

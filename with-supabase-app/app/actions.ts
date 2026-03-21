@@ -1337,7 +1337,8 @@ export async function getPracticeStats(): Promise<PracticeStats> {
 
 export async function getGachaRecommendations(
   userRating: number,
-  fromEpoch?: number
+  fromEpoch?: number,
+  contestType?: string
 ): Promise<RecommendedProblem[]> {
-  return getRecommendedProblems(userRating, fromEpoch);
+  return getRecommendedProblems(userRating, fromEpoch, contestType);
 }

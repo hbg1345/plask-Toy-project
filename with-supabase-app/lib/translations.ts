@@ -6,6 +6,7 @@ export const translations = {
       challenge: "도전",
       archive: "아카이브",
       chat: "채팅",
+      guide: "가이드",
       menuOpen: "메뉴 열기",
     },
     animeMode: {
@@ -65,6 +66,8 @@ export const translations = {
       apply: "적용",
       reset: "초기화",
       afterPeriod: (y: number, m: number) => `${y}년 ${m}월 이후 출제된 문제`,
+      contestType: "콘테스트:",
+      contestAll: "전체",
       recommended: (n: number) => `추천 문제 (${n}개)`,
       solveProb: "% 예상 해결 확률",
       noProblemsInRange: "이 범위에 문제가 없습니다.",
@@ -155,12 +158,37 @@ export const translations = {
       pull: "뽑기!",
       rePull: "다시 뽑기",
     },
+    guide: {
+      title: "사용 가이드",
+      subtitle: "Solve Helper의 각 기능을 알아보세요",
+      gettingStarted: {
+        title: "시작하기",
+        desc: "회원가입 후 프로필 페이지에서 AtCoder 핸들을 연동하세요. 연동하면 레이팅 기반 맞춤 추천, 풀이 기록 추적 등 모든 기능을 이용할 수 있습니다.",
+      },
+      challenge: {
+        title: "문제 추천 (도전)",
+        desc: "현재 레이팅 ±500 범위의 문제를 추천받습니다. 랜덤으로 배정된 문제를 타이머와 단계별 힌트를 활용하여 풀어보세요. AtCoder에서 AC를 받으면 자동으로 기록됩니다.",
+      },
+      archive: {
+        title: "문제 아카이브",
+        desc: "ABC, ARC, AGC 등 AtCoder 콘테스트의 전체 문제를 검색할 수 있습니다. 콘테스트명이나 문제명으로 검색하고, 난이도 색상으로 레벨을 확인하세요.",
+      },
+      chat: {
+        title: "AI 채팅",
+        desc: "문제별로 AI 코치와 상담할 수 있습니다. 문제 URL을 입력하거나 도전 페이지에서 바로 이동하여, 풀이 방향 힌트나 개념 설명을 받아보세요.",
+      },
+      profile: {
+        title: "프로필",
+        desc: "AtCoder 핸들 연동, 레이팅 그래프, 난이도별 풀이 분포, 제출 기록 등 학습 현황을 한눈에 확인할 수 있습니다.",
+      },
+    },
   },
   en: {
     nav: {
       challenge: "Challenge",
       archive: "Archive",
       chat: "Chat",
+      guide: "Guide",
       menuOpen: "Open menu",
     },
     animeMode: {
@@ -220,6 +248,8 @@ export const translations = {
       apply: "Apply",
       reset: "Reset",
       afterPeriod: (y: number, m: number) => `Problems after ${y}/${m}`,
+      contestType: "Contest:",
+      contestAll: "All",
       recommended: (n: number) => `Recommended (${n})`,
       solveProb: "% Est. Solve",
       noProblemsInRange: "No problems in this range.",
@@ -310,12 +340,37 @@ export const translations = {
       pull: "Draw!",
       rePull: "Re-draw",
     },
+    guide: {
+      title: "User Guide",
+      subtitle: "Learn how to use each feature of Solve Helper",
+      gettingStarted: {
+        title: "Getting Started",
+        desc: "Sign up and link your AtCoder handle on the profile page. Once linked, you can access personalized recommendations, track your progress, and use all features.",
+      },
+      challenge: {
+        title: "Challenge (Recommendations)",
+        desc: "Get recommended problems within ±500 of your current rating. Solve randomly assigned problems using the timer and step-by-step hints. Your progress is automatically recorded when you get AC on AtCoder.",
+      },
+      archive: {
+        title: "Problem Archive",
+        desc: "Browse all problems from AtCoder contests including ABC, ARC, and AGC. Search by contest or problem name, and check difficulty levels by color.",
+      },
+      chat: {
+        title: "AI Chat",
+        desc: "Consult with the AI coach for each problem. Enter a problem URL or navigate directly from the challenge page to get hints on solution approaches and concept explanations.",
+      },
+      profile: {
+        title: "Profile",
+        desc: "View your learning progress at a glance: AtCoder handle integration, rating graph, difficulty distribution, and submission history.",
+      },
+    },
   },
   ja: {
     nav: {
       challenge: "挑戦",
       archive: "アーカイブ",
       chat: "チャット",
+      guide: "ガイド",
       menuOpen: "メニューを開く",
     },
     animeMode: {
@@ -375,6 +430,8 @@ export const translations = {
       apply: "適用",
       reset: "リセット",
       afterPeriod: (y: number, m: number) => `${y}年${m}月以降の問題`,
+      contestType: "コンテスト:",
+      contestAll: "全て",
       recommended: (n: number) => `おすすめ問題 (${n}件)`,
       solveProb: "% 予想正解率",
       noProblemsInRange: "この範囲に問題がありません。",
@@ -464,6 +521,30 @@ export const translations = {
     gacha: {
       pull: "引く！",
       rePull: "もう一度引く",
+    },
+    guide: {
+      title: "使い方ガイド",
+      subtitle: "Solve Helperの各機能を紹介します",
+      gettingStarted: {
+        title: "はじめに",
+        desc: "会員登録後、プロフィールページでAtCoderハンドルを連携してください。連携するとレーティング基準のおすすめ、解答履歴の追跡など、すべての機能を利用できます。",
+      },
+      challenge: {
+        title: "問題推薦（挑戦）",
+        desc: "現在のレーティング±500範囲の問題をおすすめします。ランダムに出題された問題を、タイマーと段階別ヒントを活用して解きましょう。AtCoderでACを取得すると自動的に記録されます。",
+      },
+      archive: {
+        title: "問題アーカイブ",
+        desc: "ABC、ARC、AGCなどAtCoderコンテストの全問題を検索できます。コンテスト名や問題名で検索し、難易度の色でレベルを確認できます。",
+      },
+      chat: {
+        title: "AIチャット",
+        desc: "問題ごとにAIコーチと相談できます。問題URLを入力するか、挑戦ページから直接移動して、解法のヒントやコンセプトの説明を受けましょう。",
+      },
+      profile: {
+        title: "プロフィール",
+        desc: "AtCoderハンドル連携、レーティンググラフ、難易度別解答分布、提出履歴など、学習状況を一目で確認できます。",
+      },
     },
   },
 };

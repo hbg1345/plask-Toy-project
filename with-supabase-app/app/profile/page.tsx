@@ -59,12 +59,7 @@ export default function ProfilePage() {
       <div className="max-w-5xl mx-auto">
         <div className="flex flex-col gap-8 items-start">
           <Suspense fallback={
-            <>
-              <div className="flex flex-col gap-2">
-                <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
-              </div>
-              <div className="w-full max-w-md h-64 bg-muted animate-pulse rounded-xl" />
-            </>
+            <div className="w-full max-w-md h-64 bg-muted animate-pulse rounded-xl" />
           }>
             <UserDetails />
           </Suspense>

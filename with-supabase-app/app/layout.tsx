@@ -6,6 +6,7 @@ import { LanguageProvider } from "@/components/language-context";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 import { CollapsibleHeader } from "@/components/collapsible-header";
+import { ScrollToTop } from "@/components/scroll-to-top";
 import { AuthButton } from "@/components/auth-button";
 import { EnvVarWarning } from "@/components/env-var-warning";
 import { hasEnvVars } from "@/lib/utils";
@@ -48,6 +49,7 @@ async function AppShell({
   return (
     <LanguageProvider initialLang={initialLang}>
       <AnimeModeProvider>
+        <ScrollToTop />
         <CollapsibleHeader
           authButton={authButton}
           mobileAuthButton={mobileAuthButton}
