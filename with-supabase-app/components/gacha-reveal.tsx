@@ -112,7 +112,7 @@ export function GachaReveal({ initialProblems, userRating, fromEpoch, contestTyp
         ))}
       </div>
 
-      <div className="relative flex flex-col items-center gap-6 py-8 px-6">
+      <div className="relative flex flex-col items-center gap-6 py-14 px-6">
         <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
           {problems.map((problem, i) => (
             <GachaCard

@@ -82,7 +82,7 @@ export function SolvedProblemsList({ problems }: SolvedProblemsProps) {
   }
 
   return (
-    <ScrollArea className="h-[400px] pr-4">
+    <ScrollArea className="h-[240px] pr-4">
       <div className="flex flex-wrap gap-2">
         {sortedProblems.map((problem) => (
           <ProblemBadge key={problem.problem_id} problem={problem} />
