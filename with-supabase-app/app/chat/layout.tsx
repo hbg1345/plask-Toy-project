@@ -12,6 +12,7 @@ export default function ChatLayout({
   return (
     <AppLayout
       fixedHeight={true}
+      showFooter={false}
       contentWrapperClassName="flex flex-col p-0 w-full h-[calc(100vh-3.5rem)] overflow-hidden"
       outerWrapperClassName="flex w-full flex-col items-center h-[calc(100vh-3.5rem)] overflow-hidden"
     >

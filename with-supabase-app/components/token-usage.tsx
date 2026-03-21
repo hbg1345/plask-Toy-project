@@ -92,7 +92,7 @@ export function TokenUsageCard() {
           <div className="space-y-1">
             <p className="text-sm text-foreground">{tr.tokenUsage.responsesReceived}</p>
             <p className="text-2xl font-bold text-primary">
-              {usage?.request_count.toLocaleString() || 0}
+              {usage?.hint_count.toLocaleString() || 0}
             </p>
           </div>
         </div>

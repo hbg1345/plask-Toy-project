@@ -3,6 +3,7 @@ interface AppLayoutProps {
   contentWrapperClassName?: string;
   outerWrapperClassName?: string;
   fixedHeight?: boolean;
+  showFooter?: boolean;
 }
 
 export function AppLayout({
@@ -10,6 +11,7 @@ export function AppLayout({
   contentWrapperClassName,
   outerWrapperClassName,
   fixedHeight = false,
+  showFooter = true,
 }: AppLayoutProps) {
   return (
     <main className={fixedHeight ? "h-screen flex flex-col overflow-hidden" : "min-h-screen flex flex-col"}>
@@ -28,6 +30,13 @@ export function AppLayout({
           {children}
         </div>
       </div>
+      {showFooter && (
+        <footer className="w-full py-4 text-center text-xs text-muted-foreground">
+          <a href="https://deboot.tistory.com/" target="_blank" rel="noopener noreferrer" className="hover:underline">
+            deboot.tistory.com
+          </a>
+        </footer>
+      )}
     </main>
   );
 }

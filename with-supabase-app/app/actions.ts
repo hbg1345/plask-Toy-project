@@ -762,6 +762,7 @@ export interface TokenUsage {
   total_output_tokens: number;
   total_tokens: number;
   request_count: number;
+  hint_count: number;
 }
 
 export interface TokenUsageHistory {
@@ -787,6 +788,7 @@ export async function getMonthlyTokenUsage(): Promise<TokenUsage> {
       total_output_tokens: 0,
       total_tokens: 0,
       request_count: 0,
+      hint_count: 0,
     };
   }
 
@@ -796,11 +798,18 @@ export async function getMonthlyTokenUsage(): Promise<TokenUsage> {
   monthStart.setUTCHours(0, 0, 0, 0);
 
   try {
-    const { data, error } = await supabase
-      .from("token_usage")
-      .select("input_tokens, output_tokens, total_tokens")
-      .eq("user_id", userId)
-      .gte("created_at", monthStart.toISOString());
+    const [{ data, error }, { data: hintsData }] = await Promise.all([
+      supabase
+        .from("token_usage")
+        .select("input_tokens, output_tokens, total_tokens")
+        .eq("user_id", userId)
+        .gte("created_at", monthStart.toISOString()),
+      supabase
+        .from("chat_history")
+        .select("hints")
+        .eq("user_id", userId)
+        .gte("created_at", monthStart.toISOString()),
+    ]);
 
     if (error) {
       console.error("Failed to get monthly token usage:", error);
@@ -809,8 +818,14 @@ export async function getMonthlyTokenUsage(): Promise<TokenUsage> {
         total_output_tokens: 0,
         total_tokens: 0,
         request_count: 0,
+        hint_count: 0,
       };
     }
+
+    const hint_count = (hintsData || []).reduce(
+      (acc, row) => acc + (Array.isArray(row.hints) ? row.hints.length : 0),
+      0
+    );
 
     const result = (data || []).reduce(
       (acc, row) => ({
@@ -827,7 +842,7 @@ export async function getMonthlyTokenUsage(): Promise<TokenUsage> {
       }
     );
 
-    return result;
+    return { ...result, hint_count };
   } catch (error) {
     console.error("Failed to get monthly token usage:", error);
     return {
@@ -835,6 +850,7 @@ export async function getMonthlyTokenUsage(): Promise<TokenUsage> {
       total_output_tokens: 0,
       total_tokens: 0,
       request_count: 0,
+      hint_count: 0,
     };
   }
 }
@@ -853,16 +869,23 @@ export async function getTotalTokenUsage(): Promise<TokenUsage> {
       total_output_tokens: 0,
       total_tokens: 0,
       request_count: 0,
+      hint_count: 0,
     };
   }
 
   const userId = claims.sub as string;
 
   try {
-    const { data, error } = await supabase
-      .from("token_usage")
-      .select("input_tokens, output_tokens, total_tokens")
-      .eq("user_id", userId);
+    const [{ data, error }, { data: hintsData }] = await Promise.all([
+      supabase
+        .from("token_usage")
+        .select("input_tokens, output_tokens, total_tokens")
+        .eq("user_id", userId),
+      supabase
+        .from("chat_history")
+        .select("hints")
+        .eq("user_id", userId),
+    ]);
 
     if (error) {
       console.error("Failed to get total token usage:", error);
@@ -871,8 +894,14 @@ export async function getTotalTokenUsage(): Promise<TokenUsage> {
         total_output_tokens: 0,
         total_tokens: 0,
         request_count: 0,
+        hint_count: 0,
       };
     }
+
+    const hint_count = (hintsData || []).reduce(
+      (acc, row) => acc + (Array.isArray(row.hints) ? row.hints.length : 0),
+      0
+    );
 
     const result = (data || []).reduce(
       (acc, row) => ({
@@ -889,7 +918,7 @@ export async function getTotalTokenUsage(): Promise<TokenUsage> {
       }
     );
 
-    return result;
+    return { ...result, hint_count };
   } catch (error) {
     console.error("Failed to get total token usage:", error);
     return {
@@ -897,6 +926,7 @@ export async function getTotalTokenUsage(): Promise<TokenUsage> {
       total_output_tokens: 0,
       total_tokens: 0,
       request_count: 0,
+      hint_count: 0,
     };
   }
 }
