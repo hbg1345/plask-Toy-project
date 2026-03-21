@@ -161,12 +161,14 @@ async function PracticeContent({
       </Card>
 
       {/* 가챠 추천 */}
-      <GachaReveal
-        initialProblems={problems}
-        userRating={userData.rating}
-        fromEpoch={fromEpoch}
-        contestType={contestType}
-      />
+      <div className="flex-1 flex flex-col w-full">
+        <GachaReveal
+          initialProblems={problems}
+          userRating={userData.rating}
+          fromEpoch={fromEpoch}
+          contestType={contestType}
+        />
+      </div>
     </>
   );
 }
@@ -193,8 +195,8 @@ export default function PracticePage({
   searchParams: Promise<{ fromYear?: string; fromMonth?: string; contestType?: string }>;
 }) {
   return (
-    <div className="w-full">
-      <div className="flex flex-col gap-8 items-start">
+    <div className="w-full flex flex-col min-h-[calc(100dvh-3rem)]">
+      <div className="flex-1 flex flex-col gap-8 items-start">
         <Suspense fallback={<PracticeLoading />}>
           <PracticeContent searchParams={searchParams} />
         </Suspense>

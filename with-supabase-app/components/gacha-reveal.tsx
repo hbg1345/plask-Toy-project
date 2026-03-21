@@ -91,7 +91,7 @@ export function GachaReveal({ initialProblems, userRating, fromEpoch, contestTyp
   };
 
   return (
-    <div className="relative w-full rounded-xl overflow-hidden">
+    <div className="relative w-full flex-1 flex flex-col rounded-xl overflow-hidden">
       {/* 타로 배경 */}
       <div className="absolute inset-0 bg-gradient-to-b from-indigo-950 via-purple-950 to-slate-950" />
       <div className="absolute inset-0 opacity-[0.07]" style={{
@@ -112,7 +112,7 @@ export function GachaReveal({ initialProblems, userRating, fromEpoch, contestTyp
         ))}
       </div>
 
-      <div className="relative flex flex-col items-center gap-6 py-14 px-6">
+      <div className="relative flex flex-col flex-1 items-center justify-center gap-6 py-14 px-6">
         <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
           {problems.map((problem, i) => (
             <GachaCard

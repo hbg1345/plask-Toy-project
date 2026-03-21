@@ -140,8 +140,8 @@ export const translations = {
       thisMonth: "이번 달",
       total: "전체",
       usage: (period: string) => `${period} 루나와 나눈 대화 기록`,
-      messagesSent: "루나에게 말을 건 횟수",
-      responsesReceived: "루나에게 받은 응답 수",
+      messagesSent: "루나와 대화한 횟수",
+      responsesReceived: "루나에게 받은 힌트 수",
     },
     ratingGraph: {
       noHistory: "레이팅 기록이 없습니다.",
@@ -327,8 +327,8 @@ export const translations = {
       thisMonth: "This Month",
       total: "All Time",
       usage: (period: string) => `${period} conversation history with Luna`,
-      messagesSent: "Messages sent to Luna",
-      responsesReceived: "Responses from Luna",
+      messagesSent: "Chats with Luna",
+      responsesReceived: "Hints from Luna",
     },
     ratingGraph: {
       noHistory: "No rating history found.",
@@ -514,8 +514,8 @@ export const translations = {
       thisMonth: "今月",
       total: "全期間",
       usage: (period: string) => `${period}のルナとの会話記録`,
-      messagesSent: "ルナへのメッセージ数",
-      responsesReceived: "ルナからの返答数",
+      messagesSent: "ルナとの会話数",
+      responsesReceived: "ルナからのヒント数",
     },
     ratingGraph: {
       noHistory: "レーティング履歴がありません。",
