@@ -19,7 +19,7 @@ export function AnimeModeToggle() {
       size="sm"
       onClick={handleToggle}
       aria-label={isAnimeMode ? tr.animeMode.toNormal : tr.animeMode.toAnime}
-      className={`gap-1.5 ${isAnimeMode ? "text-pixel-cyan hover:text-pixel-yellow" : "text-pixel-yellow hover:text-pixel-cyan"}`}
+      className={`gap-1.5 hover:bg-transparent ${isAnimeMode ? "text-pixel-cyan hover:text-pixel-yellow" : "text-pixel-yellow hover:text-pixel-cyan"}`}
     >
       {isAnimeMode ? (
         <Sparkles className="h-[1.2rem] w-[1.2rem]" />

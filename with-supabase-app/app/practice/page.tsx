@@ -17,13 +17,11 @@ async function PracticeContent({
 }) {
   const params = await searchParams;
   const tr = await getServerTr();
-  const fromYear = params.fromYear ? parseInt(params.fromYear) : null;
+  const defaultYear = new Date().getFullYear() - 2;
+  const fromYear = params.fromYear ? parseInt(params.fromYear) : defaultYear;
   const fromMonth = params.fromMonth ? parseInt(params.fromMonth) : null;
-  const contestType = params.contestType || undefined;
-  const fromEpoch =
-    fromYear != null
-      ? Math.floor(new Date(fromYear, (fromMonth ?? 1) - 1, 1).getTime() / 1000)
-      : undefined;
+  const contestType = params.contestType || "abc";
+  const fromEpoch = Math.floor(new Date(fromYear, (fromMonth ?? 1) - 1, 1).getTime() / 1000);
 
   const supabase = await createClient();
   const { data: claimsData } = await supabase.auth.getClaims();
@@ -88,77 +86,68 @@ async function PracticeContent({
       <OngoingSessionCard />
 
       {/* 날짜 필터 */}
-      <Card className="w-full py-0">
-        <CardContent className="py-3">
-          <form action="/practice" method="GET" className="flex items-center gap-3 flex-wrap">
-            <span className="text-sm font-medium shrink-0">{tr.practice.contestType}</span>
-            <div className="flex items-center gap-1">
-              {[
-                { value: "", label: tr.practice.contestAll },
-                { value: "abc", label: "ABC" },
-                { value: "arc", label: "ARC" },
-                { value: "agc", label: "AGC" },
-              ].map((opt) => {
-                const linkParams = new URLSearchParams();
-                if (opt.value) linkParams.set("contestType", opt.value);
-                if (fromYear) linkParams.set("fromYear", String(fromYear));
-                if (fromMonth) linkParams.set("fromMonth", String(fromMonth));
-                const href = linkParams.toString() ? `/practice?${linkParams}` : "/practice";
-                return (
-                  <Link
-                    key={opt.value}
-                    href={href}
-                    scroll={true}
-                    className={`px-2.5 py-1 rounded-md text-sm border transition-colors ${
-                      (contestType ?? "") === opt.value
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-background border-input hover:bg-accent"
-                    }`}
-                  >
-                    {opt.label}
-                  </Link>
-                );
-              })}
-            </div>
-            {contestType && <input type="hidden" name="contestType" value={contestType} />}
-            <span className="text-sm font-medium shrink-0">{tr.practice.period}</span>
-            <div className="flex items-center gap-1.5">
-              <input
-                type="number"
-                name="fromYear"
-                placeholder={tr.practice.yearPlaceholder}
-                defaultValue={fromYear ?? ""}
-                min={2010}
-                max={new Date().getFullYear()}
-                className="w-20 h-8 rounded-md border border-input bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-              />
-              {tr.practice.yearSuffix && <span className="text-sm">{tr.practice.yearSuffix}</span>}
-              <select
-                name="fromMonth"
-                defaultValue={fromMonth ?? ""}
-                className="h-8 rounded-md border border-input bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-              >
-                <option value="">{tr.practice.allMonths}</option>
-                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                  <option key={m} value={m}>{m}{tr.practice.month}</option>
-                ))}
-              </select>
-              <span className="text-sm">{tr.practice.after}</span>
-            </div>
-            <Button type="submit" size="sm" variant="secondary">{tr.practice.apply}</Button>
-            {(fromYear || contestType) && (
-              <Button asChild size="sm" variant="outline">
-                <Link href="/practice">{tr.practice.reset}</Link>
-              </Button>
-            )}
-            {fromYear && (
-              <span className="text-xs text-muted-foreground">
-                {tr.practice.afterPeriod(fromYear, fromMonth ?? 1)}
-              </span>
-            )}
-          </form>
-        </CardContent>
-      </Card>
+      <div className="w-full rounded-lg bg-pixel-dark px-4 py-3">
+        <form action="/practice" method="GET" className="flex items-center gap-3 flex-wrap">
+          <span className="text-sm font-medium shrink-0 text-pixel-white">{tr.practice.contestType}</span>
+          <div className="flex items-center gap-1">
+            {[
+              { value: "", label: tr.practice.contestAll },
+              { value: "abc", label: "ABC" },
+              { value: "arc", label: "ARC" },
+              { value: "agc", label: "AGC" },
+            ].map((opt) => {
+              const linkParams = new URLSearchParams();
+              if (opt.value) linkParams.set("contestType", opt.value);
+              if (fromYear) linkParams.set("fromYear", String(fromYear));
+              if (fromMonth) linkParams.set("fromMonth", String(fromMonth));
+              const href = linkParams.toString() ? `/practice?${linkParams}` : "/practice";
+              return (
+                <Link
+                  key={opt.value}
+                  href={href}
+                  scroll={true}
+                  className={`px-2.5 py-1 rounded-md text-sm border transition-colors ${
+                    (contestType ?? "") === opt.value
+                      ? "bg-pixel-yellow text-pixel-dark border-pixel-yellow font-bold"
+                      : "border-pixel-darkgray text-pixel-white hover:text-pixel-cyan hover:border-pixel-cyan"
+                  }`}
+                >
+                  {opt.label}
+                </Link>
+              );
+            })}
+          </div>
+          {contestType && <input type="hidden" name="contestType" value={contestType} />}
+          <span className="text-sm font-medium shrink-0 text-pixel-white">{tr.practice.period}</span>
+          <div className="flex items-center gap-1.5">
+            <select
+              name="fromYear"
+              defaultValue={fromYear}
+              className="h-8 rounded-md border border-pixel-black bg-pixel-dark px-2 text-sm text-pixel-white focus:outline-none focus:ring-1 focus:ring-pixel-cyan"
+            >
+              {Array.from({ length: new Date().getFullYear() - 2010 + 1 }, (_, i) => new Date().getFullYear() - i).map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+            {tr.practice.yearSuffix && <span className="text-sm text-pixel-white">{tr.practice.yearSuffix}</span>}
+            <select
+              name="fromMonth"
+              defaultValue={fromMonth ?? ""}
+              className="h-8 rounded-md border border-pixel-black bg-pixel-dark px-2 text-sm text-pixel-white focus:outline-none focus:ring-1 focus:ring-pixel-cyan"
+            >
+              <option value="">{tr.practice.allMonths}</option>
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                <option key={m} value={m}>{m}{tr.practice.month}</option>
+              ))}
+            </select>
+            <span className="text-sm text-pixel-white">{tr.practice.after}</span>
+          </div>
+          <Button type="submit" size="sm" className="bg-pixel-black text-pixel-white hover:bg-pixel-darkgray border-0">{tr.practice.apply}</Button>
+          <span className="text-xs text-pixel-gray">
+            {tr.practice.afterPeriod(fromYear, fromMonth ?? 1)}
+          </span>
+        </form>
+      </div>
 
       {/* 가챠 추천 */}
       <div className="flex-1 flex flex-col w-full">
@@ -195,7 +184,7 @@ export default function PracticePage({
   searchParams: Promise<{ fromYear?: string; fromMonth?: string; contestType?: string }>;
 }) {
   return (
-    <div className="w-full flex flex-col min-h-[calc(100dvh-3rem)]">
+    <div className="w-full flex flex-col min-h-[calc(100dvh-5.5rem)]">
       <div className="flex-1 flex flex-col gap-8 items-start">
         <Suspense fallback={<PracticeLoading />}>
           <PracticeContent searchParams={searchParams} />

@@ -31,8 +31,8 @@ export function AppLayout({
         </div>
       </div>
       {showFooter && (
-        <footer className="w-full py-4 text-center text-xs text-muted-foreground">
-          <a href="https://deboot.tistory.com/" target="_blank" rel="noopener noreferrer" className="hover:underline">
+        <footer className="w-full py-4 text-center bg-pixel-dark">
+          <a href="https://deboot.tistory.com/" target="_blank" rel="noopener noreferrer" className="font-game font-bold text-xs text-pixel-yellow hover:text-pixel-cyan transition-colors tracking-wider">
             deboot.tistory.com
           </a>
         </footer>

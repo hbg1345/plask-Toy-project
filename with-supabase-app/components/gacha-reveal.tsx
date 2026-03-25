@@ -92,13 +92,8 @@ export function GachaReveal({ initialProblems, userRating, fromEpoch, contestTyp
 
   return (
     <div className="relative w-full flex-1 flex flex-col rounded-xl overflow-hidden">
-      {/* 타로 배경 */}
-      <div className="absolute inset-0 bg-gradient-to-b from-indigo-950 via-purple-950 to-slate-950" />
-      <div className="absolute inset-0 opacity-[0.07]" style={{
-        backgroundImage: `radial-gradient(circle at 20% 30%, rgba(168,85,247,0.4) 0%, transparent 50%),
-          radial-gradient(circle at 80% 70%, rgba(99,102,241,0.4) 0%, transparent 50%),
-          radial-gradient(circle at 50% 50%, rgba(236,72,153,0.3) 0%, transparent 60%)`,
-      }} />
+      {/* 배경 */}
+      <div className="absolute inset-0 bg-white" />
       {/* 별 장식 */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {[
@@ -106,13 +101,13 @@ export function GachaReveal({ initialProblems, userRating, fromEpoch, contestTyp
           "bottom-12 right-[25%]", "bottom-8 left-[20%]", "top-12 right-[40%]",
           "bottom-20 left-[45%]", "top-6 left-[60%]", "bottom-16 right-[10%]",
         ].map((pos, i) => (
-          <div key={i} className={`absolute ${pos} text-purple-300/20 text-[10px]`}>
+          <div key={i} className={`absolute ${pos} text-gray-300/40 text-[10px]`}>
             {i % 3 === 0 ? "✦" : i % 3 === 1 ? "✧" : "·"}
           </div>
         ))}
       </div>
 
-      <div className="relative flex flex-col flex-1 items-center justify-center gap-6 py-14 px-6">
+      <div className="relative flex flex-col flex-1 items-center justify-center gap-6 py-8 px-6">
         <div className="flex flex-wrap justify-center gap-3 sm:gap-4">
           {problems.map((problem, i) => (
             <GachaCard
@@ -132,7 +127,7 @@ export function GachaReveal({ initialProblems, userRating, fromEpoch, contestTyp
               <Button
                 size="lg"
                 onClick={handlePull}
-                className="relative overflow-hidden px-10 py-5 text-base font-bold bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 border-0 text-white shadow-lg shadow-purple-500/30"
+                className="relative overflow-hidden px-12 py-6 text-lg font-bold bg-gradient-to-b from-red-500 via-red-600 to-red-800 hover:from-red-400 hover:via-red-500 hover:to-red-700 border-0 border-b-4 border-b-red-950 text-white shadow-[0_6px_0_0_#7f1d1d,0_8px_16px_rgba(0,0,0,0.4)] hover:shadow-[0_4px_0_0_#7f1d1d,0_6px_12px_rgba(0,0,0,0.4)] hover:translate-y-[2px] active:shadow-[0_0px_0_0_#7f1d1d] active:translate-y-[6px] transition-all duration-100 rounded-xl"
               >
                 <Sparkles className="mr-2 h-4 w-4" />
                 {tr.gacha.pull}
@@ -141,7 +136,7 @@ export function GachaReveal({ initialProblems, userRating, fromEpoch, contestTyp
           )}
           {state === "done" && (
             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-              <Button variant="ghost" onClick={handleRedraw} disabled={isRedrawing} className="gap-2 border border-purple-400/50 !text-white hover:bg-purple-900/40">
+              <Button variant="ghost" onClick={handleRedraw} disabled={isRedrawing} className="gap-2 border border-pixel-darkgray text-pixel-dark hover:bg-pixel-dark/10">
                 <RefreshCw className={`h-4 w-4 ${isRedrawing ? "animate-spin" : ""}`} />
                 {tr.gacha.rePull}
               </Button>
@@ -172,7 +167,7 @@ function GachaCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: index * 0.07 }}
       style={{ perspective: "1000px" }}
-      className="w-28 h-44 sm:w-32 sm:h-48 shrink-0"
+      className="w-32 h-48 sm:w-40 sm:h-56 shrink-0"
     >
       <motion.div
         style={{ transformStyle: "preserve-3d", width: "100%", height: "100%", position: "relative" }}
@@ -184,14 +179,14 @@ function GachaCard({
           style={{ backfaceVisibility: "hidden" }}
           className="absolute inset-0 rounded-xl overflow-hidden bg-gradient-to-br from-amber-50 via-yellow-100 to-amber-200 border-2 border-amber-400/70 select-none"
         >
-          <div className="absolute inset-2 border border-amber-500/30 rounded-lg pointer-events-none" />
-          <div className="absolute top-1.5 left-1.5 text-[9px] text-amber-600/40">✦</div>
-          <div className="absolute top-1.5 right-1.5 text-[9px] text-amber-600/40">✦</div>
-          <div className="absolute bottom-1.5 left-1.5 text-[9px] text-amber-600/40">✦</div>
-          <div className="absolute bottom-1.5 right-1.5 text-[9px] text-amber-600/40">✦</div>
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5">
-            <span className="text-3xl text-amber-500/80 leading-none">✦</span>
-            <span className="text-[8px] tracking-[0.2em] text-amber-600/50 font-mono">SOLVE HELPER</span>
+          <div className="absolute inset-2.5 border border-amber-500/30 rounded-lg pointer-events-none" />
+          <div className="absolute top-2 left-2 text-[11px] text-amber-600/40">✦</div>
+          <div className="absolute top-2 right-2 text-[11px] text-amber-600/40">✦</div>
+          <div className="absolute bottom-2 left-2 text-[11px] text-amber-600/40">✦</div>
+          <div className="absolute bottom-2 right-2 text-[11px] text-amber-600/40">✦</div>
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+            <span className="text-4xl text-amber-500/80 leading-none">✦</span>
+            <span className="text-[10px] tracking-[0.2em] text-amber-600/50 font-mono">SOLVE HELPER</span>
           </div>
         </div>
 
@@ -205,27 +200,27 @@ function GachaCard({
             borderColor: rarity.borderColor,
             boxShadow: isRevealed ? `0 0 18px ${rarity.glow}` : "none",
           }}
-          className="absolute inset-0 rounded-xl overflow-hidden border-2 flex flex-col p-2.5 hover:brightness-110 transition-[filter] duration-200"
+          className="absolute inset-0 rounded-xl overflow-hidden border-2 flex flex-col p-3.5 hover:brightness-95 transition-[filter] duration-200"
         >
           <div className="flex items-center justify-between">
-            <div className="text-[10px] font-bold leading-none text-amber-500">
+            <div className="text-xs font-bold leading-none text-amber-500">
               {rarity.stars}
             </div>
-            <div className="text-[8px] font-bold uppercase tracking-wide text-black">
+            <div className="text-[10px] font-bold uppercase tracking-wide text-black">
               {problem.contest_id.replace(/(\d)/, " $1")}
             </div>
           </div>
-          <div className="flex-1 flex items-center mt-2">
-            <span className="text-xs font-bold leading-tight line-clamp-4" style={{ color: rarity.textColor }}>
+          <div className="flex-1 flex items-center mt-2.5">
+            <span className="text-sm font-bold leading-tight line-clamp-4" style={{ color: rarity.textColor }}>
               {problem.title}
             </span>
           </div>
-          <div className="mt-1.5 space-y-0.5">
+          <div className="mt-2 space-y-0.5">
             {problem.difficulty && (
-              <div className="text-[9px] text-black">{problem.difficulty.toLocaleString()} diff</div>
+              <div className="text-[11px] text-black">{problem.difficulty.toLocaleString()} diff</div>
             )}
             {prob !== null && (
-              <div className="text-[10px] font-bold text-black">{Math.round(prob * 100)}%</div>
+              <div className="text-xs font-bold text-black">{Math.round(prob * 100)}%</div>
             )}
           </div>
         </Link>
