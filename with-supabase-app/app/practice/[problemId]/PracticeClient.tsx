@@ -357,7 +357,7 @@ export default function PracticeClient({ problemId }: PracticeClientProps) {
   const progress = selectedTime * 60 > 0 ? (elapsedTime / (selectedTime * 60)) * 100 : 0;
 
   return (
-    <div className="w-full h-full flex flex-col">
+    <div className="w-full h-full flex flex-col bg-background">
       {/* 헤더 */}
       <div className="flex-shrink-0 border-b bg-background/95 backdrop-blur px-4 py-3">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
